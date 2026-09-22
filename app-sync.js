@@ -30,7 +30,7 @@ async function syncGetUser() {
 function syncIsOnline() { return !!(window.sb && SYNC_STATUS.state === 'online'); }
 
 /* ---------- mapping local <-> Supabase ---------- */
-const SB_TABLES = ['profiles', 'tasks', 'people', 'gifts'];
+const SB_TABLES = ['profiles', 'tasks', 'people', 'gifts', 'notes'];
 
 function rowToProfile(r) {
   return {
@@ -61,13 +61,28 @@ function rowToPerson(r) {
   return {
     id: r.id, name: r.name, color: r.color, photo: r.photo || '',
     relationship: r.relationship || 'Amigo/a', birthday: r.birthday || '', notes: r.notes || '',
+    details: r.details || {},
     createdAt: r.created_at
   };
 }
 function personToRow(p, uidv) {
   return {
     id: p.id, user_id: uidv, name: p.name, color: p.color || '#2563EB', photo: p.photo || null,
-    relationship: p.relationship || 'Amigo/a', birthday: p.birthday || null, notes: p.notes || ''
+    relationship: p.relationship || 'Amigo/a', birthday: p.birthday || null, notes: p.notes || '',
+    details: p.details || {}
+  };
+}
+function rowToNote(r) {
+  return {
+    id: r.id, text: r.text, kind: r.kind || 'nota', date: r.note_date || todayStr(), time: r.note_time || '',
+    done: !!r.done, starred: !!r.starred, createdAt: r.created_at
+  };
+}
+function noteToRow(n, uidv) {
+  return {
+    id: n.id, user_id: uidv, text: n.text, kind: n.kind || 'nota',
+    note_date: n.date || todayStr(), note_time: n.time || '',
+    done: !!n.done, starred: !!n.starred
   };
 }
 function rowToGift(r) {
@@ -98,7 +113,7 @@ async function syncPushAll() {
     for (let i = 0; i < SB_TABLES.length; i++) {
       const table = SB_TABLES[i];
       const remoteIds = new Set((reads[i].data || []).map(r => r.id));
-      const localArr = table === 'profiles' ? S.profiles : table === 'tasks' ? S.tasks : table === 'people' ? S.people : S.gifts;
+      const localArr = table === 'profiles' ? S.profiles : table === 'tasks' ? S.tasks : table === 'people' ? S.people : table === 'notes' ? (S.notes || []) : S.gifts;
       const localIds = new Set(localArr.map(x => x.id));
 
       const del = [...remoteIds].filter(id => !localIds.has(id));
@@ -107,7 +122,8 @@ async function syncPushAll() {
       const rows = localArr.map(x =>
         table === 'profiles' ? profileToRow(x, uid) :
         table === 'tasks' ? taskToRow(x, uid) :
-        table === 'people' ? personToRow(x, uid) : giftToRow(x, uid));
+        table === 'people' ? personToRow(x, uid) :
+        table === 'notes' ? noteToRow(x, uid) : giftToRow(x, uid));
       // Subir en trozos para no pasarnos del límite de la petición
       for (let j = 0; j < rows.length; j += 50) {
         const chunk = rows.slice(j, j + 50);
@@ -130,17 +146,18 @@ async function syncPullAll() {
   const user = await syncGetUser();
   if (!user) return false;
   // Guardamos lo local por si la nube está vacía (primer login): así no se pierde nada
-  const localBefore = { profiles: S.profiles || [], tasks: S.tasks || [], people: S.people || [], gifts: S.gifts || [] };
+  const localBefore = { profiles: S.profiles || [], tasks: S.tasks || [], people: S.people || [], gifts: S.gifts || [], notes: S.notes || [] };
   let needPush = false;
   try {
-    const [pr, ta, pe, gi, se] = await Promise.all([
+    const [pr, ta, pe, gi, no, se] = await Promise.all([
       window.sb.from('profiles').select('*').order('created_at'),
       window.sb.from('tasks').select('*').order('created_at'),
       window.sb.from('people').select('*').order('created_at'),
       window.sb.from('gifts').select('*').order('created_at'),
+      window.sb.from('notes').select('*').order('created_at'),
       window.sb.from('settings').select('*').maybeSingle()
     ]);
-    const err = pr.error || ta.error || pe.error || gi.error || se.error;
+    const err = pr.error || ta.error || pe.error || gi.error || no.error || se.error;
     if (err) throw err;
     const merge = (remoteRows, localArr) => {
       if (remoteRows.length === 0 && localArr.length > 0) { needPush = true; return localArr; }
@@ -150,6 +167,7 @@ async function syncPullAll() {
     S.tasks = merge(ta.data, localBefore.tasks) || (ta.data || []).map(rowToTask);
     S.people = merge(pe.data, localBefore.people) || (pe.data || []).map(rowToPerson);
     S.gifts = merge(gi.data, localBefore.gifts) || (gi.data || []).map(rowToGift);
+    S.notes = merge(no.data, localBefore.notes) || (no.data || []).map(rowToNote);
     if (se.data) {
       S.settings = Object.assign(defaultState().settings, se.data.data || {});
       S.meta = Object.assign(defaultState().meta, se.data.meta || {});

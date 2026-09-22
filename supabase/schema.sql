@@ -40,9 +40,13 @@ create table if not exists public.people (
   relationship text not null default 'Amigo/a',
   birthday date,
   notes text not null default '',
+  details jsonb not null default '{}',  -- gustos, favoritos, fechas importantes
   created_at timestamptz not null default now()
 );
 create index if not exists people_user_idx on public.people(user_id);
+
+-- Migración suave: si la tabla people ya existía de una versión anterior, gana la columna details
+alter table public.people add column if not exists details jsonb not null default '{}';
 
 -- ---------- GIFTS (regalos) ----------
 create table if not exists public.gifts (
@@ -61,6 +65,20 @@ create table if not exists public.gifts (
 );
 create index if not exists gifts_user_idx on public.gifts(user_id);
 
+-- ---------- NOTES (Modo Clase: notas rápidas, recordatorios, material, deberes) ----------
+create table if not exists public.notes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  text text not null,
+  kind text not null default 'nota',      -- nota | recordatorio | deberes | material | importante
+  note_date date not null default current_date,  -- fecha organizativa (hoy por defecto)
+  note_time text not null default '',
+  done boolean not null default false,
+  starred boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists notes_user_idx on public.notes(user_id);
+
 -- ---------- SETTINGS (ajustes de la app, un row por usuario) ----------
 create table if not exists public.settings (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -71,26 +89,36 @@ create table if not exists public.settings (
 
 -- ============================================================
 -- RLS: cada usuario solo puede leer/escribir SUS filas
+-- (idempotente: seguro de re-ejecutar; recrea las políticas si cambiaron)
 -- ============================================================
 alter table public.profiles  enable row level security;
 alter table public.tasks     enable row level security;
 alter table public.people    enable row level security;
 alter table public.gifts     enable row level security;
+alter table public.notes     enable row level security;
 alter table public.settings  enable row level security;
 
--- Perfil propio compartido por user_id (todos los perfiles locales del usuario)
+drop policy if exists "profiles_all" on public.profiles;
 create policy "profiles_all" on public.profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "tasks_all" on public.tasks;
 create policy "tasks_all" on public.tasks
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "people_all" on public.people;
 create policy "people_all" on public.people
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "gifts_all" on public.gifts;
 create policy "gifts_all" on public.gifts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "notes_all" on public.notes;
+create policy "notes_all" on public.notes
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "settings_all" on public.settings;
 create policy "settings_all" on public.settings
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
