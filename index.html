@@ -437,7 +437,29 @@ const ICONS = {
   cake: '<path d="M4 21h16"/><path d="M5 21v-6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6"/><path d="M12 10V7.5"/><path d="M12 7.5a1.5 1.5 0 1 0-1.5-1.5"/><path d="M9 13v-2M15 13v-2"/>',
   euro: '<path d="M18.5 5.5A8 8 0 1 0 18.5 18.5"/><path d="M4 10h9M4 14h9"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
-  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  coffee: '<path d="M4 8h13v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h2a3 3 0 0 1 0 6h-2M3 21h15"/>',
+  water: '<path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12z"/>',
+  walk: '<circle cx="13" cy="5" r="2"/><path d="m11 9-2 5 4 2 2 5M9 14l-4 4M11 9l5 2 2 4"/>',
+  meditate: '<circle cx="12" cy="5" r="2.5"/><path d="M8 21c0-4 1.5-7 4-7s4 3 4 7M5 12c2 1 4 1 7-1 3 2 5 2 7 1M12 8v6"/>',
+  cook: '<path d="M7 3v7M4 3v4a3 3 0 0 0 6 0V3M7 10v11M17 3v18M17 3c3 2 3 7 0 9"/>',
+  clean: '<path d="m4 20 4-4M7 3l14 14M5 5l4 4M15 15l4 4M3 21h7"/>',
+  car: '<path d="m5 11 2-5h10l2 5M3 11h18v7H3zM6 18v2M18 18v2M6 14h.01M18 14h.01"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  music: '<path d="M9 18V5l10-2v13M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zM19 16a3 3 0 1 1-3-3"/>',
+  money: '<circle cx="12" cy="12" r="9"/><path d="M15 9.5c-.7-.7-1.6-1-3-1-1.7 0-3 .8-3 2s1.3 2 3 2 3 .8 3 2-1.3 2-3 2c-1.4 0-2.3-.3-3-1M12 6v12"/>',
+  meds: '<path d="m8 4 12 12a3 3 0 0 1-4 4L4 8a3 3 0 0 1 4-4zM6 10l4-4M14 18l4-4"/>',
+  plant: '<path d="M12 21V9M12 13c-5 0-7-3-7-7 4 0 7 2 7 7zM12 17c5 0 7-3 7-7-4 0-7 2-7 7z"/>',
+  cart: '<path d="M3 4h2l2 11h10l3-8H6"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+  laptop: '<rect x="4" y="4" width="16" height="11" rx="1.5"/><path d="M2 19h20"/>',
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/>',
+  heart: '<path d="M20.8 8.8c0 5.5-8.8 10.2-8.8 10.2S3.2 14.3 3.2 8.8A4.8 4.8 0 0 1 12 6a4.8 4.8 0 0 1 8.8 2.8z"/>',
+  bed: '<path d="M3 18v-8M3 14h18v4M21 18v2M5 14V9a2 2 0 0 1 2-2h3a3 3 0 0 1 3 3v4M3 20h18"/>',
+  alarm: '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/>',
+  folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  pencil: '<path d="m4 20 4-.9L19 8a2.1 2.1 0 0 0-3-3L5 16zM13.5 6.5l4 4"/>',
+  recycle: '<path d="m7 7-2 3 2 3M5 10h7M17 17l-2-3 2-3M15 14H5M12 5l3-1 3 3M15 4l-3 6"/>'
 };
 function icon(name, size, cls) {
   size = size || 20;
@@ -446,12 +468,16 @@ function icon(name, size, cls) {
 
 /* ---------- estado ---------- */
 const LS_KEY = 'dailyhub_v2';
+const DEFAULT_CATEGORIES = ['Hábitos', 'Casa', 'Personal', 'Estudio', 'Otros'];
+const DEFAULT_RELATIONSHIPS = ['Pareja', 'Familia', 'Amigo/a', 'Compañero/a', 'Otro'];
 function defaultState() {
   return {
     profiles: [], activeProfileId: null,
     people: [], tasks: [], gifts: [],
     settings: {
       hideCompleted: false,
+      categories: [...DEFAULT_CATEGORIES],
+      relationships: [...DEFAULT_RELATIONSHIPS],
       notif: { reminders: true, gifts: true, daily: false, quietFrom: '22:00', quietTo: '08:00' }
     },
     meta: { onboarded: false, created: todayStr(), lastNotified: null }
@@ -459,7 +485,17 @@ function defaultState() {
 }
 let S = load();
 function load() {
-  try { const raw = localStorage.getItem(LS_KEY); if (raw) return Object.assign(defaultState(), JSON.parse(raw)); } catch (e) { console.error(e); }
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const state = Object.assign(defaultState(), JSON.parse(raw));
+      state.settings = Object.assign(defaultState().settings, state.settings || {});
+      state.settings.categories = Array.isArray(state.settings.categories) && state.settings.categories.length ? state.settings.categories : [...DEFAULT_CATEGORIES];
+      state.settings.relationships = Array.isArray(state.settings.relationships) && state.settings.relationships.length ? state.settings.relationships : [...DEFAULT_RELATIONSHIPS];
+      state.settings.notif = Object.assign(defaultState().settings.notif, state.settings.notif || {});
+      return state;
+    }
+  } catch (e) { console.error(e); }
   return defaultState();
 }
 let __pushTimer = null;
@@ -474,13 +510,21 @@ function save() {
 }
 const session = { unlocked: false };
 let route = { name: 'home', params: {} };
-const ui = { weekOffset: 0, weekSel: dowIdx(todayStr()), weekMode: 'week', calYM: null, calSel: null, tasksFilter: 'todas', giftTab: 'personas' };
+const ui = { weekOffset: 0, weekSel: dowIdx(todayStr()), tasksView: 'lista', calYM: null, calSel: null, tasksFilter: 'todas', giftTab: 'personas' };
 const COLORS = ['#2563EB', '#4F46E5', '#7C3AED', '#A855F7', '#C026D3', '#DB2777', '#E11D48', '#DC2626', '#EA580C', '#D97706', '#F59E0B', '#84CC16', '#16A34A', '#059669', '#0D9488', '#0EA5E9', '#78716C', '#92400E', '#64748B', '#475569'];
-const CATS = ['Hábitos', 'Casa', 'Personal', 'Estudio', 'Otros'];
+const CATS = DEFAULT_CATEGORIES;
 const ICON_CHOICES = [
   { id: 'tooth', label: 'Dientes' }, { id: 'shower', label: 'Ducha' }, { id: 'paw', label: 'Mascota' }, { id: 'home', label: 'Casa' },
-  { id: 'shirt', label: 'Ropa' }, { id: 'book', label: 'Estudio' }, { id: 'dumbbell', label: 'Ejercicio' }, { id: 'star', label: 'Otro' }
+  { id: 'shirt', label: 'Ropa' }, { id: 'book', label: 'Estudio' }, { id: 'dumbbell', label: 'Ejercicio' }, { id: 'coffee', label: 'Café' },
+  { id: 'water', label: 'Agua' }, { id: 'walk', label: 'Caminar' }, { id: 'meditate', label: 'Meditar' }, { id: 'cook', label: 'Cocinar' },
+  { id: 'clean', label: 'Limpiar' }, { id: 'car', label: 'Coche' }, { id: 'phone', label: 'Llamar' }, { id: 'mail', label: 'Correo' },
+  { id: 'music', label: 'Música' }, { id: 'money', label: 'Dinero' }, { id: 'meds', label: 'Medicinas' }, { id: 'plant', label: 'Plantas' },
+  { id: 'cart', label: 'Comprar' }, { id: 'laptop', label: 'Ordenador' }, { id: 'briefcase', label: 'Trabajo' }, { id: 'heart', label: 'Salud' },
+  { id: 'bed', label: 'Dormir' }, { id: 'alarm', label: 'Alarma' }, { id: 'folder', label: 'Archivos' }, { id: 'pencil', label: 'Escribir' },
+  { id: 'recycle', label: 'Reciclar' }, { id: 'star', label: 'Otro' }
 ];
+function categories() { return (S.settings && Array.isArray(S.settings.categories) && S.settings.categories.length) ? S.settings.categories : CATS; }
+function relationships() { return (S.settings && Array.isArray(S.settings.relationships) && S.settings.relationships.length) ? S.settings.relationships : DEFAULT_RELATIONSHIPS; }
 const WEEK_L = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 const WEEK_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const GIFT_STATUSES = ['Idea', 'Comprar', 'Comprado', 'Entregado'];
@@ -489,7 +533,20 @@ const OCCASIONS = ['Cumpleaños', 'Navidad', 'Aniversario', 'Amigo Invisible', '
 const currentProfile = () => S.profiles.find(p => p.id === S.activeProfileId) || null;
 
 /* ---------- navegación ---------- */
-function go(name, params) { route = { name, params: params || {} }; render(); window.scrollTo(0, 0); }
+const routeStack = [];
+function go(name, params, options) {
+  options = options || {};
+  if (!options.replace && route.name !== name) routeStack.push({ name: route.name, params: route.params || {} });
+  route = { name, params: params || {} };
+  render(); window.scrollTo(0, 0);
+}
+function goBack() {
+  if (routeStack.length) {
+    route = routeStack.pop(); render(); window.scrollTo(0, 0);
+  } else {
+    exitDialog();
+  }
+}
 
 /* ---------- helpers de tareas ---------- */
 function isDueOn(task, ymd) {
@@ -666,7 +723,7 @@ function newProfileScreen() {
     const pin = pinIn.value.trim();
     if (pin && !/^\d{4,6}$/.test(pin)) { err.textContent = 'El PIN debe tener entre 4 y 6 dígitos.'; return; }
     if (pin && pin !== pin2In.value.trim()) { err.textContent = 'Los PIN no coinciden.'; return; }
-    const prof = { id: uid('pr'), name, color, photo: newProfPhoto, pin: pin ? hashPin(pin) : null };
+    const prof = { id: uid('pr'), name, color, photo: newProfPhoto, pin: pin ? hashPin(pin) : null, pinLen: pin ? pin.length : null };
     S.profiles.push(prof);
     S.activeProfileId = prof.id;
     session.unlocked = true;
@@ -719,7 +776,8 @@ function profileSelectScreen() {
 let pinBuffer = '';
 function pinScreen(prof) {
   pinBuffer = '';
-  const dots = h('div', { class: 'pin-dots' }, [0, 1, 2, 3, 4, 5].map(() => h('span', { class: 'pin-dot' })));
+  const PLEN = Math.max(4, Math.min(6, Number(prof.pinLen) || 6));   // los puntos se ajustan a la longitud del PIN guardado
+  const dots = h('div', { class: 'pin-dots' }, [...Array(PLEN)].map(() => h('span', { class: 'pin-dot' })));
   const box = h('div', { class: 'center-box' });
   function draw() {
     [...dots.children].forEach((d, i) => d.classList.toggle('fill', i < pinBuffer.length));
@@ -732,9 +790,9 @@ function pinScreen(prof) {
   function press(k) {
     if (k === 'del') { pinBuffer = pinBuffer.slice(0, -1); draw(); return; }
     if (k === 'ok') { if (pinBuffer.length >= 4) check(); return; }
-    if (pinBuffer.length >= 6) return;
+    if (pinBuffer.length >= PLEN) return;
     pinBuffer += k; draw();
-    if (pinBuffer.length === 6) setTimeout(check, 120);
+    if (pinBuffer.length === PLEN) setTimeout(check, 120);   // desbloqueo automático al completar
   }
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];
   const pad = h('div', { class: 'keypad' }, keys.map(k => h('button', {
@@ -751,7 +809,7 @@ function pinScreen(prof) {
       title: '¿Has olvidado tu PIN?',
       message: 'Se desactivará el PIN de "' + prof.name + '". Tus datos no se borran y podrás crear uno nuevo desde Ajustes.',
       confirmText: 'Desactivar PIN',
-      onConfirm: () => { prof.pin = null; session.unlocked = true; save(); render(); toast('PIN desactivado'); }
+      onConfirm: () => { prof.pin = null; prof.pinLen = null; session.unlocked = true; save(); render(); toast('PIN desactivado'); }
     }) }, '¿Has olvidado tu PIN?')
   );
   const page = h('div', { class: 'center-page' }, box);
@@ -770,7 +828,6 @@ document.addEventListener('keydown', (e) => { if (route.name === 'pin' && pinKey
 const NAV = [
   { id: 'home', label: 'Inicio', icon: 'home' },
   { id: 'tasks', label: 'Tareas', icon: 'checksq' },
-  { id: 'week', label: 'Semana', icon: 'calendar' },
   { id: 'gifts', label: 'Regalos', icon: 'gift' },
   { id: 'settings', label: 'Ajustes', icon: 'gear' }
 ];
@@ -779,7 +836,7 @@ function shell(prof) {
   // sidebar escritorio
   const navEl = (vertical) => h('div', { style: vertical ? 'display:flex;flex-direction:column;gap:4px' : 'display:contents' },
     NAV.map(n => {
-      const on = route.name === n.id || (n.id === 'week' && route.name === 'progress');
+      const on = route.name === n.id || (n.id === 'tasks' && (route.name === 'progress' || route.name === 'week'));
       let badge = null;
       if (n.id === 'tasks') { const pend = tasksDueOn(todayStr()).filter(t => !isDoneOn(t, todayStr())).length; if (pend) badge = pend; }
       return h('button', { class: (vertical ? 'nav-item' : 'bn-item') + (on ? ' on' : ''), onclick: () => go(n.id) },
@@ -840,7 +897,7 @@ function emptyState(ic, title, text, ctaLabel, ctaFn) {
 function scrHome() {
   const prof = currentProfile();
   const hour = new Date().getHours();
-  const hello = hour < 12 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+  const hello = hour >= 5 && hour < 16 ? 'Buenos días' : hour >= 16 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
   const wrap = h('div');
   wrap.append(headBar(hello + ', ' + prof.name, cap(fmtLong(todayStr())),
     searchBtn(),
@@ -921,18 +978,27 @@ function giftThumb(g) {
 }
 
 /* ================= PANTALLA: TAREAS ================= */
+function taskViewSegment() {
+  return h('div', { class: 'seg', style: 'max-width:360px;margin-bottom:18px' },
+    h('button', { class: ui.tasksView === 'lista' ? 'on' : '', onclick: () => { ui.tasksView = 'lista'; go('tasks'); } }, 'Lista'),
+    h('button', { class: ui.tasksView === 'semana' ? 'on' : '', onclick: () => { ui.tasksView = 'semana'; go('tasks'); } }, 'Semana'),
+    h('button', { class: ui.tasksView === 'cal' ? 'on' : '', onclick: () => { ui.tasksView = 'cal'; go('tasks'); } }, 'Calendario')
+  );
+}
 function scrTasks() {
+  if (ui.tasksView !== 'lista') return scrWeek();
   const wrap = h('div');
   wrap.append(headBar('Tareas', 'Todo lo que haces regularmente', searchBtn(),
     h('button', { class: 'icon-btn', 'aria-label': 'Nueva tarea', onclick: () => go('taskForm'), html: icon('plus', 20) })));
   const today = todayStr();
-  const filters = ['todas', 'hoy', ...CATS.map(c => c.toLowerCase())];
+  const cats = categories();
+  const filters = ['todas', 'hoy', ...cats.map(c => c.toLowerCase())];
   const chips = h('div', { class: 'chips' });
   for (const f of filters) {
     const label = f === 'todas' ? 'Todas' : f === 'hoy' ? 'Hoy' : cap(f);
     chips.append(h('button', { class: 'chip' + (ui.tasksFilter === f ? ' on' : ''), onclick: (e) => { ui.tasksFilter = f; [...chips.children].forEach(c => c.classList.remove('on')); e.currentTarget.classList.add('on'); drawList(); } }, label));
   }
-  wrap.append(chips);
+  wrap.append(taskViewSegment(), chips);
   const listWrap = h('div');
   wrap.append(listWrap);
   function drawList() {
@@ -945,7 +1011,7 @@ function scrTasks() {
       listWrap.append(emptyState('list', 'Nada por aquí', 'Crea tu primera tarea o hábito y aparecerá aquí cada día.', 'Nueva tarea', () => go('taskForm')));
       return;
     }
-    for (const cat of CATS) {
+    for (const cat of cats) {
       const group = tasks.filter(t => (t.cat || 'Otros') === cat);
       if (!group.length) continue;
       listWrap.append(h('div', { class: 'section-title' }, h('span', null, cat + ' · ' + group.length)));
@@ -982,11 +1048,8 @@ function scrWeek() {
   const wrap = h('div');
   const today = todayStr();
   const start = addDaysYmd(weekStartOf(today), ui.weekOffset * 7);
-  const seg = h('div', { class: 'seg', style: 'max-width:220px' },
-    h('button', { class: ui.weekMode === 'week' ? 'on' : '', onclick: () => { ui.weekMode = 'week'; go('week'); } }, 'Semana'),
-    h('button', { class: ui.weekMode === 'cal' ? 'on' : '', onclick: () => { ui.weekMode = 'cal'; go('week'); } }, 'Calendario')
-  );
-  if (ui.weekMode === 'cal') {
+  const seg = taskViewSegment();
+  if (ui.tasksView === 'cal') {
     wrap.append(headBar('Calendario', 'Consulta cualquier día del mes', searchBtn(),
       h('button', { class: 'icon-btn', 'aria-label': 'Nueva tarea', onclick: () => go('taskForm'), html: icon('plus', 20) })));
     wrap.append(seg);
@@ -995,7 +1058,7 @@ function scrWeek() {
     wrap.append(calendarCard());
     wrap.append(h('div', { class: 'section-title' }, h('span', null, fmtLong(ui.calSel))));
     wrap.append(dayTaskList(ui.calSel, true));
-    addSwipe(wrap, () => shiftCalMonth(1), () => shiftCalMonth(-1));
+    addSwipe(wrap, () => setCalendarMonth(1), () => setCalendarMonth(-1));
     return wrap;
   }
   wrap.append(headBar('Esta semana', fmtRange(start, addDaysYmd(start, 6)), searchBtn(),
@@ -1035,7 +1098,7 @@ function scrWeek() {
     listHolder.append(dayTaskList(ymd, true));
   }
   refreshDay();
-  addSwipe(wrap, () => { ui.weekOffset++; go('week'); }, () => { ui.weekOffset--; go('week'); });
+  addSwipe(wrap, () => { ui.weekOffset++; go('tasks'); }, () => { ui.weekOffset--; go('tasks'); });
   return wrap;
 }
 function dayTaskList(ymd, allowToggle) {
@@ -1056,6 +1119,15 @@ function dayTaskList(ymd, allowToggle) {
     ));
   }
   return col;
+}
+function setCalendarMonth(n) {
+  const base = ui.calYM || (() => { const d = parseYmd(todayStr()); return { y: d.getFullYear(), m: d.getMonth() }; })();
+  let mm = base.m + n, yy = base.y;
+  if (mm < 0) { mm = 11; yy--; }
+  if (mm > 11) { mm = 0; yy++; }
+  ui.calYM = { y: yy, m: mm };
+  ui.tasksView = 'cal';
+  go('tasks');
 }
 function calendarCard() {
   const { y, m } = ui.calYM;
@@ -1081,21 +1153,14 @@ function calendarCard() {
   }
   return h('div', { class: 'cal' },
     h('div', { class: 'cal-head' },
-      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes anterior', onclick: () => shiftMonth(-1), html: icon('back', 17) }),
+      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes anterior', onclick: () => setCalendarMonth(-1), html: icon('back', 17) }),
       h('b', null, monthName),
-      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes siguiente', onclick: () => shiftMonth(1), html: icon('chev', 17) }),
-      h('button', { class: 'link', style: 'font-size:12.5px;font-weight:700;margin-left:4px', onclick: () => { const d = parseYmd(todayStr()); ui.calYM = { y: d.getFullYear(), m: d.getMonth() }; ui.calSel = todayStr(); ui.weekMode = 'cal'; go('week'); } }, 'Hoy')
+      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes siguiente', onclick: () => setCalendarMonth(1), html: icon('chev', 17) }),
+      h('button', { class: 'link', style: 'font-size:12.5px;font-weight:700;margin-left:4px', onclick: () => { const d = parseYmd(todayStr()); ui.calYM = { y: d.getFullYear(), m: d.getMonth() }; ui.calSel = todayStr(); ui.tasksView = 'cal'; go('tasks'); } }, 'Hoy')
     ),
     grid
   );
-  function shiftMonth(n) {
-    let mm = m + n, yy = y;
-    if (mm < 0) { mm = 11; yy--; }
-    if (mm > 11) { mm = 0; yy++; }
-    ui.calYM = { y: yy, m: mm };
-    ui.weekMode = 'cal';
-    go('week');   // re-render con el mes nuevo (weekMode mantiene la vista Calendario)
-  }}
+}
 
 /* ================= PANTALLA: REGALOS ================= */
 function scrGifts() {
@@ -1166,7 +1231,7 @@ function scrPerson() {
   if (!p) { go('gifts'); return h('div'); }
   const wrap = h('div');
   wrap.append(headBar('', null,
-    h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: () => go('gifts'), html: icon('back', 19) }),
+    h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: () => go('gifts', undefined, { replace: true }), html: icon('back', 19) }),
     h('button', { class: 'icon-btn', 'aria-label': 'Editar persona', onclick: () => go('personForm', { id: p.id }), html: icon('edit', 18) }),
     h('button', { class: 'icon-btn', 'aria-label': 'Eliminar', onclick: () => deletePerson(p), html: icon('trash', 18) })
   ));
@@ -1205,7 +1270,7 @@ function formHead(title, onBack, extra) {
 /* --- Tarea --- */
 function scrTaskForm() {
   const editing = route.params.id ? S.tasks.find(t => t.id === route.params.id) : null;
-  const back = () => go('tasks');
+  const back = () => go('tasks', undefined, { replace: true });
   const wrap = h('div');
   wrap.append(formHead(editing ? 'Editar tarea' : 'Nueva tarea', back,
     editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar tarea', onclick: () => deleteTask(editing.id), html: icon('trash', 18) }) : null));
@@ -1222,7 +1287,9 @@ function scrTaskForm() {
   const titleIn = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Sacar al perro', value: editing ? editing.title : '', maxlength: '60' });
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Nombre de la tarea'), titleIn));
   // categoría
-  const catSel = h('select', { class: 'input' }, CATS.map(c => h('option', { value: c, selected: editing && editing.cat === c }, c)));
+  const taskCats = categories();
+  if (editing && editing.cat && !taskCats.includes(editing.cat)) taskCats.push(editing.cat);
+  const catSel = h('select', { class: 'input' }, taskCats.map(c => h('option', { value: c, selected: editing && editing.cat === c }, c)));
   if (!editing) catSel.value = 'Hábitos';
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Categoría'), catSel));
   // frecuencia
@@ -1304,7 +1371,7 @@ function scrTaskForm() {
 function scrGiftForm() {
   const editing = route.params.id ? S.gifts.find(g => g.id === route.params.id) : null;
   const backTo = () => go(route.params.from === 'person' && route.params.personId ? 'person' : 'gifts', route.params.personId ? { id: route.params.personId } : {});
-  const back = () => go(editing && route.params.from ? route.params.from : 'gifts', route.params.personId ? { id: route.params.personId } : {});
+  const back = () => go(editing && route.params.from ? route.params.from : 'gifts', route.params.personId ? { id: route.params.personId } : {}, { replace: true });
   const wrap = h('div');
   wrap.append(formHead(editing ? 'Editar regalo' : 'Nueva idea de regalo', back,
     editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar', onclick: () => deleteGift(editing.id), html: icon('trash', 18) }) : null));
@@ -1393,7 +1460,7 @@ function scrGiftForm() {
 /* --- Persona --- */
 function scrPersonForm() {
   const editing = route.params.id ? S.people.find(p => p.id === route.params.id) : null;
-  const back = () => go('gifts');
+  const back = () => go('gifts', undefined, { replace: true });
   const wrap = h('div');
   wrap.append(formHead(editing ? 'Editar persona' : 'Nueva persona', back,
     editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar', onclick: () => deletePerson(editing), html: icon('trash', 18) }) : null));
@@ -1423,7 +1490,9 @@ function scrPersonForm() {
     }));
   }
   wrap.append(h('div', { style: 'display:flex;flex-direction:column;align-items:center;margin-bottom:18px' }, prev, photoBtn), h('div', { class: 'field', style: 'margin-top:18px' }, h('label', null, 'Nombre'), nameIn));
-  const relSel = h('select', { class: 'input' }, ['Pareja', 'Familia', 'Amigo/a', 'Compañero/a', 'Otro'].map(r => h('option', { value: r, selected: editing && editing.relationship === r }, r)));
+  const personRels = relationships();
+  if (editing && editing.relationship && !personRels.includes(editing.relationship)) personRels.push(editing.relationship);
+  const relSel = h('select', { class: 'input' }, personRels.map(r => h('option', { value: r, selected: editing && editing.relationship === r }, r)));
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Relación'), relSel));
   const bdayIn = h('input', { class: 'input', type: 'date', value: editing ? editing.birthday || '' : '' });
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Cumpleaños'), bdayIn, h('p', { class: 'field-hint' }, 'Te avisaremos en Inicio cuando llegue el día.')));
@@ -1522,7 +1591,8 @@ function scrSettings() {
   wrap.append(h('p', { class: 'set-label' }, 'Aplicación'),
     h('div', { class: 'set-card' },
       row('bell', 'Notificaciones', notifSheet),
-      row('list', 'Tareas y hábitos', tasksPrefsSheet)
+      row('list', 'Tareas y hábitos', tasksPrefsSheet),
+      row('pencil', 'Personalizar opciones', optionsSheet)
     ));
   wrap.append(h('p', { class: 'set-label' }, 'Datos'),
     h('div', { class: 'set-card' },
@@ -1541,7 +1611,7 @@ function scrSettings() {
 function scrProfile() {
   const prof = currentProfile();
   const wrap = h('div');
-  wrap.append(headBar('Perfil', null, h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: () => go('settings'), html: icon('back', 19) })));
+  wrap.append(headBar('Perfil', null, h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: () => go('settings', undefined, { replace: true }), html: icon('back', 19) })));
   let color = prof.color;
   const prev = h('div', { style: 'display:flex;flex-direction:column;align-items:center;margin-bottom:22px' });
   const prevAv = h('div', { style: 'position:relative;display:inline-flex' });
@@ -1633,12 +1703,12 @@ function securitySheet() {
             if (hashPin(cur.value.trim()) !== prof.pin) { err.textContent = 'El PIN actual no es correcto.'; return; }
             if (!/^\d{4,6}$/.test(n1.value.trim())) { err.textContent = 'El nuevo PIN debe tener 4–6 dígitos.'; return; }
             if (n1.value.trim() !== n2.value.trim()) { err.textContent = 'Los PIN nuevos no coinciden.'; return; }
-            prof.pin = hashPin(n1.value.trim()); save(); closeOverlays(); toast('PIN actualizado');
+            prof.pin = hashPin(n1.value.trim()); prof.pinLen = n1.value.trim().length; save(); closeOverlays(); toast('PIN actualizado');
           }
         }, 'Guardar nuevo PIN'),
         h('button', {
           class: 'btn btn-soft btn-block', style: 'margin-top:10px',
-          onclick: () => confirmDialog({ title: 'Quitar el PIN', message: 'Este perfil quedará sin protección. ¿Continuar?', confirmText: 'Quitar PIN', onConfirm: () => { prof.pin = null; save(); closeOverlays(); toast('PIN desactivado'); } })
+          onclick: () => confirmDialog({ title: 'Quitar el PIN', message: 'Este perfil quedará sin protección. ¿Continuar?', confirmText: 'Quitar PIN',          onConfirm: () => { prof.pin = null; prof.pinLen = null; save(); closeOverlays(); toast('PIN desactivado'); } })
         }, 'Quitar PIN')
       );
     } else {
@@ -1652,7 +1722,7 @@ function securitySheet() {
           class: 'btn btn-primary btn-block', onclick: () => {
             if (!/^\d{4,6}$/.test(n1.value.trim())) { err.textContent = 'Debe tener 4–6 dígitos.'; return; }
             if (n1.value.trim() !== n2.value.trim()) { err.textContent = 'No coinciden.'; return; }
-            prof.pin = hashPin(n1.value.trim()); save(); closeOverlays(); toast('PIN activado');
+            prof.pin = hashPin(n1.value.trim()); prof.pinLen = n1.value.trim().length; save(); closeOverlays(); toast('PIN activado');
           }
         }, 'Activar PIN')
       );
@@ -1676,7 +1746,7 @@ function notifSheet() {
         permNote.append(h('p', { style: 'font-size:12.5px;color:var(--amber);background:var(--amber-soft);border:1px solid var(--amber-border);border-radius:var(--r-m);padding:10px 14px;margin-bottom:14px' }, 'Las notificaciones están bloqueadas. Actívalas en los ajustes del navegador para esta web (icono ⓘ junto a la dirección).'));
       } else if (perm === 'default') {
         permNote.append(h('button', { class: 'btn btn-secondary btn-block', style: 'margin-bottom:14px', onclick: async () => {
-          const r = await Notification.requestPermission();
+          const r = await requestNotifPermission();
           drawPerm();
           toast(r === 'granted' ? 'Notificaciones activadas' : 'Permiso no concedido');
         } }, 'Permitir notificaciones en este navegador'));
@@ -1686,9 +1756,16 @@ function notifSheet() {
     }
     drawPerm();
     box.append(permNote);
+    box.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-bottom:12px', onclick: async () => {
+      const perm = notifPermission() === 'granted' ? 'granted' : await requestNotifPermission();
+      drawPerm();
+      if (perm !== 'granted') { toast(perm === 'denied' ? 'Activa las notificaciones en los ajustes del navegador' : 'No se pudo activar el permiso'); return; }
+      const ok = await showAppNotification('DailyHub funciona', 'Esta es una notificación de prueba.');
+      toast(ok ? 'Notificación de prueba enviada' : 'El navegador no permitió mostrarla');
+    } }, 'Enviar notificación de prueba'));
     box.append(switchRow('Recordatorios de tareas', 'Aviso diario con tus tareas pendientes', n.reminders, (v) => {
       n.reminders = v; save();
-      if (v && notifPermission() === 'default') Notification.requestPermission().then(drawPerm);
+      if (v && notifPermission() === 'default') requestNotifPermission().then(drawPerm);
     }));
     box.append(switchRow('Recordatorios de regalos', 'Aviso cuando se acerque una fecha importante (máx. 1 semana antes)', n.gifts, (v) => { n.gifts = v; save(); if (v) scheduleGiftNotification(); }));
     box.append(switchRow('Resumen diario', 'Un resumen cada mañana', n.daily, (v) => { n.daily = v; save(); }));
@@ -1699,6 +1776,52 @@ function notifSheet() {
     box.append(h('p', { class: 'section-title', style: 'margin-top:20px' }, h('span', null, 'Horario de silencio')));
     box.append(h('div', { style: 'display:flex;align-items:center;gap:10px' }, from, h('span', { style: 'color:var(--text-3)' }, '—'), to));
     box.append(h('p', { class: 'field-hint', style: 'text-align:center' }, 'Sin avisos durante estas horas.'));
+    return box;
+  });
+}
+
+function optionsSheet() {
+  openSheet('Personalizar opciones', () => {
+    const box = h('div');
+    const hint = h('p', { class: 'field-hint', style: 'margin-bottom:12px' }, 'Añade, renombra o elimina opciones. Los cambios aparecerán en los formularios nuevos.');
+    box.append(hint);
+    const section = (title, key, placeholder) => {
+      const list = h('div');
+      const input = h('input', { class: 'input', type: 'text', placeholder, maxlength: '30' });
+      const add = h('button', { class: 'btn btn-soft', style: 'margin-top:8px' }, 'Añadir');
+      function draw() {
+        list.innerHTML = '';
+        const values = S.settings[key] || [];
+        values.forEach((value, index) => {
+          const edit = h('input', { class: 'input', type: 'text', value, maxlength: '30', style: 'flex:1;min-width:0' });
+          edit.addEventListener('change', () => {
+            const next = edit.value.trim();
+            if (!next) { edit.value = value; return; }
+            if (values.some((x, i) => i !== index && x.toLowerCase() === next.toLowerCase())) { toast('Esa opción ya existe'); edit.value = value; return; }
+            S.settings[key][index] = next; save(); draw();
+          });
+          const del = h('button', { class: 'icon-btn', style: 'width:36px;height:36px;color:var(--danger)', 'aria-label': 'Eliminar ' + value, onclick: () => {
+            if (values.length <= 1) { toast('Debe quedar al menos una opción'); return; }
+            if (key === 'categories') {
+              const fallback = values.find((x, i) => i !== index) || 'Otros';
+              S.tasks.forEach(t => { if (t.cat === value) t.cat = fallback; });
+            }
+            S.settings[key].splice(index, 1); save(); draw();
+          }, html: icon('trash', 16) });
+          list.append(h('div', { style: 'display:flex;gap:8px;align-items:center;margin-bottom:8px' }, edit, del));
+        });
+      }
+      add.onclick = () => {
+        const value = input.value.trim();
+        if (!value) { input.focus(); return; }
+        if ((S.settings[key] || []).some(x => x.toLowerCase() === value.toLowerCase())) { toast('Esa opción ya existe'); return; }
+        S.settings[key].push(value); input.value = ''; save(); draw();
+      };
+      draw();
+      return h('div', { style: 'margin-bottom:22px' }, h('p', { class: 'section-title', style: 'margin:0 0 10px' }, h('span', null, title)), list, h('div', { style: 'display:flex;gap:8px;align-items:center' }, input, add));
+    };
+    box.append(section('Categorías de tareas y hábitos', 'categories', 'Ej. Salud, Casa…'));
+    box.append(section('Relaciones', 'relationships', 'Ej. Hermano/a, Cliente…'));
     return box;
   });
 }
@@ -1850,6 +1973,14 @@ function searchOverlay() {
   });
 }
 
+function exitDialog() {
+  confirmDialog({
+    title: '¿Salir de DailyHub?',
+    message: 'Tu progreso se ha guardado. ¿Seguro que quieres salir de la aplicación?',
+    confirmText: 'Salir de la app',
+    onConfirm: () => { window.__armExitGuard(false); history.back(); }
+  });
+}
 function confirmDialog({ title, message, confirmText, onConfirm }) {
   confirmText = confirmText || 'Eliminar';
   const ov = h('div', { class: 'overlay', style: 'z-index:70', onclick: (e) => { if (e.target === ov) ov.remove(); } });
@@ -1933,25 +2064,55 @@ function viewImage(src, title) {
   ov.append(box);
   document.body.appendChild(ov);
 }
+function openImageEditor(src, cb, max) {
+  const img = new Image();
+  img.onload = () => {
+    const size = Math.min(330, Math.max(240, Math.floor(Math.min(window.innerWidth * .82, 330))));
+    const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+    canvas.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border-radius:18px;background:#111;touch-action:none;display:block';
+    const zoom = h('input', { type: 'range', min: '1', max: '3', step: '.01', value: '1', style: 'width:100%' });
+    const hint = h('p', { style: 'font-size:12px;color:var(--text-2);text-align:center;margin:2px 0 4px' }, 'Arrastra para encuadrar · usa el control para ampliar');
+    const reset = h('button', { class: 'btn btn-soft', style: 'padding:9px 14px;font-size:12px' }, 'Centrar');
+    const cancel = h('button', { class: 'btn btn-soft', style: 'padding:9px 16px' }, 'Cancelar');
+    const accept = h('button', { class: 'btn btn-primary', style: 'padding:9px 16px' }, 'Usar foto');
+    const ov = h('div', { class: 'overlay', style: 'z-index:90;align-items:center;padding:18px', onclick: (e) => { if (e.target === ov) ov.remove(); } });
+    const box = h('div', { class: 'sheet', style: 'max-width:390px;width:100%;padding:20px', role: 'dialog', 'aria-label': 'Ajustar foto' },
+      h('div', { class: 'sheet-head', style: 'margin-bottom:14px' }, h('h3', null, 'Ajustar foto'), h('button', { class: 'icon-btn', 'aria-label': 'Cerrar', onclick: () => ov.remove(), html: icon('x', 18) })),
+      canvas, hint, zoom,
+      h('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px' }, reset, h('div', { style: 'display:flex;gap:8px' }, cancel, accept))
+    );
+    ov.append(box); document.body.appendChild(ov);
+    let scale = 1, ox = 0, oy = 0, dragging = false, px = 0, py = 0;
+    function draw() {
+      const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, size, size); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, size, size);
+      const base = Math.max(size / img.width, size / img.height), w = img.width * base * scale, hgt = img.height * base * scale;
+      ctx.drawImage(img, (size - w) / 2 + ox, (size - hgt) / 2 + oy, w, hgt);
+    }
+    zoom.addEventListener('input', () => { scale = Number(zoom.value); draw(); });
+    reset.onclick = () => { scale = 1; ox = 0; oy = 0; zoom.value = '1'; draw(); };
+    canvas.addEventListener('pointerdown', (e) => { dragging = true; px = e.clientX; py = e.clientY; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove', (e) => { if (!dragging) return; ox += e.clientX - px; oy += e.clientY - py; px = e.clientX; py = e.clientY; draw(); });
+    canvas.addEventListener('pointerup', () => { dragging = false; });
+    canvas.addEventListener('pointercancel', () => { dragging = false; });
+    cancel.onclick = () => ov.remove();
+    accept.onclick = () => {
+      try {
+        const out = document.createElement('canvas'); out.width = max; out.height = max;
+        out.getContext('2d').drawImage(canvas, 0, 0, max, max);
+        cb(out.toDataURL('image/jpeg', .84)); ov.remove();
+      } catch (e) { toast('No se pudo guardar el recorte'); }
+    };
+    draw();
+  };
+  img.onerror = () => toast('Formato de imagen no válido');
+  img.src = src;
+}
 function pickImage(cb, max = 720) {
   const inp = h('input', { type: 'file', accept: 'image/*' });
   inp.addEventListener('change', () => {
     const f = inp.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const sc = Math.min(1, max / Math.max(img.width, img.height));
-          const c = document.createElement('canvas');
-          c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          cb(c.toDataURL('image/jpeg', 0.82));
-        } catch (e) { toast('No se pudo procesar la imagen'); }
-      };
-      img.onerror = () => toast('Formato de imagen no válido');
-      img.src = r.result;
-    };
+    r.onload = () => openImageEditor(r.result, cb, max);
     r.readAsDataURL(f);
   });
   inp.click();
@@ -1959,38 +2120,70 @@ function pickImage(cb, max = 720) {
 
 /* ---------- notificaciones ---------- */
 function notifPermission() { return ('Notification' in window) ? Notification.permission : 'unsupported'; }
-function scheduleGiftNotification() {
+function inQuietHours() {
+  const n = S.settings && S.settings.notif;
+  if (!n || !n.quietFrom || !n.quietTo) return false;
+  const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
+  const from = Number(n.quietFrom.slice(0, 2)) * 60 + Number(n.quietFrom.slice(3));
+  const to = Number(n.quietTo.slice(0, 2)) * 60 + Number(n.quietTo.slice(3));
+  return from === to ? false : from < to ? mins >= from && mins < to : mins >= from || mins < to;
+}
+async function requestNotifPermission() {
+  if (notifPermission() === 'unsupported') return 'unsupported';
+  try { return await Notification.requestPermission(); } catch (e) { return 'error'; }
+}
+async function showAppNotification(title, body) {
+  if (notifPermission() !== 'granted') return false;
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg && reg.showNotification) { await reg.showNotification(title, { body, icon: './icon.svg', tag: 'dailyhub-' + todayStr() }); return true; }
+    }
+    new Notification(title, { body });
+    return true;
+  } catch (e) {
+    console.warn('No se pudo mostrar la notificación', e);
+    return false;
+  }
+}
+async function scheduleGiftNotification() {
   try {
     const n = S.settings.notif;
-    if (!n || !n.gifts || notifPermission() !== 'granted') return;
+    if (!n || !n.gifts || notifPermission() !== 'granted' || inQuietHours()) return false;
     const today = todayStr();
     const gifts = sortedUpcomingGifts().filter(g => g.targetDate && g.targetDate >= today && (g.status === 'Idea' || g.status === 'Comprar'));
-    if (!gifts.length) return;
-    const g = gifts[0];
+    const g = gifts.find(x => x._lastNotified !== today && daysUntil(x.targetDate) <= 7);
+    if (!g) return false;
     const p = S.people.find(x => x.id === g.personId);
-    const days = Math.round((parseYmd(g.targetDate) - parseYmd(today)) / 86400000);
-    if (days > 7 || g._lastNotified === today) return;
+    const days = daysUntil(g.targetDate);
     const when = days === 0 ? '¡es hoy!' : days === 1 ? 'es mañana' : 'es en ' + days + ' días';
-    new Notification('Regalo pendiente 🎁', { body: (g.title) + (p ? ' para ' + p.name : '') + ' ' + when });
-    g._lastNotified = today; save();
-  } catch (e) { /* silencio */ }
+    const shown = await showAppNotification('Regalo pendiente', g.title + (p ? ' para ' + p.name : '') + ' ' + when);
+    if (shown) { g._lastNotified = today; save(); }
+    return shown;
+  } catch (e) { console.warn('Regalo notification', e); return false; }
 }
-function maybeNotify() {
+async function maybeNotify(force = false) {
   try {
     const n = S.settings.notif;
-    if (!n || !n.reminders) return;
-    if (notifPermission() !== 'granted') return;
-    if (S.meta.lastNotified === todayStr()) return;
-    const pend = tasksDueOn(todayStr()).filter(t => !isDoneOn(t, todayStr())).length;
+    if (!n || (!n.reminders && !n.daily) || notifPermission() !== 'granted' || inQuietHours()) return false;
+    const today = todayStr();
+    if (!force && S.meta.lastNotified === today) return false;
+    const pend = tasksDueOn(today).filter(t => !isDoneOn(t, today)).length;
     const bds = birthdaysToday();
-    if (pend > 0 || bds.length) {
-      let body = pend > 0 ? pend + (pend === 1 ? ' tarea pendiente hoy' : ' tareas pendientes hoy') : '';
-      if (bds.length) body += (body ? ' · ' : '') + 'Cumpleaños de ' + bds.map(b => b.name).join(', ');
-      new Notification('DailyHub', { body: body.trim() });
-      S.meta.lastNotified = todayStr(); save();
-    }
-  } catch (e) { /* silencio */ }
+    if (!pend && !bds.length) return false;
+    let body = pend > 0 ? pend + (pend === 1 ? ' tarea pendiente hoy' : ' tareas pendientes hoy') : '';
+    if (bds.length) body += (body ? ' · ' : '') + 'Cumpleaños de ' + bds.map(b => b.name).join(', ');
+    const shown = await showAppNotification('DailyHub', body.trim());
+    if (shown) { S.meta.lastNotified = today; save(); }
+    return shown;
+  } catch (e) { console.warn('DailyHub notification', e); return false; }
 }
+let notificationTimer = null;
+function startNotificationChecks() {
+  clearInterval(notificationTimer);
+  notificationTimer = setInterval(() => { maybeNotify(); scheduleGiftNotification(); }, 60000);
+}
+
 
 /* ---------- teclado móvil: mantener diálogos y botones visibles ---------- */
 (function () {
@@ -2126,12 +2319,10 @@ function accountSheet() {
   history.pushState({ dh: 1 }, '', location.href);
   window.addEventListener('popstate', () => {
     if (!armed) return;
-    if (!window.confirm('¿Seguro que quieres salir de DailyHub?')) {
-      history.pushState({ dh: 1 }, '', location.href);   // se queda en la app
-    } else {
-      window.__armExitGuard(false);
-      history.back();
-    }
+    history.pushState({ dh: 1 }, '', location.href); // mantenemos la PWA en su sitio mientras decidimos
+    if ($('#overlays').children.length) { closeOverlays(); return; }
+    if (routeStack.length) { goBack(); return; }
+    exitDialog();
   });
 })();
 
@@ -2143,6 +2334,8 @@ render();
 if (window.DailySync) DailySync.boot();
 maybeNotify();
 scheduleGiftNotification();
+startNotificationChecks();
+window.addEventListener('focus', () => { maybeNotify(); scheduleGiftNotification(); });
 </script>
 </body>
 </html>
