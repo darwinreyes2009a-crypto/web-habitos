@@ -533,7 +533,7 @@ function streakOf(task) {
   }
   return n;
 }
-function weekStats(offset, fullWeek) {
+function weekStats(offset, fullWeek, habitsOnly) {
   const start = addDaysYmd(weekStartOf(todayStr()), offset * 7);
   const end = addDaysYmd(start, 6);
   const today = todayStr();
@@ -541,12 +541,45 @@ function weekStats(offset, fullWeek) {
   for (let i = 0; i < 7; i++) {
     const ymd = addDaysYmd(start, i);
     if (!fullWeek && ymd > today) break;
-    for (const t of tasksDueOn(ymd)) { due++; if (isDoneOn(t, ymd)) done++; }
+    for (const t of tasksDueOn(ymd)) {
+      if (habitsOnly && t.freq && t.freq.type === 'once') continue;   // hábitos: solo tareas recurrentes
+      due++; if (isDoneOn(t, ymd)) done++;
+    }
   }
   return { start, end, due, done };
 }
 
 /* ---------- helpers de regalos ---------- */
+function daysUntil(ymd) {
+  if (!ymd) return null;
+  const a = parseYmd(todayStr()), b = parseYmd(ymd);
+  return Math.round((b - a) / 86400000);
+}
+function countdownTxt(ymd) {
+  const d = daysUntil(ymd);
+  if (d === null) return '';
+  if (d < 0) return ' (fecha pasada)';
+  if (d === 0) return ' (¡hoy!)';
+  if (d === 1) return ' (mañana)';
+  return ' (en ' + d + ' días)';
+}
+function bdayCountdown(bday) {
+  if (!bday) return null;
+  const parts = bday.split('-');
+  const mm = Number(parts[1]), dd = Number(parts[2]);
+  const now = parseYmd(todayStr());
+  const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(now.getFullYear(), mm - 1, dd);
+  if (next < today0) next = new Date(now.getFullYear() + 1, mm - 1, dd);
+  return { days: Math.round((next - today0) / 86400000) };
+}
+function bdayTxt(bday) {
+  const cd = bdayCountdown(bday);
+  if (!cd) return '';
+  if (cd.days === 0) return ' · ¡Hoy es su cumpleaños!';
+  if (cd.days === 1) return ' · Mañana cumple años';
+  return ' · Cumple el ' + fmtShort(bday) + ' (en ' + cd.days + ' días)';
+}
 const statusCls = (s) => ({ 'Idea': 'st-idea', 'Comprar': 'st-comprar', 'Comprado': 'st-comprado', 'Entregado': 'st-entregado' }[s] || 'st-idea');
 function giftsOf(personId) { return S.gifts.filter(g => g.personId === personId); }
 function sortedUpcomingGifts() {
@@ -871,7 +904,7 @@ function scrHome() {
         giftThumb(g),
         h('div', { style: 'min-width:0;flex:1' },
           h('b', { style: 'font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, g.title),
-          h('span', { class: 'r-sub' }, (p ? p.name : 'Sin asignar') + (g.targetDate ? ' · ' + fmtShort(g.targetDate) : ''))
+          h('span', { class: 'r-sub' }, (p ? p.name : 'Sin asignar') + (g.targetDate ? ' · ' + fmtShort(g.targetDate) + countdownTxt(g.targetDate) : ''))
         ),
         h('span', { class: 'stchip ' + statusCls(g.status) }, g.status)
       ));
@@ -935,6 +968,16 @@ function scrTasks() {
 }
 
 /* ================= PANTALLA: SEMANA / CALENDARIO ================= */
+function addSwipe(el, onLeft, onRight) {
+  let x0 = null, y0 = null;
+  el.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { dx < 0 ? onLeft() : onRight(); }
+    x0 = null;
+  }, { passive: true });
+}
 function scrWeek() {
   const wrap = h('div');
   const today = todayStr();
@@ -952,6 +995,7 @@ function scrWeek() {
     wrap.append(calendarCard());
     wrap.append(h('div', { class: 'section-title' }, h('span', null, fmtLong(ui.calSel))));
     wrap.append(dayTaskList(ui.calSel, true));
+    addSwipe(wrap, () => shiftCalMonth(1), () => shiftCalMonth(-1));
     return wrap;
   }
   wrap.append(headBar('Esta semana', fmtRange(start, addDaysYmd(start, 6)), searchBtn(),
@@ -973,8 +1017,8 @@ function scrWeek() {
   const pct = st.due ? Math.round(st.done / st.due * 100) : 0;
   wrap.append(h('div', { class: 'card', style: 'margin-bottom:20px' },
     h('div', { style: 'display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px' },
-      h('b', { style: 'font-size:14px' }, st.due + ' tareas esta semana'),
-      h('span', { style: 'font-size:13px;color:var(--text-2);font-weight:600' }, stDone + ' completadas' + (st.due ? ' · ' + Math.round(stDone / st.due * 100) + '%' : ''))
+      h('b', { style: 'font-size:14px' }, st.due === 1 ? '1 tarea esta semana' : st.due + ' tareas esta semana'),
+      h('span', { style: 'font-size:13px;color:var(--text-2);font-weight:600' }, (stDone === 1 ? '1 completada' : stDone + ' completadas') + (st.due ? ' · ' + Math.round(stDone / st.due * 100) + '%' : ''))
     ),
     h('div', { class: 'bar' }, h('i', { style: 'width:' + pct + '%' }))
   ));
@@ -991,10 +1035,11 @@ function scrWeek() {
     listHolder.append(dayTaskList(ymd, true));
   }
   refreshDay();
+  addSwipe(wrap, () => { ui.weekOffset++; go('week'); }, () => { ui.weekOffset--; go('week'); });
   return wrap;
 }
 function dayTaskList(ymd, allowToggle) {
-  const due = tasksDueOn(ymd);
+  const due = [...tasksDueOn(ymd)].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   if (!due.length) return emptyState('calendar', 'Sin tareas', 'No hay nada programado para este día.', 'Añadir tarea', () => go('taskForm'));
   const col = h('div');
   for (const t of due) {
@@ -1038,12 +1083,19 @@ function calendarCard() {
     h('div', { class: 'cal-head' },
       h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes anterior', onclick: () => shiftMonth(-1), html: icon('back', 17) }),
       h('b', null, monthName),
-      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes siguiente', onclick: () => shiftMonth(1), html: icon('chev', 17) })
+      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Mes siguiente', onclick: () => shiftMonth(1), html: icon('chev', 17) }),
+      h('button', { class: 'link', style: 'font-size:12.5px;font-weight:700;margin-left:4px', onclick: () => { const d = parseYmd(todayStr()); ui.calYM = { y: d.getFullYear(), m: d.getMonth() }; ui.calSel = todayStr(); ui.weekMode = 'cal'; go('week'); } }, 'Hoy')
     ),
     grid
   );
-  function shiftMonth(n) { let mm = m + n, yy = y; if (mm < 0) { mm = 11; yy--; } if (mm > 11) { mm = 0; yy++; } ui.calYM = { y: yy, m: mm }; go('week'); }
-}
+  function shiftMonth(n) {
+    let mm = m + n, yy = y;
+    if (mm < 0) { mm = 11; yy--; }
+    if (mm > 11) { mm = 0; yy++; }
+    ui.calYM = { y: yy, m: mm };
+    ui.weekMode = 'cal';
+    go('week');   // re-render con el mes nuevo (weekMode mantiene la vista Calendario)
+  }}
 
 /* ================= PANTALLA: REGALOS ================= */
 function scrGifts() {
@@ -1094,7 +1146,7 @@ function giftRow(g) {
     giftThumb(g),
     h('div', { style: 'flex:1;min-width:0' },
       h('b', { style: 'font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, g.title),
-      h('span', { class: 'r-sub' }, (p ? p.name : 'Sin asignar') + (g.price ? ' · ' + Number(g.price).toFixed(2).replace('.', ',') + ' €' : '') + (g.targetDate ? ' · ' + fmtShort(g.targetDate) : ''))
+      h('span', { class: 'r-sub' }, (p ? p.name : 'Sin asignar') + (g.price ? ' · ' + Number(g.price).toFixed(2).replace('.', ',') + ' €' : '') + (g.targetDate ? ' · ' + fmtShort(g.targetDate) + countdownTxt(g.targetDate) : ''))
     ),
     h('button', {
       class: 'stchip ' + statusCls(g.status), title: 'Cambiar estado',
@@ -1122,7 +1174,7 @@ function scrPerson() {
     avatarEl(p.name, p.color, 84, p.photo),
     h('h2', { style: 'font-size:22px;font-weight:800;margin-top:12px;letter-spacing:-.02em' }, p.name),
     h('p', { style: 'font-size:13px;color:var(--text-2);margin-top:4px' },
-      giftsOf(p.id).length + ' regalos' + (p.birthday ? ' · Cumple el ' + fmtShort(p.birthday) : ''))
+      giftsOf(p.id).length + (giftsOf(p.id).length === 1 ? ' regalo' : ' regalos') + (p.birthday ? bdayTxt(p.birthday) : ''))
   ));
   if (p.notes) wrap.append(h('p', { style: 'font-size:13px;color:var(--text-2);background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-l);padding:14px 16px;margin-bottom:20px;line-height:1.5' }, p.notes));
   wrap.append(h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => go('giftForm', { personId: p.id }) }, 'Añadir regalo para ' + p.name));
@@ -1243,6 +1295,8 @@ function scrTaskForm() {
       toast(editing ? 'Tarea actualizada' : 'Tarea creada');
     }
   }, editing ? 'Guardar cambios' : 'Crear tarea'));
+  const saveBtn = wrap.querySelector('.btn-primary');
+  if (saveBtn) wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); } }));
   return wrap;
 }
 
@@ -1331,6 +1385,8 @@ function scrGiftForm() {
       go('gifts');
     }
   }, editing ? 'Guardar cambios' : 'Guardar regalo'));
+  const saveBtn = wrap.querySelector('.btn-primary');
+  if (saveBtn) wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); } }));
   return wrap;
 }
 
@@ -1387,6 +1443,8 @@ function scrPersonForm() {
       back();
     }
   }, editing ? 'Guardar cambios' : 'Guardar persona'));
+  const saveBtn = wrap.querySelector('.btn-primary');
+  if (saveBtn) wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveBtn.click(); } }));
   return wrap;
 }
 
@@ -1395,7 +1453,7 @@ function scrProgress() {
   const wrap = h('div');
   wrap.append(headBar('Progreso', 'Tus hábitos esta semana',
     h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: () => go('home'), html: icon('back', 19) })));
-  const st = weekStats(0);
+  const st = weekStats(0, false, true);
   const pct = st.due ? Math.round(st.done / st.due * 100) : 0;
   wrap.append(h('div', { class: 'card', style: 'text-align:center;margin-bottom:20px' },
     h('div', { class: 'stat-big' }, pct + '%'),

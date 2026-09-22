@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v5';
+const CACHE = 'dailyhub-v6';
 const ASSETS = ['./index.html', './manifest.webmanifest', './icon.svg', './vendor/supabase.js', './app-sync.js'];
 
 self.addEventListener('install', (e) => {
