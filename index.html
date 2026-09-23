@@ -650,12 +650,30 @@ function load() {
   } catch (e) { console.error(e); }
   return defaultState();
 }
+/* --- tombstones de borrado (sync) ---
+   Un borrado local puede no llegar a la nube (offline, recarga antes del push de 1200ms,
+   o un pull de realtime que se adelanta). Guardamos los ids borrados en b.__del para que
+   el pull no los resucite desde la nube; el push los borra de la nube y el pull los limpia. */
+const SYNC_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions'];
+function trackDeletes(b) {
+  if (!b.__prev) b.__prev = {};
+  if (!b.__del) b.__del = {};
+  for (const k of SYNC_KEYS) {
+    const localIds = (b[k] || []).map(x => x.id);
+    // si un id tombstoned volvió a estar local (p. ej. botón Deshacer), deja de ser borrado pendiente
+    b.__del[k] = (b.__del[k] || []).filter(id => !localIds.includes(id));
+    const gone = (b.__prev[k] || []).filter(id => !localIds.includes(id));
+    for (const id of gone) if (!b.__del[k].includes(id)) b.__del[k].push(id);
+    b.__prev[k] = localIds;
+  }
+}
 let __pushTimer = null;
 function save() {
   try {
     // las listas visibles pertenecen al perfil activo: se guardan en su compartimento
     if (S.activeProfileId && S.data && S.data[S.activeProfileId]) {
       const b = S.data[S.activeProfileId];
+      trackDeletes(b);
       b.tasks = S.tasks || []; b.people = S.people || []; b.gifts = S.gifts || []; b.notes = S.notes || []; b.subjects = S.subjects || []; b.slots = S.slots || [];
       b.inbox = S.inbox || []; b.sessions = S.sessions || []; b.activeSession = S.activeSession || null;
     }

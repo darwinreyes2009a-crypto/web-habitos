@@ -163,7 +163,7 @@ async function syncPushAll() {
   __rtIgnore = true;
   try {
     // Traer ids remotos para calcular borrados
-    const reads = await Promise.all(SB_TABLES.map(t => window.sb.from(t).select('id, profile_id')));
+    const reads = await Promise.all(SB_TABLES.map(t => window.sb.from(t).select('id')));
     for (let i = 0; i < SB_TABLES.length; i++) {
       const table = SB_TABLES[i];
       const remoteIds = new Set((reads[i].data || []).map(r => r.id));
@@ -255,7 +255,17 @@ async function syncPullAll() {
     };
     const dist = (rows, key, mapFn) => {
       for (const b of Object.values(S.data)) b[key] = [];
-      for (const r of rows) { const b = bucketFor(r); if (b) b[key].push(mapFn(r)); }
+      // tombstones: un id eliminado localmente no se resucita desde la nube (ver index.html :: trackDeletes)
+      for (const r of rows) {
+        const b = bucketFor(r);
+        if (!b || (b.__del && b.__del[key] && b.__del[key].includes(r.id))) continue;
+        b[key].push(mapFn(r));
+      }
+      // __prev = estado que acaba de aplicar el pull; así save() no marca como borrados los ids que el pull quitó
+      for (const b of Object.values(S.data)) {
+        if (!b.__prev) b.__prev = {};
+        b.__prev[key] = (b[key] || []).map(x => x.id);
+      }
     };
     dist(ta.data || [], 'tasks', rowToTask);
     dist(pe.data || [], 'people', rowToPerson);
@@ -265,17 +275,31 @@ async function syncPullAll() {
     dist(cs.data || [], 'slots', rowToSlot);
     dist(ci.data || [], 'inbox', rowToInbox);
     dist(cse.data || [], 'sessions', rowToSession);
-    // nube vacía → conserva lo local del perfil activo y marca para subir
+    // nube vacía → conserva lo local del perfil activo y marca para subir (sin resucitar ids borrados)
     const cur = S.data[pid];
     if (cur) {
-      if ((ta.data || []).length === 0 && localBefore.tasks.length) { cur.tasks = localBefore.tasks; needPush = true; }
-      if ((pe.data || []).length === 0 && localBefore.people.length) { cur.people = localBefore.people; needPush = true; }
-      if ((gi.data || []).length === 0 && localBefore.gifts.length) { cur.gifts = localBefore.gifts; needPush = true; }
-      if ((no.data || []).length === 0 && localBefore.notes.length) { cur.notes = localBefore.notes; needPush = true; }
-      if ((su.data || []).length === 0 && localBefore.subjects.length) { cur.subjects = localBefore.subjects; needPush = true; }
-      if ((cs.data || []).length === 0 && localBefore.slots.length) { cur.slots = localBefore.slots; needPush = true; }
-      if ((ci.data || []).length === 0 && localBefore.inbox.length) { cur.inbox = localBefore.inbox; needPush = true; }
-      if ((cse.data || []).length === 0 && localBefore.sessions.length) { cur.sessions = localBefore.sessions; needPush = true; }
+      const keepLocal = (key) => {
+        const del = (cur.__del && cur.__del[key]) || [];
+        return (localBefore[key] || []).filter(x => !del.includes(x.id));
+      };
+      if ((ta.data || []).length === 0 && localBefore.tasks.length) { cur.tasks = keepLocal('tasks'); needPush = true; }
+      if ((pe.data || []).length === 0 && localBefore.people.length) { cur.people = keepLocal('people'); needPush = true; }
+      if ((gi.data || []).length === 0 && localBefore.gifts.length) { cur.gifts = keepLocal('gifts'); needPush = true; }
+      if ((no.data || []).length === 0 && localBefore.notes.length) { cur.notes = keepLocal('notes'); needPush = true; }
+      if ((su.data || []).length === 0 && localBefore.subjects.length) { cur.subjects = keepLocal('subjects'); needPush = true; }
+      if ((cs.data || []).length === 0 && localBefore.slots.length) { cur.slots = keepLocal('slots'); needPush = true; }
+      if ((ci.data || []).length === 0 && localBefore.inbox.length) { cur.inbox = keepLocal('inbox'); needPush = true; }
+      if ((cse.data || []).length === 0 && localBefore.sessions.length) { cur.sessions = keepLocal('sessions'); needPush = true; }
+    }
+    // limpieza: el id ya no existe en la nube → el borrado se confirmó → se descarta el tombstone
+    const remoteIds = {
+      tasks: (ta.data || []).map(r => r.id), people: (pe.data || []).map(r => r.id), gifts: (gi.data || []).map(r => r.id),
+      notes: (no.data || []).map(r => r.id), subjects: (su.data || []).map(r => r.id), slots: (cs.data || []).map(r => r.id),
+      inbox: (ci.data || []).map(r => r.id), sessions: (cse.data || []).map(r => r.id)
+    };
+    for (const b of Object.values(S.data)) {
+      if (!b.__del) continue;
+      for (const key of Object.keys(remoteIds)) b.__del[key] = (b.__del[key] || []).filter(id => remoteIds[key].includes(id));
     }
     // las listas visibles apuntan al compartimento del perfil activo (incluido todo Modo Clase)
     if (cur) {
