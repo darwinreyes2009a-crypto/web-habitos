@@ -21,7 +21,8 @@
   --bg:#F8FAFC; --surface:#FFFFFF; --surface-2:#F1F5F9;
   --primary:#2563EB; --primary-2:#3B82F6;
   --primary-soft:#EFF6FF; --primary-softer:#DBEAFE;
-  --text:#0F172A; --text-2:#64748B; --text-3:#94A3B8;
+  --text:#0F172A; --text-2:#64748B;
+  --text-3:#94A3B8;
   --border:#E2E8F0; --border-soft:#EEF2F7;
   --green:#15803D; --green-soft:#F0FDF4; --green-border:#BBF7D0;
   --amber:#B45309; --amber-soft:#FFFBEB; --amber-border:#FDE68A;
@@ -33,6 +34,25 @@
   --sh-l:0 12px 40px rgba(15,23,42,.12);
   --nav-h:62px; --vvh:100dvh;
 }
+/* ============ MODO OSCURO ============ */
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0B1220; --surface:#111A2C; --surface-2:#16213A;
+  --primary:#3B82F6; --primary-2:#60A5FA;
+  --primary-soft:rgba(59,130,246,.14); --primary-softer:rgba(59,130,246,.24);
+  --text:#E6EDF7; --text-2:#94A3B8; --text-3:#64748B;
+  --border:#243149; --border-soft:#1B2740;
+  --green:#4ADE80; --green-soft:rgba(34,197,94,.12); --green-border:rgba(74,222,128,.32);
+  --amber:#FBBF24; --amber-soft:rgba(245,158,11,.12); --amber-border:rgba(251,191,36,.32);
+  --violet:#A78BFA; --violet-soft:rgba(139,92,246,.15); --violet-border:rgba(167,139,250,.32);
+  --danger:#F87171; --danger-soft:rgba(239,68,68,.13); --danger-border:rgba(248,113,113,.32);
+  --sh-s:0 1px 2px rgba(0,0,0,.4);
+  --sh-m:0 6px 20px rgba(0,0,0,.45);
+  --sh-l:0 12px 40px rgba(0,0,0,.55);
+}
+:root[data-theme="dark"] .bottom-nav{background:rgba(17,26,44,.96)}
+:root[data-theme="dark"] .side-user{background:var(--surface-2)}
+:root[data-theme="dark"] .welcome{background:var(--bg)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{
@@ -301,6 +321,43 @@ textarea.input{resize:vertical;min-height:70px}
 .person-card span{font-size:11.5px;color:var(--text-2);font-weight:500}
 .person-card.add{border-style:dashed;border-color:var(--border);color:var(--text-2);justify-content:center;min-height:130px;gap:8px}
 .person-card.add:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.subject-folder{width:54px;height:54px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex:none}
+.slot-row{border-left:3px solid var(--border)}
+.slot-time{width:54px;flex:none;display:flex;flex-direction:column;line-height:1.25}
+.slot-time b{font-size:14px;font-weight:700}
+.slot-time span{font-size:11.5px;color:var(--text-3);font-weight:600}
+.slot-off{opacity:.55}
+.slot-off b{text-decoration:line-through;text-decoration-color:var(--border)}
+/* agenda de clase: pestañas, clase actual, Para después, historial */
+.cls-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px;margin:-6px -2px 16px;scrollbar-width:none}
+.cls-tabs::-webkit-scrollbar{display:none}
+.cls-tab{flex:0 0 auto;padding:9px 14px;border-radius:99px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-size:13px;font-weight:600;white-space:nowrap;transition:all .15s}
+.cls-tab.on{background:var(--primary-soft);border-color:var(--primary);color:var(--primary)}
+.cls-tab:active{transform:scale(.96)}
+.now-card{background:var(--surface);border:1px solid var(--border-soft);border-left:4px solid var(--border);border-radius:var(--r-xl);padding:15px 18px;box-shadow:var(--sh-s);display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.now-card .nw-ic{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;flex:none}
+.now-card .nw-tag{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-3);display:block}
+.now-card .nw-sub{font-size:21px;font-weight:800;letter-spacing:-.02em;line-height:1.15;display:block}
+.now-card .nw-meta{font-size:12.5px;color:var(--text-2);font-weight:600;margin-top:3px;display:flex;gap:7px;flex-wrap:wrap}
+.now-card.live{border-left-color:var(--green)}
+.now-card.live .nw-tag{color:var(--green)}
+.idle-card{background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--r-xl);padding:18px 20px;text-align:center;margin-bottom:12px}
+.idle-card b{font-size:15px;font-weight:700;display:block;margin-bottom:4px}
+.idle-card p{font-size:13px;color:var(--text-2);line-height:1.5}
+.qc{position:relative;margin-bottom:8px}
+.qc .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-3)}
+.qc .input{padding-left:44px;font-size:15.5px}
+.inbox-row{display:flex;align-items:flex-start;gap:12px;width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-l);box-shadow:var(--sh-s);text-align:left;margin-bottom:10px;transition:border-color .15s}
+.inbox-row:hover{border-color:var(--primary-softer)}
+.inbox-row .ib-ic{width:34px;height:34px;border-radius:11px;background:var(--amber-soft);color:var(--amber);display:flex;align-items:center;justify-content:center;flex:none}
+.inbox-row p{font-size:14px;line-height:1.45;word-break:break-word}
+.inbox-row .ib-meta{display:flex;align-items:center;gap:8px;margin-top:5px;font-size:11.5px;color:var(--text-3);font-weight:600;flex-wrap:wrap}
+.subj-chip{padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700}
+.hist-row{display:flex;align-items:center;gap:13px;padding:13px 15px;background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-l);box-shadow:var(--sh-s);margin-bottom:10px}
+.hist-row .r-ic{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex:none}
+.hist-row b{font-size:14px;font-weight:600;display:block}
+.hist-row .r-sub{font-size:12px;color:var(--text-2);display:block;margin-top:2px}
+.cls-today span:first-child{color:var(--primary)}
 .drop-img{border:2px dashed var(--border);border-radius:var(--r-l);padding:26px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--text-3);font-size:13px;font-weight:600;background:var(--bg);width:100%;transition:border-color .15s}
 .drop-img:hover{border-color:var(--primary);color:var(--primary)}
 .drop-img img{max-height:150px;border-radius:12px}
@@ -324,6 +381,10 @@ textarea.input{resize:vertical;min-height:70px}
 
 /* selección de perfil */
 .profile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin:22px 0}
+.profile-card{position:relative}
+.profile-card .profile-del{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-3);background:transparent;transition:background .15s,color .15s}
+.profile-card .profile-del:hover{background:var(--danger-soft);color:var(--danger)}
+.profile-card .profile-del:active{transform:scale(.9)}
 .center-page{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
 .center-box{width:100%;max-width:400px;text-align:center}
 
@@ -365,7 +426,7 @@ textarea.input{resize:vertical;min-height:70px}
 <div id="toasts"></div>
 <noscript>DailyHub necesita JavaScript para funcionar.</noscript>
 <script src="vendor/supabase.js?v=11"></script>
-<script src="app-sync.js?v=11"></script>
+<script src="app-sync.js?v=14"></script>
 <script>
 'use strict';
 /* ==================================================================
@@ -418,6 +479,7 @@ const ICONS = {
   checksq: '<path d="m9 11.5 2.5 2.5L21 4.5"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/><path d="M12 8v13"/><path d="M12 8H8.5a2.5 2.5 0 1 1 0-5C11 3 12 8 12 8z"/><path d="M12 8h3.5a2.5 2.5 0 1 0 0-5C13 3 12 8 12 8z"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   gear: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
@@ -470,7 +532,10 @@ const ICONS = {
   alarm: '<circle cx="12" cy="13" r="7"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/>',
   folder: '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   pencil: '<path d="m4 20 4-.9L19 8a2.1 2.1 0 0 0-3-3L5 16zM13.5 6.5l4 4"/>',
-  recycle: '<path d="m7 7-2 3 2 3M5 10h7M17 17l-2-3 2-3M15 14H5M12 5l3-1 3 3M15 4l-3 6"/>'
+  recycle: '<path d="m7 7-2 3 2 3M5 10h7M17 17l-2-3 2-3M15 14H5M12 5l3-1 3 3M15 4l-3 6"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/>',
+  pin: '<path d="M12 17v5"/><path d="M8.5 3h7l-.8 6 3.3 3v2H6v-2l3.3-3z"/>',
+  inbox: '<path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 5h14l2 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/>'
 };
 function icon(name, size, cls) {
   size = size || 20;
@@ -485,16 +550,74 @@ function defaultState() {
   return {
     profiles: [], activeProfileId: null,
     people: [], tasks: [], gifts: [], notes: [],
+    subjects: [], slots: [], inbox: [], sessions: [], activeSession: null,
     settings: {
       hideCompleted: false,
+      theme: 'auto',
       categories: [...DEFAULT_CATEGORIES],
       relationships: [...DEFAULT_RELATIONSHIPS],
       notif: { reminders: true, gifts: true, daily: false, quietFrom: '22:00', quietTo: '08:00' }
     },
-    meta: { onboarded: false, created: todayStr(), lastNotified: null }
+    meta: { onboarded: false, created: todayStr(), lastNotified: null },
+    data: {}
   };
 }
 let S = load();
+
+/* --- Aislamiento por perfil ---
+   Cada perfil tiene su propio compartimento de datos en S.data[profileId].
+   Las listas (S.tasks, S.people, S.gifts, S.notes) son SIEMPRE la vista del perfil activo. */
+function emptyData() { return { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], activeSession: null }; }
+function normalizeData(st) {
+  const s = st || S;
+  if (!s.data || typeof s.data !== 'object') s.data = {};
+  for (const k of Object.keys(s.data)) if (!s.profiles.some(p => p.id === k)) delete s.data[k];
+  for (const p of s.profiles) if (!s.data[p.id]) s.data[p.id] = emptyData();
+  // migración Modo Clase: los compartimentos antiguos no tienen asignaturas, horario, Para después ni historial
+  for (const k of Object.keys(s.data)) {
+    const b = s.data[k];
+    if (!Array.isArray(b.subjects)) b.subjects = [];
+    if (!Array.isArray(b.slots)) b.slots = [];
+    if (!Array.isArray(b.inbox)) b.inbox = [];
+    if (!Array.isArray(b.sessions)) b.sessions = [];
+    if (b.activeSession === undefined) b.activeSession = null;
+  }
+  // migración: estado antiguo con listas globales → se asignan al perfil activo (o al primero)
+  const hasData = Object.keys(s.data).some(k => (s.data[k].tasks || []).length || (s.data[k].people || []).length || (s.data[k].gifts || []).length || (s.data[k].notes || []).length);
+  if (!hasData && ((s.tasks || []).length || (s.people || []).length || (s.gifts || []).length || (s.notes || []).length)) {
+    const target = (s.activeProfileId && s.data[s.activeProfileId]) || s.data[s.profiles[0] && s.profiles[0].id];
+    if (target) { target.tasks = s.tasks || []; target.people = s.people || []; target.gifts = s.gifts || []; target.notes = s.notes || []; }
+  }
+}
+function switchProfileData() {
+  normalizeData();
+  const b = S.activeProfileId && S.data[S.activeProfileId];
+  if (b) { S.tasks = b.tasks; S.people = b.people; S.gifts = b.gifts; S.notes = b.notes; S.subjects = b.subjects; S.slots = b.slots; S.inbox = b.inbox; S.sessions = b.sessions; S.activeSession = b.activeSession; }
+  else { S.tasks = []; S.people = []; S.gifts = []; S.notes = []; S.subjects = []; S.slots = []; S.inbox = []; S.sessions = []; S.activeSession = null; }
+}
+
+/* --- pulsación larga (para acciones destructivas como eliminar perfil) --- */
+let __lpTimer = null, __lpFired = false;
+function startLongPress(fn) {
+  cancelLongPress();
+  __lpFired = false;
+  __lpTimer = setTimeout(() => { __lpFired = true; fn(); }, 550);
+}
+function cancelLongPress() { clearTimeout(__lpTimer); __lpTimer = null; }
+function longPressFired() { const f = __lpFired; __lpFired = false; return f; }   // se consume al leerla: tras un long-press, los toques normales vuelven a funcionar
+switchProfileData();   // enlaza las listas con el compartimento del perfil activo al arrancar
+
+/* --- Tema (modo oscuro) --- */
+function theme() { return (S.settings && S.settings.theme) || 'auto'; }
+function applyTheme() {
+  let t = theme();
+  if (t === 'auto') t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+}
+if (window.matchMedia) {
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (theme() === 'auto') applyTheme(); }); } catch (e) {}
+}
+applyTheme();
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -505,6 +628,7 @@ function load() {
       state.settings.relationships = Array.isArray(state.settings.relationships) && state.settings.relationships.length ? state.settings.relationships : [...DEFAULT_RELATIONSHIPS];
       state.settings.notif = Object.assign(defaultState().settings.notif, state.settings.notif || {});
       state.notes = Array.isArray(state.notes) ? state.notes : [];
+      normalizeData(state);
       return state;
     }
   } catch (e) { console.error(e); }
@@ -512,7 +636,15 @@ function load() {
 }
 let __pushTimer = null;
 function save() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); }
+  try {
+    // las listas visibles pertenecen al perfil activo: se guardan en su compartimento
+    if (S.activeProfileId && S.data && S.data[S.activeProfileId]) {
+      const b = S.data[S.activeProfileId];
+      b.tasks = S.tasks || []; b.people = S.people || []; b.gifts = S.gifts || []; b.notes = S.notes || []; b.subjects = S.subjects || []; b.slots = S.slots || [];
+      b.inbox = S.inbox || []; b.sessions = S.sessions || []; b.activeSession = S.activeSession || null;
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(S));
+  }
   catch (e) { toast('No se pudo guardar: almacenamiento lleno'); }
   // Con sesión iniciada: sube los cambios a Supabase en segundo plano (debounce)
   if (window.DailySync && DailySync.status.state === 'online') {
@@ -522,7 +654,17 @@ function save() {
 }
 const session = { unlocked: false };
 let route = { name: 'home', params: {} };
+// Acceso directo desde la app instalada (manifest shortcuts), con pestaña opcional
+let __startTab = null;
+try {
+  const __qs = new URLSearchParams(location.search);
+  const __gp = __qs.get('goto');
+  if (__gp && ['home', 'class', 'tasks', 'gifts', 'settings', 'profile', 'taskForm', 'noteForm'].includes(__gp)) route = { name: __gp, params: {} };
+  const __tab = __qs.get('tab');
+  if (__gp === 'class' && ['hoy', 'semana', 'despues', 'apuntes', 'asignaturas'].includes(__tab)) __startTab = __tab;
+} catch (e) {}
 const ui = { weekOffset: 0, weekSel: dowIdx(todayStr()), tasksView: 'lista', calYM: null, calSel: null, tasksFilter: 'todas', giftTab: 'personas' };
+if (__startTab) ui.classTab = __startTab;
 const COLORS = ['#2563EB', '#4F46E5', '#7C3AED', '#A855F7', '#C026D3', '#DB2777', '#E11D48', '#DC2626', '#EA580C', '#D97706', '#F59E0B', '#84CC16', '#16A34A', '#059669', '#0D9488', '#0EA5E9', '#78716C', '#92400E', '#64748B', '#475569'];
 const CATS = DEFAULT_CATEGORIES;
 const ICON_CHOICES = [
@@ -671,6 +813,7 @@ function birthdaysToday() {
 
 /* ================= AUTH GATES ================= */
 function render() {
+  applyTheme();
   const app = $('#app');
   app.innerHTML = '';
   closeOverlays();
@@ -679,7 +822,7 @@ function render() {
   if (route.name === 'newProfile') { app.append(newProfileScreen()); return; }
   if (!S.activeProfileId) { app.append(profileSelectScreen()); return; }
   const prof = currentProfile();
-  if (!prof) { S.activeProfileId = null; save(); app.append(profileSelectScreen()); return; }
+  if (!prof) { S.activeProfileId = null; switchProfileData(); save(); app.append(profileSelectScreen()); return; }
   if (prof.pin && !session.unlocked) { app.append(pinScreen(prof)); return; }
   app.append(shell(prof));
 }
@@ -689,14 +832,14 @@ function welcomeScreen() {
   const box = h('div', { class: 'welcome-box' },
     h('div', { class: 'logo-mark', html: 'D' }),
     h('h2', null, 'DailyHub'),
-    h('p', { class: 'lead' }, 'Tu espacio personal para tareas diarias, hábitos, rutinas de casa y regalos. Simple, rápido y privado: todo se guarda solo en este dispositivo.'),
+    h('p', { class: 'lead' }, 'Tus tareas, hábitos, regalos y apuntes de clase. Crea perfiles separados con su PIN y, si quieres, sincronízalos entre tus dispositivos con una cuenta.'),
     h('div', { style: 'margin-bottom:22px' },
       feat('checksq', 'Tareas y hábitos', 'Marca tu día con un toque'),
-      feat('calendar', 'Planificación semanal', 'Mira toda la semana de un vistazo'),
+      feat('pencil', 'Modo Clase', 'Deberes, material y notas rápidas'),
       feat('gift', 'Regalos por persona', 'Ideas, precios y fechas importantes')
     ),
     h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { S.meta.onboarded = true; save(); go('newProfile', { first: true }); } }, 'Empezar'),
-    h('p', { style: 'font-size:11.5px;color:var(--text-3);margin-top:16px' }, 'Con cuenta: tus datos se sincronizan entre dispositivos.\nSin cuenta: solo se guardan en este navegador.')
+    h('p', { style: 'font-size:11.5px;color:var(--text-3);margin-top:16px' }, 'Sin cuenta: todo se queda en este dispositivo.\nCon cuenta: se sincroniza en la nube, cifrado por usuario.')
   );
   return h('div', { class: 'welcome' }, box);
 }
@@ -740,6 +883,8 @@ function newProfileScreen() {
     const prof = { id: uid('pr'), name, color, photo: newProfPhoto, pin: pin ? hashPin(pin) : null, pinLen: pin ? pin.length : null };
     S.profiles.push(prof);
     S.activeProfileId = prof.id;
+    normalizeData();
+    switchProfileData();   // el perfil nuevo empieza con sus listas vacías
     session.unlocked = true;
     save();
     go('home');
@@ -768,18 +913,104 @@ function profileSelectScreen() {
   const wrap = h('div', { class: 'center-page' }, h('div', { class: 'center-box' },
     h('div', { class: 'logo-mark', style: 'width:52px;height:52px;font-size:24px;margin-bottom:18px', html: 'D' }),
     h('h2', { style: 'font-size:26px;font-weight:800;letter-spacing:-.03em' }, '¿Quién eres?'),
-    h('p', { style: 'font-size:13.5px;color:var(--text-2);margin-top:6px' }, 'Selecciona tu perfil para continuar.')
+    h('p', { style: 'font-size:13.5px;color:var(--text-2);margin-top:6px' }, 'Selecciona tu perfil para continuar.'),
+    S.profiles.length > 1 ? h('p', { style: 'font-size:12px;color:var(--text-3);margin-top:4px' }, 'Mantén pulsado un perfil para eliminarlo.') : null
   ));
   const grid = h('div', { class: 'profile-grid', style: 'width:100%;max-width:420px;margin:26px auto 0' });
+  function delProfile(p) {
+    confirmDialog({
+      title: '¿Eliminar "' + p.name + '"?',
+      message: 'Se borrarán también sus tareas, notas y regalos de este dispositivo. Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar perfil',
+      onConfirm: () => {
+        const i = S.profiles.findIndex(x => x.id === p.id);
+        if (i >= 0) S.profiles.splice(i, 1);
+        delete S.data[p.id];   // borra el compartimento entero del perfil (tareas, personas, regalos y notas)
+        S.activeProfileId = null;   // volver a la selección de perfiles, sin entrar en ninguno
+        switchProfileData();
+        session.unlocked = false;
+        save();
+        render();
+        toast('Perfil "' + p.name + '" eliminado');
+      }
+    });
+  }
+  function editProfileCardSheet(p) {
+    openSheet('Editar perfil', () => {
+      let nColor = p.color;
+      let nPhoto = p.photo || '';
+      const body = h('div');
+      const avPrev = h('div', { style: 'display:flex;justify-content:center;margin-bottom:16px;position:relative' });
+      const nameIn = h('input', { class: 'input', type: 'text', value: p.name, maxlength: '24', style: 'text-align:center;font-weight:700;font-size:17px' });
+      const photoBtn = h('button', { class: 'btn btn-soft', style: 'padding:8px 14px;font-size:12px;margin-top:10px' });
+      function drawAv() {
+        avPrev.innerHTML = '';
+        avPrev.append(avatarEl(nameIn.value || p.name, nColor, 64, nPhoto));
+        if (nPhoto) avPrev.append(h('button', { class: 'rm-photo', 'aria-label': 'Quitar foto', onclick: () => { nPhoto = ''; drawAv(); setPhotoEl(photoBtn, ''); }, html: icon('x', 15) }));
+        setPhotoEl(photoBtn, nPhoto);
+      }
+      photoBtn.onclick = () => pickImage((d) => { nPhoto = d; drawAv(); }, 512);
+      drawAv();
+      nameIn.addEventListener('input', drawAv);
+      const swRow = h('div', { class: 'swatches', style: 'justify-content:center;margin:16px 0 22px' });
+      for (const c of COLORS) {
+        swRow.append(h('button', {
+          class: 'swatch' + (c === nColor ? ' on' : ''), style: 'background:' + c,
+          onclick: (e) => { nColor = c; [...swRow.children].forEach(x => x.classList.remove('on')); e.currentTarget.classList.add('on'); drawAv(); }
+        }));
+      }
+      body.append(avPrev, photoBtn,
+        h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Nombre'), nameIn), swRow,
+        h('button', {
+          class: 'btn btn-primary btn-block btn-lg', onclick: () => {
+            const name = nameIn.value.trim();
+            if (!name) { toast('El nombre no puede estar vacío'); nameIn.focus(); return; }
+            const aplicar = () => { p.name = name; p.color = nColor; p.photo = nPhoto; save(); closeOverlays(); render(); toast('Perfil actualizado'); };
+            if (name !== p.name) confirmDialog({ title: '¿Cambiar el nombre?', message: '“' + p.name + '” pasará a llamarse “' + name + '”.', confirmText: 'Cambiar nombre', onConfirm: aplicar });
+            else aplicar();
+          }
+        }, 'Guardar cambios'));
+      const sb = body.querySelector('.btn-primary');
+      if (sb) nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sb.click(); } });
+      return body;
+    });
+  }
+  function showProfileActions(p) {
+    openSheet('Perfil de ' + p.name, () => {
+      const box = h('div');
+      box.append(
+        h('button', { class: 'set-row', onclick: () => { closeOverlays(); setTimeout(() => editProfileCardSheet(p), 120); } }, h('span', { class: 'r-ic', html: icon('pencil', 18) }), h('span', null, 'Editar perfil'), h('span', { class: 'chev', html: icon('chev', 17) })),
+        h('button', { class: 'set-row', onclick: () => { closeOverlays(); setTimeout(() => delProfile(p), 120); } }, h('span', { class: 'r-ic', html: icon('trash', 18) }), h('span', { style: 'color:var(--danger)' }, 'Eliminar perfil'), h('span', { class: 'chev', html: icon('chev', 17) }))
+      );
+      return box; 
+    });
+  }
+  function profileTap(p) {
+    // Al volver a la pantalla de perfiles, la sesión se bloquea: el PIN (si hay) se pide al entrar de nuevo
+    S.activeProfileId = p.id;
+    switchProfileData();   // carga las listas de ESTE perfil
+    session.unlocked = false; save(); render();
+  }
   for (const p of S.profiles) {
-    grid.append(h('button', {
-      class: 'person-card', style: 'min-height:140px',
-      onclick: () => { S.activeProfileId = p.id; session.unlocked = false; save(); render(); }
+    const card = h('button', {
+      class: 'person-card profile-card', style: 'min-height:140px',
+      onclick: () => { if (longPressFired()) return; profileTap(p); },
+      oncontextmenu: (e) => { e.preventDefault(); delProfile(p); },
+      onpointerdown: (e) => { if (e.pointerType === 'touch') startLongPress(() => showProfileActions(p)); },
+      onpointerup: cancelLongPress, onpointercancel: cancelLongPress, onpointerleave: cancelLongPress
     },
       avatarEl(p.name, p.color, 58, p.photo),
       h('b', null, p.name),
       h('span', null, p.pin ? 'Protegido con PIN' : 'Sin PIN')
-    ));
+    );
+    if (S.profiles.length > 1) {
+      card.append(h('span', {
+        class: 'profile-del', 'aria-label': 'Eliminar perfil "' + p.name + '"', title: 'Eliminar perfil',
+        html: icon('trash', 14),
+        onclick: (e) => { e.stopPropagation(); delProfile(p); }
+      }));
+    }
+    grid.append(card);
   }
   grid.append(h('button', { class: 'person-card add', onclick: () => go('newProfile') }, h('span', { class: 'f-ic', html: icon('plus', 22) }), h('b', null, 'Añadir perfil')));
   wrap.append(grid);
@@ -797,7 +1028,14 @@ function pinScreen(prof) {
     [...dots.children].forEach((d, i) => d.classList.toggle('fill', i < pinBuffer.length));
   }
   function check() {
-    if (hashPin(pinBuffer) === prof.pin) { session.unlocked = true; pinBuffer = ''; render(); return; }
+    let ok = hashPin(pinBuffer) === prof.pin;
+    if (!ok && pinBuffer.length >= 4) {
+      // compat: perfiles antiguos sin pinLen guardado (los puntos pueden salir de más)
+      for (let k = 4; k <= pinBuffer.length; k++) {
+        if (hashPin(pinBuffer.slice(0, k)) === prof.pin) { ok = true; break; }
+      }
+    }
+    if (ok) { session.unlocked = true; pinBuffer = ''; render(); return; }
     box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
     pinBuffer = ''; draw();
   }
@@ -851,7 +1089,7 @@ function shell(prof) {
   // sidebar escritorio
   const navEl = (vertical) => h('div', { style: vertical ? 'display:flex;flex-direction:column;gap:4px' : 'display:contents' },
     NAV.map(n => {
-      const on = route.name === n.id || (n.id === 'tasks' && (route.name === 'progress' || route.name === 'week')) || (n.id === 'class' && route.name === 'noteForm');
+      const on = route.name === n.id || (n.id === 'tasks' && (route.name === 'progress' || route.name === 'week')) || (n.id === 'class' && (route.name === 'noteForm' || route.name === 'classSubjects' || route.name === 'subjectForm' || route.name === 'classSchedule' || route.name === 'slotForm' || route.name === 'subjectView' || route.name === 'classHistory')) || (n.id === 'gifts' && (route.name === 'person' || route.name === 'personAbout' || route.name === 'personForm'));
       let badge = null;
       if (n.id === 'tasks') { const pend = tasksDueOn(todayStr()).filter(t => !isDoneOn(t, todayStr())).length; if (pend) badge = pend; }
       return h('button', { class: (vertical ? 'nav-item' : 'bn-item') + (on ? ' on' : ''), onclick: () => go(n.id) },
@@ -876,8 +1114,11 @@ function shell(prof) {
   const content = h('div', { class: 'content' });
   const screens = {
     home: scrHome, class: scrClass, tasks: scrTasks, week: scrWeek, gifts: scrGifts, settings: scrSettings,
-    profile: scrProfile, progress: scrProgress, person: scrPerson,
-    taskForm: scrTaskForm, giftForm: scrGiftForm, personForm: scrPersonForm, noteForm: scrNoteForm
+    profile: scrProfile, progress: scrProgress, person: scrPerson, personAbout: scrPersonAbout,
+    taskForm: scrTaskForm, giftForm: scrGiftForm, personForm: scrPersonForm, noteForm: scrNoteForm,
+    classSubjects: scrClassSubjects, subjectForm: scrSubjectForm,
+    classSchedule: scrClassSchedule, slotForm: scrSlotForm,
+    subjectView: scrSubjectView, classHistory: scrClassHistory
   };
   content.append((screens[route.name] || scrHome)());
   main.append(content);
@@ -909,10 +1150,566 @@ const NOTE_KIND_STYLES = {
 function noteKindStyle(k) { return NOTE_KIND_STYLES[k] || NOTE_KIND_STYLES.nota; }
 function noteTimeStr(n) { return n.time ? String(n.time).slice(0, 5) : ''; }
 
+/* ---------- asignaturas: cada una es una carpeta de clase ---------- */
+const SUBJECT_ICONS_QUICK = ['book', 'laptop', 'pencil', 'folder', 'music', 'heart', 'plant', 'star'];
+function subjectById(id) { return (S.subjects || []).find(s => s.id === id) || null; }
+
+/* ---------- horario: las clases de la semana ---------- */
+// day usa la misma convención que el resto de la app: 0 = lunes
+function slotsOfDay(d) { return (S.slots || []).filter(s => s.day === d).sort((a, b) => (a.start < b.start ? -1 : 1)); }
+function slotsOfSubject(id) { return (S.slots || []).filter(s => s.subjectId === id); }
+function hm(t) { const p = String(t || '0:00').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); }
+function timeTxt(t) { return t ? String(t).slice(0, 5) : ''; }
+// dos clases se pisan si son del mismo día y sus franjas se cruzan
+function slotsOverlap(a, b) { return a.day === b.day && hm(a.start) < hm(b.end) && hm(b.start) < hm(a.end); }
+// tinte suave del color de la asignatura; si el color no es hex válido, cae en el gris de superficie
+function tintHex(hex, alpha) { return /^#[0-9a-f]{6}$/i.test(hex || '') ? hex + alpha : 'var(--surface-2)'; }
+
+/* ---------- Modo Clase: agenda escolar (Hoy · Semana · Para después · Apuntes · Asignaturas) ---------- */
+ui.classTab = ui.classTab || 'hoy';
+ui.noteSubject = ui.noteSubject || 'todas';
+ui.noteState = ui.noteState || 'todas';
+const CLASS_TABS = [
+  { id: 'hoy', label: 'Hoy' },
+  { id: 'semana', label: 'Semana' },
+  { id: 'despues', label: 'Para después' },
+  { id: 'apuntes', label: 'Apuntes' },
+  { id: 'asignaturas', label: 'Asignaturas' }
+];
+
+/* ---------- reloj de clase: qué toca ahora, qué viene después ---------- */
+function nowMin() { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+function minTxt(m) { m = ((Math.round(m) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+function activeSlotsToday() { return slotsOfDay(dowIdx(todayStr())).filter(s => s.active !== false); }
+function classNow() { const m = nowMin(); return activeSlotsToday().find(s => hm(s.start) <= m && m < hm(s.end)) || null; }
+function classNext() { const m = nowMin(); return activeSlotsToday().find(s => hm(s.start) > m) || null; }
+function leftTxt(slot) {
+  const left = hm(slot.end) - nowMin();
+  if (left <= 0) return 'terminando';
+  if (left < 60) return 'quedan ' + left + ' min';
+  return 'quedan ' + Math.floor(left / 60) + ' h' + (left % 60 ? ' ' + (left % 60) + ' min' : '');
+}
+function inTxt(slot) {
+  const min = hm(slot.start) - nowMin();
+  if (min <= 0) return 'empieza ya';
+  if (min < 60) return 'en ' + min + ' min';
+  return 'en ' + Math.floor(min / 60) + ' h' + (min % 60 ? ' ' + (min % 60) + ' min' : '');
+}
+function slotLine(s) { return timeTxt(s.start) + ' — ' + timeTxt(s.end) + (s.room ? ' · ' + s.room : ''); }
+function relDayTxt(ymd) {
+  const diff = Math.round((parseYmd(ymd) - parseYmd(todayStr())) / 86400000);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  if (diff === -1) return 'Ayer';
+  return fmtLong(ymd);
+}
+
+/* ---------- sesión de clase ("estoy en clase") ---------- */
+function activeSession() { return S.activeSession || null; }
+function sessionItems(id) {
+  return { inbox: (S.inbox || []).filter(x => x.sessionId === id), notes: (S.notes || []).filter(n => n.sessionId === id) };
+}
+function startSession(slot) {
+  if (S.activeSession) { ui.classTab = 'hoy'; render(); return; }
+  S.activeSession = {
+    id: uid('ss'), slotId: slot ? slot.id : null, subjectId: slot ? slot.subjectId : null,
+    date: todayStr(), start: slot ? slot.start : minTxt(nowMin()), end: slot ? slot.end : '', room: slot ? (slot.room || '') : ''
+  };
+  save(); ui.classTab = 'hoy'; render();
+  const sub = subjectById(S.activeSession.subjectId);
+  toast('Clase activa' + (sub ? ' · ' + sub.name : '') + ' · apunta lo que salga');
+}
+function finishSession() {
+  const a = activeSession();
+  if (!a) return;
+  const items = sessionItems(a.id);
+  const rec = Object.assign({}, a, {
+    end: a.end || minTxt(nowMin()),
+    endedAt: new Date().toISOString(),
+    counts: { inbox: items.inbox.length, notes: items.notes.length, important: items.notes.filter(n => n.starred).length }
+  });
+  if (!Array.isArray(S.sessions)) S.sessions = [];
+  S.sessions.unshift(rec);
+  S.activeSession = null;
+  save();
+  render();                 // la pantalla vuelve al estado "sin clase activa"
+  sessionSummarySheet(rec); // y encima, el resumen de lo apuntado
+}
+function sessionSummarySheet(rec) {
+  const sub = subjectById(rec.subjectId);
+  const c = rec.counts || { inbox: 0, notes: 0, important: 0 };
+  const total = c.inbox + c.notes;
+  openSheet('Clase terminada', () => h('div', null,
+    h('div', { class: 'now-card', style: 'margin-bottom:14px;border-left-color:' + (sub ? sub.color : 'var(--border)') },
+      h('span', { class: 'nw-ic', style: 'background:' + tintHex(sub ? sub.color : '', '22') + ';color:' + (sub ? sub.color : 'var(--text-2)'), html: icon(sub ? (sub.icon || 'book') : 'book', 24) }),
+      h('div', { style: 'flex:1;min-width:0' },
+        h('span', { class: 'nw-tag' }, 'Clase'),
+        h('b', { class: 'nw-sub' }, sub ? sub.name : 'Clase sin asignatura'),
+        h('span', { class: 'nw-meta' }, h('span', null, timeTxt(rec.start) + ' — ' + timeTxt(rec.end)), rec.room ? h('span', null, '· ' + rec.room) : null))),
+    h('p', { class: 'field-hint', style: 'margin-bottom:10px' }, total ? 'Has apuntado durante esta clase:' : 'No has apuntado nada en esta clase. Todo tranquilo.'),
+    total ? h('div', { class: 'set-card', style: 'margin-bottom:18px' },
+      c.inbox ? h('div', { class: 'set-row' }, h('span', { class: 'r-ic', html: icon('pin', 17) }), h('span', null, c.inbox + ' en Para después')) : null,
+      c.notes ? h('div', { class: 'set-row' }, h('span', { class: 'r-ic', html: icon('pencil', 17) }), h('span', null, c.notes === 1 ? '1 apunte guardado' : c.notes + ' apuntes guardados')) : null,
+      c.important ? h('div', { class: 'set-row' }, h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('star', 17) }), h('span', null, c.important + ' marcado' + (c.important === 1 ? '' : 's') + ' importante' + (c.important === 1 ? '' : 's'))) : null
+    ) : null,
+    h('div', { style: 'display:flex;gap:10px' },
+      h('button', { class: 'btn btn-soft', style: 'flex:1', onclick: () => { closeOverlays(); render(); } }, 'Terminar'),
+      h('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => { closeOverlays(); ui.classTab = c.inbox ? 'despues' : 'apuntes'; render(); } }, 'Revisar')
+    )
+  ));
+}
+
+/* ---------- Para después: capturar sin pensar dónde va ---------- */
+function inboxAdd(text, subjectId) {
+  const a = activeSession();
+  const item = {
+    id: uid('i'), text, date: todayStr(), time: minTxt(nowMin()),
+    subjectId: subjectId || (a ? a.subjectId : null), sessionId: a ? a.id : null,
+    createdAt: new Date().toISOString()
+  };
+  if (!Array.isArray(S.inbox)) S.inbox = [];
+  S.inbox.unshift(item);
+  save();
+  return item;
+}
+function captureBar(placeholder, onSaved) {
+  const box = h('div', { class: 'qc' });
+  const input = h('input', { class: 'input', type: 'text', autocomplete: 'off', maxlength: '240', placeholder: placeholder || 'Escribe algo y pulsa Enter…' });
+  box.append(h('span', { html: icon('pin', 18) }), input);
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const item = inboxAdd(text);
+    input.value = '';
+    const sub = subjectById(item.subjectId);
+    toast('Guardado en Para después' + (sub ? ' · ' + sub.name : ''), { label: 'Organizar', fn: () => { ui.classTab = 'despues'; render(); } });
+    if (onSaved) onSaved(item);
+  });
+  return box;
+}
+function inboxRow(it, redraw) {
+  const sub = subjectById(it.subjectId);
+  return h('button', { class: 'inbox-row', onclick: () => inboxMenu(it, redraw) },
+    h('span', { class: 'ib-ic', html: icon('pin', 17) }),
+    h('div', { style: 'flex:1;min-width:0' },
+      h('p', null, it.text),
+      h('div', { class: 'ib-meta' },
+        h('span', null, fmtShort(it.date) + (it.time ? ' · ' + it.time : '')),
+        sub ? h('span', { class: 'subj-chip', style: 'color:' + sub.color + ';background:' + tintHex(sub.color, '22') }, sub.name) : h('span', null, 'sin asignatura')
+      )),
+    h('span', { class: 'chev', html: icon('chev', 16) })
+  );
+}
+function inboxMenu(it, redraw) {
+  closeOverlays();
+  const ov = h('div', { class: 'overlay', style: 'z-index:60', onclick: (e) => { if (e.target === ov) ov.remove(); } });
+  const run = (fn) => () => { ov.remove(); fn(); };
+  const sh = h('div', { class: 'sheet', style: 'max-width:360px', role: 'menu' },
+    h('div', { style: 'padding:0 4px 14px' },
+      h('p', { style: 'font-size:15px;font-weight:600;line-height:1.4' }, it.text),
+      h('p', { class: 'field-hint' }, '¿Qué haces con esto?')),
+    h('button', { class: 'set-row', onclick: run(() => inboxToTask(it, redraw)) },
+      h('span', { class: 'r-ic', html: icon('checksq', 17) }), h('span', null, 'Convertir en tarea')),
+    h('button', { class: 'set-row', onclick: run(() => pickSubject('¿Deberes de qué asignatura?', (s) => inboxToNote(it, redraw, 'deberes', s))) },
+      h('span', { class: 'r-ic', style: 'background:var(--violet-soft);color:var(--violet)', html: icon('book', 17) }), h('span', null, 'Deberes de una asignatura')),
+    h('button', { class: 'set-row', onclick: run(() => inboxToNote(it, redraw, 'nota')) },
+      h('span', { class: 'r-ic', html: icon('pencil', 17) }), h('span', null, 'Convertir en apunte')),
+    h('button', { class: 'set-row', onclick: run(() => inboxToNote(it, redraw, 'recordatorio')) },
+      h('span', { class: 'r-ic', style: 'background:var(--amber-soft);color:var(--amber)', html: icon('bell', 17) }), h('span', null, 'Convertir en recordatorio')),
+    h('button', { class: 'set-row', onclick: run(() => inboxToNote(it, redraw, 'importante')) },
+      h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('star', 17) }), h('span', null, 'Marcar como importante')),
+    h('button', { class: 'set-row', onclick: run(() => pickSubject('Asignatura', (s) => {
+      it.subjectId = s ? s.id : null; save(); toast(s ? 'Asignado a ' + s.name : 'Sin asignatura'); if (redraw) redraw(); else render();
+    })) },
+      h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('folder', 17) }), h('span', null, it.subjectId ? 'Cambiar de asignatura' : 'Asignar asignatura')),
+    h('button', { class: 'set-row', onclick: run(() => inboxEdit(it, redraw)) },
+      h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('pencil', 17) }), h('span', null, 'Editar el texto')),
+    h('button', { class: 'set-row', style: 'color:var(--danger)', onclick: run(() => inboxRemove(it, redraw)) },
+      h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('trash', 17) }), h('span', null, 'Eliminar'))
+  );
+  ov.append(sh);
+  document.body.appendChild(ov);
+}
+function inboxEdit(it, redraw) {
+  openSheet('Editar', () => {
+    const inp = h('input', { class: 'input', type: 'text', value: it.text, maxlength: '240' });
+    const ok = () => { const v = inp.value.trim(); if (!v) { inp.focus(); return; } it.text = v; save(); closeOverlays(); if (redraw) redraw(); else render(); };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); ok(); } });
+    setTimeout(() => { inp.focus(); inp.select(); }, 60);
+    return h('div', null, h('div', { class: 'field' }, inp), h('button', { class: 'btn btn-primary btn-block', onclick: ok }, 'Guardar'));
+  });
+}
+function inboxRemove(it, redraw) {
+  const i = S.inbox.indexOf(it);
+  if (i < 0) return;
+  const [gone] = S.inbox.splice(i, 1);
+  save();
+  if (redraw) redraw(); else render();
+  toast('Elemento eliminado', { label: 'Deshacer', fn: () => { S.inbox.splice(Math.min(i, S.inbox.length), 0, gone); save(); render(); } });
+}
+function dropFromInbox(it) {
+  const i = S.inbox.indexOf(it);
+  if (i < 0) return -1;
+  S.inbox.splice(i, 1);
+  return i;
+}
+function inboxToTask(it, redraw) {
+  const t = { id: uid('t'), title: it.text, icon: 'checksq', cat: 'Personal', freq: { type: 'once', date: it.date || todayStr() }, time: '', completions: [], createdAt: todayStr() };
+  S.tasks.push(t);
+  const i = dropFromInbox(it);
+  save();
+  if (redraw) redraw(); else render();
+  toast('Convertida en tarea · hoy', { label: 'Deshacer', fn: () => { S.tasks = S.tasks.filter(x => x.id !== t.id); if (i >= 0) S.inbox.splice(Math.min(i, S.inbox.length), 0, it); save(); render(); } });
+}
+function inboxToNote(it, redraw, kind, subject) {
+  const a = activeSession();
+  const n = {
+    id: uid(), text: it.text, kind: kind || 'nota', date: it.date || todayStr(), time: '' , done: false,
+    starred: kind === 'importante', subjectId: subject ? subject.id : (it.subjectId || null),
+    sessionId: (a && a.id === it.sessionId) ? a.id : null, createdAt: new Date().toISOString()
+  };
+  S.notes.unshift(n);
+  const i = dropFromInbox(it);
+  save();
+  if (redraw) redraw(); else render();
+  const msg = kind === 'deberes' ? 'Guardado como deberes' + (subject ? ' · ' + subject.name : '') : kind === 'importante' ? 'Marcado como importante' : kind === 'recordatorio' ? 'Guardado como recordatorio' : 'Guardado como apunte';
+  toast(msg, { label: 'Deshacer', fn: () => { S.notes = S.notes.filter(x => x.id !== n.id); if (i >= 0) S.inbox.splice(Math.min(i, S.inbox.length), 0, it); save(); render(); } });
+}
+function pickSubject(title, cb) {
+  closeOverlays();
+  const ov = h('div', { class: 'overlay', style: 'z-index:65', onclick: (e) => { if (e.target === ov) ov.remove(); } });
+  const subs = S.subjects || [];
+  const sh = h('div', { class: 'sheet', style: 'max-width:360px', role: 'menu' }, h('div', { class: 'grabber' }),
+    h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:14px' }, title));
+  if (!subs.length) {
+    sh.append(h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, 'Todavía no tienes asignaturas creadas.'),
+      h('button', { class: 'btn btn-primary btn-block', onclick: () => { ov.remove(); go('subjectForm'); } }, 'Crear asignatura'));
+  }
+  for (const s of subs) sh.append(h('button', { class: 'set-row', onclick: () => { ov.remove(); cb(s); } },
+    h('span', { class: 'r-ic', style: 'background:' + tintHex(s.color, '22') + ';color:' + s.color, html: icon(s.icon || 'book', 17) }),
+    h('span', null, s.name)));
+  sh.append(h('button', { class: 'set-row', onclick: () => { ov.remove(); cb(null); } },
+    h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('x', 17) }), h('span', null, 'Sin asignatura')));
+  ov.append(sh);
+  document.body.appendChild(ov);
+}
+
+/* ---------- la clase de ahora (tarjeta viva, se refresca sola) ---------- */
+function slotRowEl(s, opts) {
+  opts = opts || {};
+  const sub = subjectById(s.subjectId);
+  return h('button', {
+    class: 'row slot-row' + (s.active === false ? ' slot-off' : ''),
+    style: 'border-left-color:' + (sub ? sub.color : 'var(--border)'),
+    onclick: () => go('slotForm', { id: s.id })
+  },
+    h('span', { class: 'slot-time' }, h('b', null, timeTxt(s.start)), h('span', null, timeTxt(s.end))),
+    h('span', { style: 'flex:1;min-width:0;text-align:left' },
+      h('b', null, sub ? sub.name : 'Sin asignatura'),
+      h('span', { class: 'r-sub' }, (s.room || '') + (s.room && s.active === false ? ' · ' : '') + (s.active === false ? 'inactiva' : ''))
+    ),
+    opts.live ? h('span', { class: 'nav-badge' }, 'ahora') : h('span', { class: 'chev', html: icon('chev', 16) })
+  );
+}
+function drawNowZone(zone) {
+  zone.innerHTML = '';
+  const a = activeSession();
+  const now = classNow();
+  const nx = classNext();
+  const today = activeSlotsToday();
+  if (a) {
+    const sub = subjectById(a.subjectId);
+    const color = sub ? sub.color : '#16A34A';
+    zone.append(h('div', { class: 'now-card live', style: 'border-left-color:' + color },
+      h('span', { class: 'nw-ic', style: 'background:' + tintHex(sub ? sub.color : '', '22') + ';color:' + color, html: icon(sub ? (sub.icon || 'book') : 'book', 24) }),
+      h('div', { style: 'flex:1;min-width:0' },
+        h('span', { class: 'nw-tag' }, 'Clase activa'),
+        h('b', { class: 'nw-sub' }, sub ? sub.name : 'Clase sin asignatura'),
+        h('span', { class: 'nw-meta' },
+          h('span', null, timeTxt(a.start) + (a.end ? ' — ' + timeTxt(a.end) : '')),
+          a.room ? h('span', null, '· ' + a.room) : null,
+          a.end ? h('span', { style: 'color:var(--green);font-weight:700' }, '· ' + leftTxt({ end: a.end })) : null)
+      ),
+      h('button', { class: 'btn btn-soft', style: 'flex:none', onclick: finishSession }, 'Terminar')
+    ));
+  } else if (now) {
+    const sub = subjectById(now.subjectId);
+    zone.append(h('div', { class: 'now-card live', style: 'border-left-color:' + (sub ? sub.color : 'var(--green)') },
+      h('span', { class: 'nw-ic', style: 'background:' + tintHex(sub ? sub.color : '', '22') + ';color:' + (sub ? sub.color : 'var(--green)'), html: icon(sub ? (sub.icon || 'book') : 'book', 24) }),
+      h('div', { style: 'flex:1;min-width:0' },
+        h('span', { class: 'nw-tag' }, 'Ahora'),
+        h('b', { class: 'nw-sub' }, sub ? sub.name : 'Clase sin asignatura'),
+        h('span', { class: 'nw-meta' },
+          h('span', null, slotLine(now)),
+          h('span', { style: 'color:var(--green);font-weight:700' }, '· ' + leftTxt(now)))
+      ),
+      h('button', { class: 'btn btn-primary', style: 'flex:none', onclick: () => startSession(now) }, 'Empezar')
+    ));
+  } else if (nx) {
+    const sub = subjectById(nx.subjectId);
+    zone.append(h('div', { class: 'idle-card' }, h('b', null, 'Ahora no tienes ninguna clase'), h('p', null, 'La siguiente empieza ' + inTxt(nx) + '.')));
+    zone.append(h('div', { class: 'now-card', style: 'border-left-color:' + (sub ? sub.color : 'var(--border)') },
+      h('span', { class: 'nw-ic', style: 'background:' + tintHex(sub ? sub.color : '', '22') + ';color:' + (sub ? sub.color : 'var(--text-2)'), html: icon(sub ? (sub.icon || 'book') : 'book', 24) }),
+      h('div', { style: 'flex:1;min-width:0' },
+        h('span', { class: 'nw-tag' }, 'Después'),
+        h('b', { class: 'nw-sub' }, sub ? sub.name : 'Clase sin asignatura'),
+        h('span', { class: 'nw-meta' }, h('span', null, slotLine(nx)), h('span', { style: 'color:var(--primary);font-weight:700' }, '· ' + inTxt(nx)))
+      ),
+      h('button', { class: 'btn btn-soft', style: 'flex:none', onclick: () => startSession(nx) }, 'Empezar')
+    ));
+  } else if (today.length) {
+    zone.append(h('div', { class: 'idle-card' },
+      h('b', null, 'Has terminado las clases de hoy'),
+      h('p', null, 'Buen trabajo. Revisa lo que apuntaste y organízalo cuando quieras.')));
+  } else {
+    zone.append(h('div', { class: 'idle-card' },
+      h('b', null, 'Hoy no tienes clases'),
+      h('p', null, (S.slots || []).length ? 'Tu horario no tiene ninguna clase para hoy.' : 'Configura tu horario y aquí verás qué clase toca en cada momento.')));
+    if (!(S.slots || []).length) zone.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-bottom:12px', onclick: () => go('classSchedule') }, 'Configurar horario'));
+  }
+  const rest = today.filter(s => (now ? hm(s.start) > hm(now.start) : nx ? hm(s.start) > hm(nx.start) : false));
+  if (rest.length) {
+    zone.append(h('div', { class: 'section-title' }, h('span', null, (nx && !now && !a) ? 'Más tarde' : 'Después')));
+    for (const s of rest) zone.append(slotRowEl(s));
+  }
+}
+/* la tarjeta se refresca cada 30 s sin re-renderizar la pantalla ni tocar lo que estás escribiendo */
+setInterval(() => {
+  const zone = document.getElementById('cls-now');
+  if (zone && route.name === 'class' && ui.classTab === 'hoy') drawNowZone(zone);
+}, 30000);
+
+/* ---------- pantalla Modo Clase: pestañas ---------- */
 function scrClass() {
   const wrap = h('div');
-  wrap.append(headBar('Modo Clase', 'Apunta rápido, luego lo ordenas',
+  const body = { hoy: classHoyBody, semana: classWeekBody, despues: classInboxBody, apuntes: classNotesBody, asignaturas: subjectsGrid }[ui.classTab] || classHoyBody;
+  wrap.append(headBar('Modo Clase', classSubTxt(),
+    h('button', { class: 'icon-btn', 'aria-label': 'Historial de clases', onclick: () => go('classHistory'), html: icon('clock', 20) }),
+    h('button', { class: 'icon-btn', 'aria-label': 'Horario', onclick: () => go('classSchedule'), html: icon('calendar', 20) }),
     h('button', { class: 'icon-btn', 'aria-label': 'Nueva nota completa', onclick: () => go('noteForm'), html: icon('plus', 20) })));
+  const tabs = h('div', { class: 'cls-tabs' });
+  const pending = (S.inbox || []).length;
+  for (const t of CLASS_TABS) tabs.append(h('button', {
+    class: 'cls-tab' + (ui.classTab === t.id ? ' on' : ''),
+    onclick: () => { ui.classTab = t.id; render(); }
+  }, t.label + (t.id === 'despues' && pending ? ' · ' + pending : '')));
+  wrap.append(tabs, body());
+  return wrap;
+}
+function classSubTxt() {
+  if (activeSession()) {
+    const s = subjectById((activeSession() || {}).subjectId);
+    return (s ? s.name + ' · ' : '') + 'clase activa';
+  }
+  const now = classNow();
+  if (now) return 'Ahora: ' + ((subjectById(now.subjectId) || {}).name || 'clase') + ' · ' + leftTxt(now);
+  const nx = classNext();
+  if (nx) return 'Después: ' + ((subjectById(nx.subjectId) || {}).name || 'clase') + ' · ' + inTxt(nx);
+  return activeSlotsToday().length ? 'Has terminado las clases de hoy' : 'Tu agenda de clase';
+}
+
+/* ---------- pestaña Hoy ---------- */
+function classHoyBody() {
+  const wrap = h('div');
+  const nowZone = h('div', { id: 'cls-now' });
+  drawNowZone(nowZone);
+  wrap.append(nowZone);
+  const live = !!activeSession();
+  wrap.append(h('p', { class: 'field-hint', style: 'margin-bottom:8px' },
+    live ? 'Apunta aquí lo que diga el profe. No hace falta organizarlo ahora.' : 'Escribe y pulsa Enter: se guarda en Para después y lo organizas cuando quieras.'));
+  const preview = h('div');
+  function drawPreview() {
+    preview.innerHTML = '';
+    const items = S.inbox || [];
+    if (!items.length) return;
+    preview.append(h('div', { class: 'section-title' },
+      h('span', null, 'Para después'),
+      h('button', { class: 'link', onclick: () => { ui.classTab = 'despues'; render(); } }, 'Ver los ' + items.length)));
+    for (const it of items.slice(0, 3)) preview.append(inboxRow(it, drawPreview));
+  }
+  wrap.append(captureBar('Escribe algo y pulsa Enter…', drawPreview));
+  drawPreview();
+  wrap.append(preview);
+  if (!live) {
+    const mine = (S.notes || []).filter(n => n.date === todayStr()).slice(0, 3);
+    if (mine.length) {
+      wrap.append(h('div', { class: 'section-title' },
+        h('span', null, 'Apuntes de hoy'),
+        h('button', { class: 'link', onclick: () => { ui.classTab = 'apuntes'; render(); } }, 'Ver todos')));
+      for (const n of mine) wrap.append(noteCard(n));
+    }
+  }
+  wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Concentración')));
+  wrap.append(pomodoroCard());
+  return wrap;
+}
+
+/* ---------- pestaña Semana ---------- */
+function scheduleSections(opts) {
+  opts = opts || {};
+  const frag = h('div');
+  const nowS = classNow();
+  const today = dowIdx(todayStr());
+  for (let d = 0; d < 7; d++) {
+    const daySlots = slotsOfDay(d);
+    if (!daySlots.length) continue;
+    frag.append(h('div', { class: 'section-title' + (d === today ? ' cls-today' : '') },
+      h('span', null, WEEK_FULL[d] + (d === today ? ' · hoy' : '')),
+      h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, daySlots.length)));
+    for (const s of daySlots) frag.append(slotRowEl(s, { live: !!(nowS && nowS.id === s.id) }));
+  }
+  return frag;
+}
+function classWeekBody() {
+  const wrap = h('div');
+  if (!(S.slots || []).length) {
+    wrap.append(emptyState('calendar', 'Sin horario todavía', 'Añade tus clases con su asignatura, su día y su hora para saber siempre qué toca.', 'Añadir clase', () => go('slotForm')));
+    return wrap;
+  }
+  wrap.append(scheduleSections());
+  wrap.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:6px', onclick: () => go('classSchedule') }, 'Gestionar horario'));
+  return wrap;
+}
+
+/* ---------- pestaña Para después ---------- */
+function classInboxBody() {
+  const wrap = h('div');
+  const zone = h('div');
+  function draw() {
+    zone.innerHTML = '';
+    const items = S.inbox || [];
+    if (!items.length) {
+      zone.append(emptyState('pin', 'Nada en Para después', 'Aquí cae todo lo que apuntes en clase. Cuando quieras, conviértelo en tarea, deberes o apunte.'));
+      return;
+    }
+    for (const it of items) zone.append(inboxRow(it, draw));
+    zone.append(h('p', { class: 'field-hint', style: 'text-align:center' }, 'Toca un elemento para convertirlo en tarea, deberes, apunte o recordatorio.'));
+  }
+  draw();
+  wrap.append(captureBar('Escribe algo y pulsa Enter…', draw), zone);
+  return wrap;
+}
+
+/* ---------- asignaturas (carpetas) ---------- */
+function subjectsGrid() {
+  const list = S.subjects || [];
+  if (!list.length) {
+    return emptyState('folder', 'Sin asignaturas todavía', 'Crea una asignatura para agrupar sus clases, sus deberes y sus apuntes.', 'Nueva asignatura', () => go('subjectForm'));
+  }
+  const grid = h('div', { class: 'person-grid' });
+  for (const s of list) {
+    const notes = (S.notes || []).filter(n => n.subjectId === s.id);
+    const pend = notes.filter(n => !n.done).length;
+    const ncl = slotsOfSubject(s.id).length;
+    grid.append(h('button', { class: 'person-card', onclick: () => go('subjectView', { id: s.id }) },
+      h('span', { class: 'subject-folder', style: 'background:' + tintHex(s.color, '22') + ';color:' + s.color, html: icon(s.icon || 'book', 26) }),
+      h('b', null, s.name),
+      h('span', null, ncl + (ncl === 1 ? ' clase' : ' clases') + ' · ' + notes.length + (notes.length === 1 ? ' apunte' : ' apuntes') + (pend ? ' · ' + pend + ' abiertos' : ''))
+    ));
+  }
+  grid.append(h('button', { class: 'person-card add', onclick: () => go('subjectForm') }, h('span', { html: icon('plus', 22) }), h('b', null, 'Añadir asignatura')));
+  return grid;
+}
+function scrSubjectView() {
+  const s = subjectById(route.params.id);
+  const back = () => { ui.classTab = 'asignaturas'; go('class', undefined, { replace: true }); };
+  if (!s) return emptyState('folder', 'Asignatura no encontrada', 'Puede que la hayas eliminado.', 'Ver asignaturas', back);
+  const wrap = h('div');
+  wrap.append(formHead(s.name, back,
+    h('div', { style: 'display:contents' },
+      h('button', { class: 'icon-btn', 'aria-label': 'Nuevo apunte de esta asignatura', onclick: () => go('noteForm', { subjectId: s.id }), html: icon('plus', 18) }),
+      h('button', { class: 'icon-btn', 'aria-label': 'Editar asignatura', onclick: () => go('subjectForm', { id: s.id }), html: icon('pencil', 18) }))));
+  const mine = (S.notes || []).filter(n => n.subjectId === s.id);
+  const mySlots = (S.slots || []).filter(x => x.subjectId === s.id).sort((a, b) => (a.day - b.day) || (a.start < b.start ? -1 : 1));
+  const open = mine.filter(n => !n.done).length;
+  wrap.append(h('div', { class: 'card', style: 'display:flex;align-items:center;gap:14px;margin-bottom:8px' },
+    h('span', { class: 'subject-folder', style: 'background:' + tintHex(s.color, '22') + ';color:' + s.color, html: icon(s.icon || 'book', 26) }),
+    h('div', { style: 'min-width:0' },
+      h('b', { style: 'font-size:16px;display:block' }, s.name),
+      h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, mine.length + (mine.length === 1 ? ' apunte' : ' apuntes') + (open ? ' · ' + open + ' abiertos' : '') + ' · ' + mySlots.length + (mySlots.length === 1 ? ' clase' : ' clases') + ' a la semana')
+    )
+  ));
+  if (mySlots.length) {
+    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Horario')));
+    for (const x of mySlots) wrap.append(slotRowEl(x));
+  }
+  const sections = [['nota', 'Apuntes'], ['deberes', 'Deberes'], ['recordatorio', 'Recordatorios'], ['material', 'Material'], ['importante', 'Importante']];
+  let any = false;
+  for (const pair of sections) {
+    const arr = mine.filter(n => (n.kind || 'nota') === pair[0])
+      .sort((a, b) => a.date === b.date ? (a.done - b.done) : (a.date < b.date ? 1 : -1));
+    if (!arr.length) continue;
+    any = true;
+    wrap.append(h('div', { class: 'section-title' },
+      h('span', null, pair[1]),
+      h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, arr.length)));
+    for (const n of arr) wrap.append(noteCard(n));
+  }
+  if (!any) wrap.append(emptyState('pencil', 'Sin apuntes todavía', 'Añade el primer apunte, deber o recordatorio de ' + s.name + '.', 'Nuevo apunte', () => go('noteForm', { subjectId: s.id })));
+  return wrap;
+}
+
+/* ---------- historial de clases ---------- */
+function scrClassHistory() {
+  const wrap = h('div');
+  const back = () => { ui.classTab = 'hoy'; go('class', undefined, { replace: true }); };
+  const sessions = (S.sessions || []).slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (a.start || '') < (b.start || '') ? 1 : -1;
+  });
+  wrap.append(formHead('Historial de clases', back));
+  if (!sessions.length) {
+    wrap.append(emptyState('clock', 'Sin clases registradas', 'Cuando uses «Empezar» y luego «Terminar clase», aquí quedará el resumen de lo que apuntaste.', 'Ir a Hoy', back));
+    return wrap;
+  }
+  let cur = null;
+  for (const s of sessions) {
+    if (s.date !== cur) {
+      cur = s.date;
+      wrap.append(h('div', { class: 'section-title' }, h('span', null, relDayTxt(cur))));
+    }
+    const sub = subjectById(s.subjectId);
+    const c = s.counts || { inbox: 0, notes: 0, important: 0 };
+    const total = (c.inbox || 0) + (c.notes || 0);
+    wrap.append(h('div', { class: 'hist-row' },
+      h('span', { class: 'r-ic', style: 'background:' + tintHex(sub ? sub.color : '', '22') + ';color:' + (sub ? sub.color : 'var(--text-2)'), html: icon(sub ? (sub.icon || 'book') : 'book', 18) }),
+      h('div', { style: 'flex:1;min-width:0' },
+        h('b', null, sub ? sub.name : 'Clase sin asignatura'),
+        h('span', { class: 'r-sub' }, timeTxt(s.start) + ' — ' + timeTxt(s.end || s.start) + (s.room ? ' · ' + s.room : ''))),
+      h('span', { style: 'font-size:12px;font-weight:700;color:var(--text-2);flex:none' }, total + (total === 1 ? ' elemento' : ' elementos'))
+    ));
+  }
+  return wrap;
+}
+
+/* ---------- tarjeta de apunte (compartida por todas las vistas) ---------- */
+function noteCard(n, redraw) {
+  const st = noteKindStyle(n.kind);
+  const kind = NOTE_KINDS.find(k => k.id === n.kind) || NOTE_KINDS[0];
+  const sub = subjectById(n.subjectId);
+  const refresh = () => { save(); if (redraw) redraw(); else render(); };
+  return h('div', { class: 'note-card' + (n.done ? ' done' : ''), style: 'border-left:3px solid ' + st.c },
+    h('button', {
+      class: 'note-check' + (n.done ? ' on' : ''), 'aria-label': n.done ? 'Marcar como pendiente' : 'Marcar como hecho',
+      onclick: () => { n.done = !n.done; refresh(); }
+    }, n.done ? h('span', { html: icon('check', 13) }) : null),
+    h('div', { style: 'flex:1;min-width:0' },
+      h('p', { class: 'note-text' }, n.text),
+      h('div', { class: 'note-meta' },
+        h('span', { class: 'note-kind', style: 'color:' + st.c + ';background:' + st.bg + ';border:1px solid ' + st.br }, kind.label),
+        sub ? h('span', { class: 'subj-chip', style: 'color:' + sub.color + ';background:' + tintHex(sub.color, '22') }, sub.name) : null,
+        n.starred ? h('span', { class: 'note-star', style: 'color:var(--amber)', html: icon('star', 13) }) : null,
+        noteTimeStr(n) ? h('span', null, '· ' + noteTimeStr(n)) : null)
+    ),
+    h('button', { class: 'icon-btn', style: 'width:32px;height:32px', 'aria-label': 'Más opciones', onclick: () => noteMenu(n, redraw) }, h('span', { class: 'chev', html: icon('more', 16) }))
+  );
+}
+
+/* ---------- entrada rápida de apuntes ya organizados (se usa en la pestaña Apuntes) ---------- */
+function classNotesCapture(onSaved) {
+  const wrap = h('div');
   // ---- entrada rápida ----
   let qKind = 'nota';
   const kindSeg = h('div', { class: 'seg', style: 'flex-wrap:wrap;margin-bottom:10px' },
@@ -926,32 +1723,96 @@ function scrClass() {
     e.preventDefault();
     const text = quickIn.value.trim();
     if (!text) return;
-    S.notes.unshift({ id: uid(), text, kind: qKind, date: todayStr(), time: '', done: false, starred: qKind === 'importante', createdAt: new Date().toISOString() });
+    const live = activeSession();
+    S.notes.unshift({
+      id: uid(), text, kind: qKind, date: todayStr(), time: '', done: false, starred: qKind === 'importante',
+      subjectId: (ui.noteSubject && ui.noteSubject !== 'todas' && ui.noteSubject !== 'sin') ? ui.noteSubject : null,
+      sessionId: live ? live.id : null, createdAt: new Date().toISOString()
+    });
     save();
     quickIn.value = '';
     toast('Apuntado');
-    drawList();
+    if (onSaved) onSaved();
   });
   wrap.append(kindSeg, quickIn,
     h('p', { class: 'field-hint', style: 'margin-bottom:4px' }, 'Se guarda con la fecha de hoy.'));
+
+  return wrap;
+}
+
+/* ---------- cronómetro de concentración: estado fuera del DOM para que no se pierda al cambiar de pestaña ---------- */
+const __pom = { timer: null, left: 25 * 60, running: false, phase: 'focus' };
+function pomodoroCard() {
+  return h('div', { class: 'set-card', style: 'display:flex;align-items:center;gap:14px;padding:16px 18px' },
+    h('div', { style: 'flex:1' },
+      h('div', { id: 'pom-time', style: 'font-size:34px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums' }, '25:00'),
+      h('div', { id: 'pom-phase', style: 'font-size:11.5px;font-weight:700;color:var(--text-2);letter-spacing:.06em;text-transform:uppercase;margin-top:2px' }, 'Concentración')),
+    h('button', { class: 'btn btn-soft', style: 'padding:10px 16px', onclick: () => pomSet(__pom.phase === 'focus' ? 5 : 25, __pom.phase === 'focus' ? 'break' : 'focus') }, 'Descanso'),
+    h('button', { class: 'btn btn-soft', style: 'padding:10px 16px', onclick: () => pomSet(__pom.phase === 'focus' ? 25 : 5, __pom.phase) }, 'Reiniciar'),
+    h('button', { id: 'pom-toggle', class: 'btn btn-primary', style: 'padding:10px 22px', onclick: pomToggle }, 'Empezar')
+  );
+}
+function pomSet(mins, phase) { __pom.left = mins * 60; __pom.phase = phase; __pom.running = false; clearInterval(__pom.timer); __pom.timer = null; pomDraw(); }
+function pomToggle() {
+  if (__pom.running) { clearInterval(__pom.timer); __pom.timer = null; __pom.running = false; pomDraw(); return; }
+  __pom.running = true; pomDraw();
+  __pom.timer = setInterval(pomTick, 1000);
+}
+function pomTick() {
+  __pom.left--;
+  if (__pom.left <= 0) {
+    clearInterval(__pom.timer); __pom.timer = null; __pom.running = false;
+    const done = __pom.phase === 'focus';
+    showAppNotification('DailyHub · Pomodoro', done ? 'Ciclo de concentración terminado. Toca descansar 5 min.' : 'Descanso terminado. ¿Otra ronda de 25 min?');
+    pomSet(done ? 5 : 25, done ? 'break' : 'focus');
+    return;
+  }
+  pomDraw();
+}
+function pomDraw() {
+  const t = document.getElementById('pom-time'), ph = document.getElementById('pom-phase'), tg = document.getElementById('pom-toggle');
+  if (t) t.textContent = String(Math.floor(__pom.left / 60)).padStart(2, '0') + ':' + String(__pom.left % 60).padStart(2, '0');
+  if (ph) {
+    ph.textContent = __pom.phase === 'focus' ? 'Concentración' : 'Descanso';
+    ph.style.color = __pom.phase === 'focus' ? 'var(--primary)' : 'var(--green)';
+  }
+  if (tg) tg.textContent = __pom.running ? 'Pausar' : 'Empezar';
+}
+
+/* ---------- pestaña Apuntes ---------- */
+function classNotesBody() {
+  const wrap = h('div');
   // ---- filtros ----
-  const FILTERS = ['hoy', 'importante', 'abiertas', 'todas'];
-  const FILTER_L = { hoy: 'Hoy', importante: 'Importante', abiertas: 'Pendientes', todas: 'Todas' };
-  let clsFilter = 'hoy';
+  wrap.append(classNotesCapture(drawList));
+  const subChips = h('div', { class: 'chips' });
+  function drawSubChips() {
+    subChips.innerHTML = '';
+    const opts = [{ id: 'todas', label: 'Todas' }].concat((S.subjects || []).map(s => ({ id: s.id, label: s.name })));
+    if ((S.notes || []).some(n => !n.subjectId)) opts.push({ id: 'sin', label: 'Sin asignatura' });
+    for (const o of opts) subChips.append(h('button', {
+      class: 'chip' + (ui.noteSubject === o.id ? ' on' : ''),
+      onclick: () => { ui.noteSubject = o.id; drawSubChips(); drawList(); }
+    }, o.label));
+  }
+  const FILTERS = ['todas', 'abiertas', 'importante'];
+  const FILTER_L = { todas: 'Todas', abiertas: 'Pendientes', importante: 'Importantes' };
+  let clsFilter = FILTER_L[ui.noteState] ? ui.noteState : 'todas';
   const fchips = h('div', { class: 'chips' });
   function drawChips() {
     fchips.innerHTML = '';
     for (const f of FILTERS) fchips.append(h('button', {
       class: 'chip' + (f === clsFilter ? ' on' : ''),
-      onclick: () => { clsFilter = f; drawChips(); drawList(); }
+      onclick: () => { clsFilter = f; ui.noteState = f; drawChips(); drawList(); }
     }, FILTER_L[f]));
   }
   drawChips();
-  wrap.append(fchips);
+  drawSubChips();
+  wrap.append(subChips, fchips);
   // ---- lista agrupada por fecha ----
   const listWrap = h('div');
   function matchesFilter(n) {
-    if (clsFilter === 'hoy') return n.date === todayStr();
+    if (ui.noteSubject === 'sin') { if (n.subjectId) return false; }
+    else if (ui.noteSubject !== 'todas' && n.subjectId !== ui.noteSubject) return false;
     if (clsFilter === 'importante') return !!n.starred;
     if (clsFilter === 'abiertas') return !n.done;
     return true;
@@ -963,24 +1824,7 @@ function scrClass() {
     if (diff === -1) return 'Ayer';
     return fmtLong(ymd);
   }
-  function noteRow(n) {
-    const st = noteKindStyle(n.kind);
-    const kind = NOTE_KINDS.find(k => k.id === n.kind) || NOTE_KINDS[0];
-    return h('div', { class: 'note-card' + (n.done ? ' done' : ''), style: 'border-left:3px solid ' + st.c },
-      h('button', {
-        class: 'note-check' + (n.done ? ' on' : ''), 'aria-label': n.done ? 'Marcar como pendiente' : 'Marcar como hecho',
-        onclick: () => { n.done = !n.done; save(); drawList(); }
-      }, n.done ? icon('check', 13) : null),
-      h('div', { style: 'flex:1;min-width:0' },
-        h('p', { class: 'note-text' }, n.text),
-        h('div', { class: 'note-meta' },
-          h('span', { class: 'note-kind', style: 'color:' + st.c + ';background:' + st.bg + ';border:1px solid ' + st.br }, kind.label),
-          n.starred ? h('span', { class: 'note-star', style: 'color:var(--amber)', html: icon('star', 13) }) : null,
-          noteTimeStr(n) ? h('span', null, '· ' + noteTimeStr(n)) : null
-        )),
-      h('button', { class: 'icon-btn', style: 'width:32px;height:32px', 'aria-label': 'Más opciones', onclick: () => noteMenu(n) }, h('span', { class: 'chev', html: icon('more', 16) }))
-    );
-  }
+  function noteRow(n) { return noteCard(n, drawList); }
   function drawList() {
     listWrap.innerHTML = '';
     const arr = S.notes.filter(matchesFilter)
@@ -1006,18 +1850,32 @@ function scrClass() {
   return wrap;
 }
 
-function noteMenu(n) {
+function noteMenu(n, redraw) {
   closeOverlays();
+  const done = () => { save(); if (redraw) redraw(); else render(); };
   const ov = h('div', { class: 'overlay', style: 'z-index:60', onclick: (e) => { if (e.target === ov) ov.remove(); } });
+  const sub = subjectById(n.subjectId);
   const sh = h('div', { class: 'sheet', style: 'max-width:340px', role: 'menu' },
-    h('button', { class: 'set-row', onclick: () => { ov.remove(); n.starred = !n.starred; save(); render(); } },
+    h('button', { class: 'set-row', onclick: () => { ov.remove(); n.starred = !n.starred; done(); } },
       h('span', { class: 'r-ic', html: icon('star', 17) }), h('span', null, n.starred ? 'Quitar de importante' : 'Marcar como importante')),
+    h('button', { class: 'set-row', onclick: () => {
+      ov.remove();
+      pickSubject('Asignatura', (s) => { n.subjectId = s ? s.id : null; done(); toast(s ? 'Movido a ' + s.name : 'Sin asignatura'); });
+    } },
+      h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('folder', 17) }),
+      h('span', null, sub ? 'Asignatura: ' + sub.name : 'Asignar a una asignatura')),
+    h('button', { class: 'set-row', onclick: () => { ov.remove(); noteToTask(n, redraw); } },
+      h('span', { class: 'r-ic', html: icon('checksq', 17) }), h('span', null, 'Convertir en tarea')),
     h('button', { class: 'set-row', onclick: () => { ov.remove(); go('noteForm', { id: n.id }); } },
       h('span', { class: 'r-ic', html: icon('pencil', 17) }), h('span', null, 'Editar')),
     h('button', { class: 'set-row', style: 'color:var(--danger)', onclick: () => {
       ov.remove();
       confirmDialog({ title: '¿Eliminar la nota?', message: n.text, confirmText: 'Eliminar', onConfirm: () => {
-        S.notes = S.notes.filter(x => x.id !== n.id); save(); render(); toast('Nota eliminada');
+        const idx = S.notes.indexOf(n);
+        if (idx < 0) return;
+        const [gone] = S.notes.splice(idx, 1);
+        save(); if (redraw) redraw(); else render();
+        toast('Nota eliminada', { label: 'Deshacer', fn: () => { S.notes.splice(Math.min(idx, S.notes.length), 0, gone); save(); render(); } });
       } });
     } },
       h('span', { class: 'r-ic', html: icon('trash', 17) }), h('span', null, 'Eliminar'))
@@ -1025,10 +1883,23 @@ function noteMenu(n) {
   ov.append(sh);
   document.body.appendChild(ov);
 }
+// un apunte que en realidad es una tarea: se mueve al sistema de tareas de siempre
+function noteToTask(n, redraw) {
+  const t = { id: uid('t'), title: n.text, icon: 'checksq', cat: 'Personal', freq: { type: 'once', date: n.date || todayStr() }, time: '', completions: [], createdAt: todayStr() };
+  S.tasks.push(t);
+  const idx = S.notes.indexOf(n);
+  if (idx >= 0) S.notes.splice(idx, 1);
+  save();
+  if (redraw) redraw(); else render();
+  toast('Convertida en tarea', { label: 'Deshacer', fn: () => { S.tasks = S.tasks.filter(x => x.id !== t.id); if (idx >= 0) S.notes.splice(Math.min(idx, S.notes.length), 0, n); save(); render(); } });
+}
 
 function scrNoteForm() {
   const editing = route.params.id ? S.notes.find(n => n.id === route.params.id) : null;
-  const back = () => go('class', undefined, { replace: true });
+  const back = () => {
+    if (route.params.subjectId) { go('subjectView', { id: route.params.subjectId }, { replace: true }); return; }
+    go('class', undefined, { replace: true });
+  };
   const wrap = h('div');
   wrap.append(formHead(editing ? 'Editar nota' : 'Nueva nota', back,
     editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar nota', onclick: () => {
@@ -1048,6 +1919,13 @@ function scrNoteForm() {
     }, k.label));
   }
   wrap.append(h('p', { class: 'big-q' }, 'Tipo'), kindSeg);
+  // asignatura (opcional): el apunte queda archivado en su carpeta
+  let preSub = editing ? (editing.subjectId || '') : (route.params.subjectId || (activeSession() ? activeSession().subjectId || '' : ''));
+  if (preSub && !subjectById(preSub)) preSub = '';
+  const subSel = h('select', { class: 'input' },
+    h('option', { value: '', selected: !preSub }, 'Sin asignatura'),
+    (S.subjects || []).map(s => h('option', { value: s.id, selected: s.id === preSub }, s.name)));
+  wrap.append(h('div', { class: 'field' }, h('label', null, 'Asignatura (opcional)'), subSel));
   const dateIn = h('input', { class: 'input', type: 'date', value: editing ? editing.date : todayStr() });
   wrap.append(h('p', { class: 'big-q' }, '¿De qué día es?'), h('div', { class: 'field' }, dateIn));
   const timeIn = h('input', { class: 'input', type: 'time', value: editing ? (editing.time || '') : '' });
@@ -1068,15 +1946,216 @@ function scrNoteForm() {
     onclick: () => {
       const text = textIn.value.trim();
       if (!text) { textIn.focus(); toast('Escribe algo primero'); return; }
-      const data = { text, kind, date: dateIn.value || todayStr(), time: timeIn.value || '', starred };
+      const data = { text, kind, date: dateIn.value || todayStr(), time: timeIn.value || '', starred, subjectId: subSel.value || null };
       if (editing) Object.assign(editing, data);
-      else S.notes.unshift({ id: uid(), done: false, createdAt: new Date().toISOString(), ...data });
+      else S.notes.unshift({ id: uid(), done: false, sessionId: activeSession() ? activeSession().id : null, createdAt: new Date().toISOString(), ...data });
       save(); back(); toast(editing ? 'Nota actualizada' : 'Nota apuntada');
     }
   }, editing ? 'Guardar cambios' : 'Apuntar'));
   const sb = wrap.querySelector('.btn-primary');
   if (sb) [dateIn, timeIn].forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sb.click(); } }));
   return wrap;
+}
+
+/* ================= MODO CLASE: ASIGNATURAS ================= */
+function scrClassSubjects() {
+  const wrap = h('div');
+  const list = S.subjects || [];
+  wrap.append(headBar('Asignaturas', list.length ? list.length + (list.length === 1 ? ' asignatura' : ' asignaturas') : 'Tus carpetas de clase',
+    h('button', { class: 'icon-btn', 'aria-label': 'Nueva asignatura', onclick: () => go('subjectForm'), html: icon('plus', 20) })));
+  wrap.append(subjectsGrid());
+  return wrap;
+}
+
+function scrSubjectForm() {
+  const editing = route.params.id ? subjectById(route.params.id) : null;
+  const back = () => go('classSubjects', undefined, { replace: true });
+  const wrap = h('div');
+  wrap.append(formHead(editing ? 'Editar asignatura' : 'Nueva asignatura', back,
+    editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar asignatura', onclick: () => deleteSubject(editing), html: icon('trash', 18) }) : null));
+  let color = editing ? (editing.color || COLORS[0]) : COLORS[(S.subjects || []).length % COLORS.length];
+  let iconId = editing ? (editing.icon || 'book') : 'book';
+  const nameIn = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Redes, Sistemas, Ofimática…', value: editing ? editing.name : '', maxlength: '30' });
+  const prev = h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px' });
+  function drawPrev() {
+    prev.innerHTML = '';
+    prev.append(
+      h('span', { class: 'subject-folder', style: 'width:66px;height:66px;border-radius:22px;background:' + tintHex(color, '22') + ';color:' + color, html: icon(iconId, 30) }),
+      h('b', { style: 'font-size:15px;font-weight:700' }, nameIn.value.trim() || 'Sin nombre')
+    );
+  }
+  nameIn.addEventListener('input', drawPrev);
+  drawPrev();
+  wrap.append(prev, h('div', { class: 'field' }, h('label', null, 'Nombre de la asignatura'), nameIn));
+  const swRow = h('div', { class: 'swatches' });
+  for (const c of COLORS) swRow.append(h('button', {
+    type: 'button', class: 'swatch' + (c === color ? ' on' : ''), style: 'background:' + c,
+    onclick: (e) => { color = c; [...swRow.children].forEach(x => x.classList.remove('on')); e.currentTarget.classList.add('on'); drawPrev(); }
+  }));
+  wrap.append(h('div', { class: 'field' }, h('label', null, 'Color'), swRow));
+  let showingAll = !SUBJECT_ICONS_QUICK.includes(iconId);
+  const ig = h('div', { class: 'icon-grid' });
+  function drawIcons() {
+    ig.innerHTML = '';
+    const list = showingAll ? ICON_CHOICES : ICON_CHOICES.filter(c => SUBJECT_ICONS_QUICK.includes(c.id));
+    for (const c of list) ig.append(h('button', {
+      type: 'button', class: 'icon-opt' + (c.id === iconId ? ' on' : ''),
+      onclick: (e) => { iconId = c.id; [...ig.children].forEach(x => x.classList.remove('on')); e.currentTarget.classList.add('on'); drawPrev(); }
+    }, h('span', { html: icon(c.id, 22) }), h('span', null, c.label)));
+  }
+  drawIcons();
+  const iconToggle = h('button', {
+    class: 'btn btn-soft', style: 'width:100%;margin:-10px 0 18px;font-size:13px',
+    onclick: () => { showingAll = !showingAll; drawIcons(); iconToggle.textContent = showingAll ? 'Mostrar menos' : 'Mostrar más iconos'; }
+  }, showingAll ? 'Mostrar menos' : 'Mostrar más iconos');
+  wrap.append(h('p', { class: 'big-q' }, 'Icono'), ig, iconToggle);
+  wrap.append(h('button', {
+    class: 'btn btn-primary btn-block btn-lg',
+    onclick: () => {
+      const name = nameIn.value.trim();
+      if (!name) { nameIn.focus(); toast('Escribe un nombre'); return; }
+      const data = { name, color, icon: iconId };
+      let sid = editing ? editing.id : uid('s');
+      if (editing) Object.assign(editing, data);
+      else S.subjects.push({ id: sid, createdAt: todayStr(), ...data });
+      save();
+      toast(editing ? 'Asignatura actualizada' : 'Asignatura creada');
+      // si venimos de crear una clase, volvemos al formulario con esta asignatura ya elegida
+      if (route.params.from === 'slotForm') go('slotForm', { subjectId: sid }, { replace: true });
+      else back();
+    }
+  }, editing ? 'Guardar cambios' : 'Crear asignatura'));
+  const sb = wrap.querySelector('.btn-primary');
+  if (sb) wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sb.click(); } }));
+  return wrap;
+}
+
+function deleteSubject(s) {
+  confirmDialog({
+    title: '¿Eliminar «' + s.name + '»?',
+    message: 'Se quitará esta asignatura' + (slotsOfSubject(s.id).length ? (slotsOfSubject(s.id).length === 1 ? ' y su clase del horario' : ' y sus ' + slotsOfSubject(s.id).length + ' clases del horario') : '') + '. Sus apuntes no se borran: pasarán a «Sin asignatura». Podrás deshacerlo unos segundos desde el aviso.',
+    confirmText: 'Eliminar',
+    onConfirm: () => {
+      const i = S.subjects.findIndex(x => x.id === s.id);
+      if (i < 0) return;
+      const [removed] = S.subjects.splice(i, 1);
+      const touched = (S.notes || []).filter(n => n.subjectId === s.id);
+      touched.forEach(n => { n.subjectId = null; });
+      const removedSlots = [];
+      for (let k = (S.slots || []).length - 1; k >= 0; k--) if (S.slots[k].subjectId === s.id) removedSlots.push(S.slots.splice(k, 1)[0]);
+      save();
+      toast('Asignatura eliminada', { label: 'Deshacer', fn: () => {
+        S.subjects.splice(Math.min(i, S.subjects.length), 0, removed);
+        touched.forEach(n => { n.subjectId = s.id; });
+        removedSlots.forEach(x => S.slots.push(x));
+        save(); render();
+      } });
+      go('classSubjects');
+    }
+  });
+}
+
+/* ================= MODO CLASE: HORARIO ================= */
+function scrClassSchedule() {
+  const wrap = h('div');
+  const slots = S.slots || [];
+  const act = slots.filter(s => s.active).length;
+  wrap.append(headBar('Horario', slots.length ? act + (act === 1 ? ' clase' : ' clases') + ' a la semana' + (slots.length !== act ? ' · ' + (slots.length - act) + ' inactiva' + (slots.length - act === 1 ? '' : 's') : '') : 'Tu semana de clases',
+    h('button', { class: 'icon-btn', 'aria-label': 'Asignaturas', onclick: () => go('classSubjects'), html: icon('folder', 20) }),
+    h('button', { class: 'icon-btn', 'aria-label': 'Nueva clase', onclick: () => go('slotForm'), html: icon('plus', 20) })));
+  if (!slots.length) {
+    wrap.append(emptyState('calendar', 'Sin horario todavía', 'Añade tus clases con su asignatura, su día y su hora para saber siempre qué toca.', 'Añadir clase', () => go('slotForm')));
+    return wrap;
+  }
+  wrap.append(scheduleSections());
+  return wrap;
+}
+
+function scrSlotForm() {
+  const editing = route.params.id ? (S.slots || []).find(x => x.id === route.params.id) : null;
+  const back = () => go('classSchedule', undefined, { replace: true });
+  const wrap = h('div');
+  wrap.append(formHead(editing ? 'Editar clase' : 'Nueva clase', back,
+    editing ? h('div', { style: 'display:contents' },
+      h('button', { class: 'icon-btn', 'aria-label': 'Duplicar clase', onclick: () => duplicateSlot(editing), html: icon('copy', 18) }),
+      h('button', { class: 'icon-btn', 'aria-label': 'Eliminar clase', onclick: () => deleteSlot(editing), html: icon('trash', 18) })
+    ) : null));
+  const subjects = S.subjects || [];
+  // una clase sin asignatura no tiene sentido: se pide crear la primera
+  if (!subjects.length) {
+    wrap.append(emptyState('folder', 'Primero, una asignatura', 'Cada clase del horario pertenece a una asignatura. Crea la primera y seguimos con el horario.', 'Nueva asignatura', () => go('subjectForm', { from: 'slotForm' })));
+    return wrap;
+  }
+  let subjectId = editing ? editing.subjectId : (route.params.subjectId || subjects[0].id);
+  if (!subjectById(subjectId)) subjectId = subjects[0].id;
+  const subSel = h('select', { class: 'input' }, subjects.map(s => h('option', { value: s.id, selected: s.id === subjectId }, s.name)));
+  wrap.append(h('div', { class: 'field' }, h('label', null, 'Asignatura'), subSel));
+  let day = editing ? editing.day : dowIdx(todayStr());
+  const dayRow = h('div', { class: 'wchips' });
+  WEEK_L.forEach((l, i) => dayRow.append(h('button', {
+    type: 'button', class: 'wchip' + (i === day ? ' on' : ''),
+    onclick: (e) => { day = i; [...dayRow.children].forEach(x => x.classList.remove('on')); e.currentTarget.classList.add('on'); }
+  }, l)));
+  wrap.append(h('p', { class: 'big-q' }, '¿Qué día?'), dayRow);
+  const startIn = h('input', { class: 'input', type: 'time', value: editing ? editing.start : '09:00' });
+  const endIn = h('input', { class: 'input', type: 'time', value: editing ? editing.end : '10:00' });
+  wrap.append(h('p', { class: 'big-q' }, '¿A qué hora?'),
+    h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
+      h('div', { class: 'field' }, h('label', null, 'Empieza'), startIn),
+      h('div', { class: 'field' }, h('label', null, 'Termina'), endIn)));
+  const roomIn = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Aula 204', value: editing ? editing.room || '' : '', maxlength: '30' });
+  wrap.append(h('div', { class: 'field' }, h('label', null, 'Aula (opcional)'), roomIn));
+  let active = editing ? editing.active !== false : true;
+  wrap.append(h('div', { class: 'set-card', style: 'margin-bottom:18px' },
+    switchRow('Clase activa', 'Desactívala para dejarla guardada sin que cuente', active, (v) => { active = v; })));
+  wrap.append(h('button', {
+    class: 'btn btn-primary btn-block btn-lg',
+    onclick: () => {
+      const start = startIn.value, end = endIn.value;
+      if (!start || !end) { toast('Pon la hora de inicio y la de fin'); return; }
+      if (hm(end) <= hm(start)) { toast('La hora de fin debe ser posterior a la de inicio'); return; }
+      const data = { subjectId: subSel.value, day, start, end, room: roomIn.value.trim(), active };
+      if (editing) Object.assign(editing, data);
+      else S.slots.push({ id: uid('c'), createdAt: todayStr(), ...data });
+      save();
+      const clash = (S.slots || []).find(x => (editing ? x.id !== editing.id : true) && x.active && data.active && slotsOverlap(x, data));
+      if (clash) {
+        const cs = subjectById(clash.subjectId);
+        toast('Se solapa con ' + (cs ? cs.name : 'otra clase') + ' · ' + timeTxt(clash.start) + '—' + timeTxt(clash.end));
+      } else {
+        toast(editing ? 'Clase actualizada' : 'Clase añadida');
+      }
+      back();
+    }
+  }, editing ? 'Guardar cambios' : 'Añadir clase'));
+  const sb = wrap.querySelector('.btn-primary');
+  if (sb) wrap.querySelectorAll('input[type="text"]').forEach(el => el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sb.click(); } }));
+  return wrap;
+}
+
+function duplicateSlot(s) {
+  const copy = Object.assign({}, s, { id: uid('c'), createdAt: todayStr() });
+  S.slots.push(copy);
+  save();
+  toast('Clase duplicada · cambia el día');
+  go('slotForm', { id: copy.id });
+}
+
+function deleteSlot(s) {
+  const sub = subjectById(s.subjectId);
+  confirmDialog({
+    title: '¿Eliminar esta clase?',
+    message: (sub ? sub.name : 'Sin asignatura') + ' · ' + WEEK_FULL[s.day] + ' de ' + timeTxt(s.start) + ' a ' + timeTxt(s.end),
+    confirmText: 'Eliminar',
+    onConfirm: () => {
+      const i = S.slots.findIndex(x => x.id === s.id);
+      if (i < 0) return;
+      const [removed] = S.slots.splice(i, 1);
+      save();
+      toast('Clase eliminada', { label: 'Deshacer', fn: () => { S.slots.splice(Math.min(i, S.slots.length), 0, removed); save(); render(); } });
+      go('classSchedule');
+    }
+  });
 }
 
 function headBar(title, sub, ...actions) {
@@ -1132,13 +2211,21 @@ function scrHome() {
   wrap.append(progCard);
   // acceso rápido a Modo Clase (visible siempre; también con gesto hacia la izquierda)
   const classOpen = (S.notes || []).filter(n => !n.done).length;
+  const classInboxN = (S.inbox || []).length;
+  const liveNow = classNow(), liveNext = classNext();
+  const liveSub = subjectById((activeSession() || {}).subjectId);
+  const classLine = activeSession() ? ((liveSub ? liveSub.name : 'Clase sin asignatura') + ' · clase activa')
+    : liveNow ? ('Ahora: ' + ((subjectById(liveNow.subjectId) || {}).name || 'clase') + ' · ' + leftTxt(liveNow))
+    : liveNext ? ('Después: ' + ((subjectById(liveNext.subjectId) || {}).name || 'clase') + ' · ' + inTxt(liveNext))
+    : classInboxN ? classInboxN + ' en Para después'
+    : classOpen ? classOpen + ' apunte' + (classOpen > 1 ? 's' : '') + ' sin terminar' : 'Apunta algo rápido';
   wrap.append(h('button', {
     class: 'card', style: 'width:100%;text-align:left;margin:-8px 0 20px;display:flex;align-items:center;gap:12px',
     onclick: () => go('class')
   },
     h('span', { class: 'r-ic', html: icon('pencil', 19) }),
-    h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14.5px;display:block' }, 'Modo Clase'), h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, classOpen ? classOpen + ' apunte' + (classOpen > 1 ? 's' : '') + ' sin terminar' : 'Apunta algo rápido')),
-    classOpen ? h('span', { class: 'nav-badge' }, classOpen) : h('span', { class: 'chev', html: icon('chev', 16) })
+    h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14.5px;display:block' }, 'Modo Clase'), h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, classLine)),
+    (classInboxN || classOpen) ? h('span', { class: 'nav-badge' }, classInboxN || classOpen) : h('span', { class: 'chev', html: icon('chev', 16) })
   ));
   addSwipe(wrap, () => go('class'), null);
   // tareas de hoy
@@ -1455,8 +2542,8 @@ function scrPerson() {
     h('p', { style: 'font-size:13px;color:var(--text-2);margin-top:4px' },
       giftsOf(p.id).length + (giftsOf(p.id).length === 1 ? ' regalo' : ' regalos') + (p.birthday ? bdayTxt(p.birthday) : ''))
   ));
-  const d = p.details || {};
-  const hasDetails = !!(p.notes || d.gustos || d.favoritos || (Array.isArray(d.fechas) && d.fechas.length));
+  const aboutTags = personAboutTags(p);
+  const hasDetails = aboutTags.length > 0;
   const detCard = h('div', { class: 'card', style: 'text-align:left;margin-bottom:20px' },
     h('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px' },
       h('b', { style: 'font-size:15px' }, 'Sobre ' + p.name.split(' ')[0]),
@@ -1464,25 +2551,11 @@ function scrPerson() {
     )
   );
   if (hasDetails) {
-    const rows = [];
-    if (p.notes) rows.push({ ic: 'pencil', label: 'Notas', val: p.notes });
-    if (d.gustos) rows.push({ ic: 'heart', label: 'Gustos', val: d.gustos });
-    if (d.favoritos) rows.push({ ic: 'star', label: 'Cosas favoritas', val: d.favoritos });
-    for (const r of rows) {
-      detCard.append(h('div', { style: 'display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--border-soft)' },
-        h('span', { class: 'r-ic', style: 'width:30px;height:30px;flex:none', html: icon(r.ic, 15) }),
-        h('div', { style: 'min-width:0' }, h('b', { style: 'font-size:12px;color:var(--text-2);display:block;margin-bottom:2px' }, r.label), h('p', { style: 'font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word' }, r.val))
-      ));
-    }
-    if (Array.isArray(d.fechas) && d.fechas.length) {
-      detCard.append(h('div', { style: 'padding:10px 0 2px;border-top:1px solid var(--border-soft)' },
-        h('b', { style: 'font-size:12px;color:var(--text-2);display:block;margin-bottom:8px' }, 'Fechas importantes'),
-        h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }, d.fechas.slice().sort((a, b) => (a.date || '').slice(5) < (b.date || '').slice(5) ? -1 : 1).map(f =>
-          h('span', { style: 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;background:var(--primary-soft);border:1px solid var(--primary-softer);color:var(--primary);font-size:12.5px;font-weight:600' },
-            (f.label || 'Fecha') + ' · ' + fmtShort(f.date))
-        ))
-      ));
-    }
+    detCard.append(h('p', { style: 'font-size:12.5px;color:var(--text-3);margin:2px 0 12px' }, aboutTags.join(' · ')));
+    detCard.append(h('button', { class: 'btn btn-soft', style: 'width:100%;justify-content:space-between', onclick: () => go('personAbout', { id: p.id }) },
+      h('span', null, 'Ver toda la información'),
+      h('span', { class: 'chev', html: icon('chev', 16) })
+    ));
   } else {
     detCard.append(h('p', { style: 'font-size:13px;color:var(--text-2);line-height:1.5;margin:6px 0 12px' }, 'Apunta sus gustos, cosas favoritas y fechas importantes para acertar siempre con los regalos.'));
     detCard.append(h('button', { class: 'btn btn-soft', style: 'width:100%', onclick: () => personDetailsSheet(p) }, 'Añadir información'));
@@ -1503,6 +2576,57 @@ function scrPerson() {
 }
 
 /* ================= FORMULARIOS ================= */
+function personAboutTags(p) {
+  const d = p.details || {};
+  const tags = [];
+  if (d.gustos) tags.push('Gustos');
+  if (d.favoritos) tags.push('Favoritos');
+  if (p.notes) tags.push('Información');
+  if (Array.isArray(d.fechas) && d.fechas.length) tags.push(d.fechas.length === 1 ? '1 fecha' : d.fechas.length + ' fechas');
+  return tags;
+}
+
+/* Pestaña completa con toda la información de la persona */
+function scrPersonAbout() {
+  const p = S.people.find(x => x.id === route.params.id);
+  if (!p) { go('gifts', undefined, { replace: true }); return h('div'); }
+  const back = () => go('person', { id: p.id }, { replace: true });
+  const wrap = h('div');
+  wrap.append(formHead('Sobre ' + p.name.split(' ')[0], back));
+  const d = p.details || {};
+  const rows = [];
+  if (d.gustos) rows.push({ ic: 'heart', label: 'Gustos', val: d.gustos });
+  if (d.favoritos) rows.push({ ic: 'star', label: 'Cosas favoritas', val: d.favoritos });
+  if (p.notes) rows.push({ ic: 'pencil', label: 'Información', val: p.notes });
+  const hasFechas = Array.isArray(d.fechas) && d.fechas.length;
+  if (!rows.length && !hasFechas) {
+    wrap.append(emptyState('heart', 'Sin información todavía', 'Añade sus gustos, cosas favoritas y fechas para acertar con los regalos.', 'Añadir información', () => personDetailsSheet(p)));
+    return wrap;
+  }
+  const card = h('div', { class: 'card', style: 'text-align:left;padding:4px 18px;margin-bottom:20px' });
+  for (const r of rows) {
+    card.append(h('div', { style: 'display:flex;gap:12px;padding:14px 0;border-bottom:1px solid var(--border-soft)' },
+      h('span', { class: 'r-ic', style: 'width:36px;height:36px;border-radius:12px;flex:none', html: icon(r.ic, 17) }),
+      h('div', { style: 'min-width:0;flex:1' },
+        h('b', { style: 'font-size:12px;color:var(--text-2);display:block;margin-bottom:4px' }, r.label),
+        h('p', { style: 'font-size:14.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word' }, r.val))
+    ));
+  }
+  if (rows.length) card.lastChild.style.borderBottom = 'none';
+  if (hasFechas) {
+    card.append(h('div', { style: 'padding:16px 0 18px' },
+      h('b', { style: 'font-size:12px;color:var(--text-2);display:block;margin-bottom:10px' }, 'Fechas importantes'),
+      h('div', { style: 'display:flex;flex-wrap:wrap;gap:8px' }, d.fechas.slice().sort((a, b) => (a.date || '').slice(5) < (b.date || '').slice(5) ? -1 : 1).map(f =>
+        h('span', { style: 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;background:var(--primary-soft);border:1px solid var(--primary-softer);color:var(--primary);font-size:13px;font-weight:600' },
+          (f.label || 'Fecha') + ' · ' + fmtShort(f.date))
+      ))
+    ));
+  }
+  wrap.append(card);
+  wrap.append(h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => personDetailsSheet(p) }, 'Editar información'));
+  return wrap;
+}
+
 function personDetailsSheet(p) {
   openSheet('Sobre ' + p.name.split(' ')[0], () => {
     const dd = p.details || {};
@@ -1515,7 +2639,7 @@ function personDetailsSheet(p) {
     };
     const gustosIn = mk('Gustos', 'Ej. Manga, cocina, música indie…', dd.gustos, 2);
     const favIn = mk('Cosas favoritas', 'Ej. Color azul, pizza, el equipo X…', dd.favoritos, 2);
-    const notasIn = mk('Notas', 'Ej. Talla M, sin lactosa, colecciona…', p.notes, 3);
+    const notasIn = mk('Información', 'Ej. Talla M, sin lactosa, colecciona…', p.notes, 3);
     body.append(h('p', { class: 'field-hint', style: 'margin:2px 0 10px' }, 'Todo esto solo se usa para ayudarte a elegir regalos.'));
     // fechas importantes
     let fechas = Array.isArray(dd.fechas) ? dd.fechas.map(f => ({ ...f })) : [];
@@ -1797,7 +2921,7 @@ function scrPersonForm() {
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Cumpleaños'), bdayIn, h('p', { class: 'field-hint' }, 'Te avisaremos en Inicio cuando llegue el día.')));
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Color del avatar'), swRow));
   const notesIn = h('textarea', { class: 'input', rows: '3', placeholder: 'Gustos, tallas, ideas que le gustan…', value: editing ? editing.notes || '' : '' });
-  wrap.append(h('div', { class: 'field' }, h('label', null, 'Notas'), notesIn));
+  wrap.append(h('div', { class: 'field' }, h('label', null, 'Información'), notesIn));
   wrap.append(h('button', {
     class: 'btn btn-primary btn-block btn-lg',
     onclick: () => {
@@ -1893,6 +3017,24 @@ function scrSettings() {
       row('list', 'Tareas y hábitos', tasksPrefsSheet),
       row('pencil', 'Personalizar opciones', optionsSheet)
     ));
+  wrap.append(h('p', { class: 'set-label' }, 'Apariencia'),
+    h('div', { class: 'set-card' },
+      h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
+        h('span', { class: 'r-ic', html: icon('moon', 18) }),
+        h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14px;display:block' }, 'Modo oscuro'), h('span', { id: 'themeHint', style: 'font-size:12px;color:var(--text-2)' }, '')),
+        (() => {
+          const seg = h('div', { class: 'seg', style: 'display:flex;max-width:210px' });
+          const drawHint = () => { const hh = document.getElementById('themeHint'); if (hh) hh.textContent = theme() === 'auto' ? 'Sigue tu sistema' : theme() === 'dark' ? 'Siempre oscuro' : 'Siempre claro'; };
+          for (const [v, lbl] of [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']]) {
+            seg.append(h('button', {
+              class: theme() === v ? 'on' : '',
+              onclick: (e) => { S.settings.theme = v; save(); applyTheme(); [...seg.children].forEach(x => x.classList.remove('on')); e.currentTarget.classList.add('on'); drawHint(); }
+            }, lbl));
+          }
+          drawHint();
+          return seg;
+        })()
+      )));
   wrap.append(h('p', { class: 'set-label' }, 'Datos'),
     h('div', { class: 'set-card' },
       row('cloud', 'Copia de seguridad', backupSheet),
@@ -1902,7 +3044,7 @@ function scrSettings() {
     h('div', { class: 'set-card' },
       row('info', 'DailyHub v2.0', infoSheet)
     ));
-  wrap.append(h('button', { class: 'btn btn-block', style: 'margin-top:26px;color:var(--danger);background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.45)', onclick: () => { S.activeProfileId = null; session.unlocked = false; save(); go('profiles'); } }, 'Cambiar de perfil'));
+  wrap.append(h('button', { class: 'btn btn-block', style: 'margin-top:26px;color:var(--danger);background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.45)', onclick: () => { S.activeProfileId = null; switchProfileData(); session.unlocked = false; save(); go('profiles'); } }, 'Cambiar de perfil'));
   return wrap;
 }
 
@@ -1969,7 +3111,7 @@ function scrProfile() {
   ));
   wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Sesión')));
   wrap.append(h('div', { class: 'set-card' },
-    h('button', { class: 'set-row', onclick: () => { S.activeProfileId = null; session.unlocked = false; save(); go('profiles'); } },
+    h('button', { class: 'set-row', onclick: () => { S.activeProfileId = null; switchProfileData(); session.unlocked = false; save(); go('profiles'); } },
       h('span', { class: 'r-ic', html: icon('logout', 18) }), h('span', null, 'Cerrar sesión y cambiar de perfil'), h('span', { class: 'chev', html: icon('chev', 17) }))
   ));
   return wrap;
@@ -2006,9 +3148,9 @@ function securitySheet() {
     const prof = currentProfile();
     const box = h('div');
     if (prof.pin) {
-      const cur = h('input', { class: 'input', type: 'password', inputmode: 'numeric', maxlength: '6', placeholder: 'PIN actual' });
-      const n1 = h('input', { class: 'input', type: 'password', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', style: 'margin-top:10px' });
-      const n2 = h('input', { class: 'input', type: 'password', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el nuevo PIN', style: 'margin-top:10px' });
+      const cur = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'PIN actual' });
+      const n1 = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', style: 'margin-top:10px' });
+      const n2 = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el nuevo PIN', style: 'margin-top:10px' });
       const err = h('p', { style: 'font-size:12.5px;color:var(--danger);min-height:18px;margin:8px 0' });
       box.append(cur, n1, n2, err,
         h('button', {
@@ -2025,8 +3167,8 @@ function securitySheet() {
         }, 'Quitar PIN')
       );
     } else {
-      const n1 = h('input', { class: 'input', type: 'password', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)' });
-      const n2 = h('input', { class: 'input', type: 'password', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el PIN', style: 'margin-top:10px' });
+      const n1 = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)' });
+      const n2 = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el PIN', style: 'margin-top:10px' });
       const err = h('p', { style: 'font-size:12.5px;color:var(--danger);min-height:18px;margin:8px 0' });
       box.append(
         h('p', { style: 'font-size:13px;color:var(--text-2);margin-bottom:14px;line-height:1.5' }, 'Protege este perfil con un PIN de 4 a 6 dígitos. Se pedirá al seleccionar el perfil.'),
@@ -2076,6 +3218,53 @@ function notifSheet() {
       const ok = await showAppNotification('DailyHub funciona', 'Esta es una notificación de prueba.');
       toast(ok ? 'Notificación de prueba enviada' : 'El navegador no permitió mostrarla');
     } }, 'Enviar notificación de prueba'));
+    // --- Avisos con la app cerrada (Web Push) ---
+    const PUSH_VAPID_PUB = 'BPIgPzRS-3X97keys1Jse8EfqMjep-Rn_4JizpjLA6V7aEZ56OGPt361haUQop-7TF22ynnhgL2KlGIp-UMsBu8';
+    const urlB64 = (b64) => { const pad = '='.repeat((4 - b64.length % 4) % 4); const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...raw].map(c => c.charCodeAt(0))); };
+    const pushStatus = h('p', { class: 'field-hint', style: 'text-align:left;margin-bottom:10px' }, '');
+    const pushBtn = h('button', { class: 'btn btn-soft btn-block' });
+    async function drawPush() {
+      let sub = null;
+      try { const reg = await navigator.serviceWorker.getRegistration(); if (reg) sub = await reg.pushManager.getSubscription(); } catch (e) {}
+      pushBtn.textContent = sub ? 'Desactivar avisos con la app cerrada' : 'Activar avisos con la app cerrada';
+      pushStatus.textContent = sub ? 'Activados: llegarán aunque no tengas la web abierta.' : 'Requiere una cuenta conectada. Es experimental.';
+    }
+    pushBtn.addEventListener('click', async () => {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg || !('PushManager' in window)) { toast('Tu navegador no soporta push'); return; }
+        const existing = await reg.pushManager.getSubscription();
+        if (existing) {
+          await existing.unsubscribe();
+          const sess = await window.sb.auth.getSession();
+          if (sess.data.session) await fetch(SUPABASE_URL + '/functions/v1/push-unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ endpoint: existing.endpoint }) }).catch(() => {});
+          toast('Avisos en segundo plano desactivados');
+        } else {
+          const perm = notifPermission() === 'granted' ? 'granted' : await requestNotifPermission();
+          drawPerm();
+          if (perm !== 'granted') { toast('Primero concede permiso de notificaciones'); return; }
+          const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(PUSH_VAPID_PUB) });
+          const sess = await window.sb.auth.getSession();
+          if (!sess.data.session) { await sub.unsubscribe(); toast('Inicia sesión en Cuenta para usar esta función'); return; }
+          const res = await fetch(SUPABASE_URL + '/functions/v1/push-subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify(sub.toJSON()) });
+          if (!res.ok) throw new Error('el servidor no aceptó la suscripción (' + res.status + ')');
+          toast('Avisos en segundo plano activados');
+        }
+        await drawPush();
+      } catch (e) { console.error(e); toast('No se pudo completar: ' + (e.message || 'error')); }
+    });
+    box.append(h('p', { class: 'section-title', style: 'margin-top:20px' }, h('span', null, 'Con la app cerrada')));
+    box.append(pushStatus, pushBtn);
+    box.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: async () => {
+      try {
+        const sess = await window.sb.auth.getSession();
+        if (!sess.data.session) { toast('Inicia sesión para probar el push'); return; }
+        const res = await fetch(SUPABASE_URL + '/functions/v1/push-send', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + sess.data.session.access_token }, body: JSON.stringify({ title: 'DailyHub · prueba push', body: 'Si ves esto, los avisos en segundo plano funcionan.' }) });
+        const j = await res.json().catch(() => ({}));
+        toast(res.ok ? 'Enviado: ' + (j.sent || 0) + ' dispositivo(s)' : 'Error del servidor: ' + (j.error || res.status));
+      } catch (e) { toast('No se pudo enviar: ' + (e.message || 'error')); }
+    } }, 'Probar push (requiere cuenta + avisos activados)'));
+    drawPush();
     box.append(switchRow('Recordatorios de tareas', 'Aviso diario con tus tareas pendientes', n.reminders, (v) => {
       n.reminders = v; save();
       if (v && notifPermission() === 'default') requestNotifPermission().then(drawPerm);
@@ -2175,6 +3364,7 @@ function backupSheet() {
                 const d = j && j.app === 'dailyhub' && j.data ? j.data : j;
                 if (!d || !Array.isArray(d.profiles)) throw new Error('bad');
                 S = Object.assign(defaultState(), d);
+                normalizeData(); switchProfileData();
                 save(); closeOverlays(); render();
                 toast('Copia importada');
               } catch (e) { toast('El archivo no es una copia válida'); }
@@ -2249,7 +3439,7 @@ function quickAddSheet() {
 
 function searchOverlay() {
   openSheet('Buscar', (sh) => {
-    const input = h('input', { class: 'input', type: 'text', placeholder: 'Personas, tareas, regalos…', autocomplete: 'off' });
+    const input = h('input', { class: 'input', type: 'text', placeholder: 'Personas, tareas, regalos, apuntes…', autocomplete: 'off' });
     const results = h('div');
     function draw() {
       const q = input.value.trim().toLowerCase();
@@ -2258,9 +3448,23 @@ function searchOverlay() {
       const people = S.people.filter(p => p.name.toLowerCase().includes(q));
       const tasks = S.tasks.filter(t => t.title.toLowerCase().includes(q));
       const gifts = S.gifts.filter(g => g.title.toLowerCase().includes(q) || (g.notes || '').toLowerCase().includes(q));
-      if (!people.length && !tasks.length && !gifts.length) {
+      const notes = (S.notes || []).filter(n => (n.text || '').toLowerCase().includes(q));
+      const inbox = (S.inbox || []).filter(n => (n.text || '').toLowerCase().includes(q));
+      if (!people.length && !tasks.length && !gifts.length && !notes.length && !inbox.length) {
         results.append(h('p', { class: 'field-hint', style: 'text-align:center;padding:10px 0' }, 'Sin resultados para "' + input.value.trim() + '"'));
         return;
+      }
+      if (inbox.length) {
+        results.append(h('p', { class: 'sr-group' }, 'Para después'));
+        for (const x of inbox.slice(0, 6)) results.append(h('button', { class: 'sr-item', onclick: () => { closeOverlays(); ui.classTab = 'despues'; go('class'); } },
+          h('span', { class: 'r-ic', style: 'width:34px;height:34px;border-radius:11px;background:var(--amber-soft);color:var(--amber)', html: icon('pin', 16) }),
+          h('div', null, h('b', null, x.text), h('span', null, 'Sin organizar · ' + fmtShort(x.date)))));
+      }
+      if (notes.length) {
+        results.append(h('p', { class: 'sr-group' }, 'Apuntes de clase'));
+        for (const n of notes.slice(0, 6)) results.append(h('button', { class: 'sr-item', onclick: () => { closeOverlays(); ui.classTab = 'apuntes'; go('class'); } },
+          h('span', { class: 'r-ic', style: 'width:34px;height:34px;border-radius:11px', html: icon((NOTE_KINDS.find(k => k.id === n.kind) || NOTE_KINDS[0]).icon, 16) }),
+          h('div', null, h('b', null, n.text), h('span', null, (subjectById(n.subjectId) || {}).name || 'Sin asignatura'))));
       }
       if (people.length) {
         results.append(h('p', { class: 'sr-group' }, 'Personas'));
@@ -2385,7 +3589,10 @@ function openImageEditor(src, cb, max) {
     const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
     canvas.style.cssText = 'width:' + size + 'px;height:' + size + 'px;border-radius:18px;background:#111;touch-action:none;display:block';
     const zoom = h('input', { type: 'range', min: '1', max: '3', step: '.01', value: '1', style: 'width:100%' });
-    const hint = h('p', { style: 'font-size:12px;color:var(--text-2);text-align:center;margin:2px 0 4px' }, 'Arrastra para encuadrar · usa el control para ampliar');
+    const rotBtn = h('button', { class: 'btn btn-soft', style: 'padding:9px 14px;font-size:12px' }, 'Girar 90°');
+    let rotation = 0;
+    rotBtn.onclick = () => { rotation = (rotation + 90) % 360; draw(); };
+    const hint = h('p', { style: 'font-size:12px;color:var(--text-2);text-align:center;margin:2px 0 4px' }, 'Arrastra para encuadrar · amplía o gira con los controles');
     const reset = h('button', { class: 'btn btn-soft', style: 'padding:9px 14px;font-size:12px' }, 'Centrar');
     const cancel = h('button', { class: 'btn btn-soft', style: 'padding:9px 16px' }, 'Cancelar');
     const accept = h('button', { class: 'btn btn-primary', style: 'padding:9px 16px' }, 'Usar foto');
@@ -2393,14 +3600,16 @@ function openImageEditor(src, cb, max) {
     const box = h('div', { class: 'sheet', style: 'max-width:390px;width:100%;padding:20px', role: 'dialog', 'aria-label': 'Ajustar foto' },
       h('div', { class: 'sheet-head', style: 'margin-bottom:14px' }, h('h3', null, 'Ajustar foto'), h('button', { class: 'icon-btn', 'aria-label': 'Cerrar', onclick: () => ov.remove(), html: icon('x', 18) })),
       canvas, hint, zoom,
-      h('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px' }, reset, h('div', { style: 'display:flex;gap:8px' }, cancel, accept))
+      h('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:12px' }, h('div', { style: 'display:flex;gap:8px' }, reset, rotBtn), h('div', { style: 'display:flex;gap:8px' }, cancel, accept))
     );
     ov.append(box); document.body.appendChild(ov);
     let scale = 1, ox = 0, oy = 0, dragging = false, px = 0, py = 0;
     function draw() {
       const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, size, size); ctx.fillStyle = '#111'; ctx.fillRect(0, 0, size, size);
       const base = Math.max(size / img.width, size / img.height), w = img.width * base * scale, hgt = img.height * base * scale;
+      ctx.save(); ctx.translate(size / 2, size / 2); ctx.rotate(rotation * Math.PI / 180); ctx.translate(-size / 2, -size / 2);
       ctx.drawImage(img, (size - w) / 2 + ox, (size - hgt) / 2 + oy, w, hgt);
+      ctx.restore();
     }
     zoom.addEventListener('input', () => { scale = Number(zoom.value); draw(); });
     reset.onclick = () => { scale = 1; ox = 0; oy = 0; zoom.value = '1'; draw(); };

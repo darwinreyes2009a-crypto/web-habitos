@@ -1,7 +1,7 @@
 {
   "name": "DailyHub — Tu espacio personal",
   "short_name": "DailyHub",
-  "description": "Tareas diarias, hábitos, rutinas y regalos. Sin cuentas: tus datos se quedan en tu dispositivo.",
+  "description": "Tareas, hábitos, Modo Clase y regalos. Perfiles con PIN y sincronización opcional entre dispositivos.",
   "lang": "es",
   "start_url": "./index.html",
   "scope": "./",
@@ -10,17 +10,33 @@
   "background_color": "#F8FAFC",
   "theme_color": "#2563EB",
   "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "name": "Nueva tarea",
+      "short_name": "Nueva tarea",
+      "url": "./index.html?goto=taskForm",
+      "description": "Crear una tarea nueva"
     },
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "name": "Modo Clase",
+      "short_name": "Modo Clase",
+      "url": "./index.html?goto=class",
+      "description": "Apuntar deberes, material y notas rápidas"
+    },
+    {
+      "name": "Apuntar en Para después",
+      "short_name": "Para después",
+      "url": "./index.html?goto=class&tab=despues",
+      "description": "Capturar algo de clase sin organizarlo todavía"
+    },
+    {
+      "name": "Nueva nota",
+      "short_name": "Nueva nota",
+      "url": "./index.html?goto=noteForm",
+      "description": "Escribir una nota completa del Modo Clase"
     }
   ]
 }

@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v10';
+const CACHE = 'dailyhub-v16';
 const ASSETS = ['./index.html', './manifest.webmanifest', './icon.svg', './vendor/supabase.js', './app-sync.js'];
 
 self.addEventListener('install', (e) => {
@@ -57,4 +57,41 @@ self.addEventListener('fetch', (e) => {
       })
     );
   }
+});
+
+/* ============ NOTIFICACIONES PUSH ============ */
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+  const title = data.title || 'DailyHub';
+  const opts = {
+    body: data.body || '',
+    icon: './icon.svg',
+    badge: './icon.svg',
+    tag: data.tag || 'dailyhub',
+    data: { url: data.url || './index.html' },
+    renotify: true
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './index.html';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if (c.url.includes('index.html')) { return c.focus(); } }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
+self.addEventListener('pushsubscriptionchange', (e) => {
+  e.waitUntil(
+    self.registration.pushManager.getSubscription().then((sub) =>
+      self.clients.matchAll({ includeUncontrolled: true }).then((list) => {
+        for (const c of list) c.postMessage({ type: 'push-sub-changed', subscription: sub ? sub.toJSON() : null });
+      })
+    )
+ );
 });
