@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="DailyHub">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>DailyHub — Tu espacio personal</title>
+<title>DailyHub</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232563EB'/%3E%3Cpath d='M20 44V20h10a12 12 0 0 1 0 24z' fill='none' stroke='white' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -326,8 +326,24 @@ textarea.input{resize:vertical;min-height:70px}
 .slot-time{width:54px;flex:none;display:flex;flex-direction:column;line-height:1.25}
 .slot-time b{font-size:14px;font-weight:700}
 .slot-time span{font-size:11.5px;color:var(--text-3);font-weight:600}
-.slot-off{opacity:.55}
+.slot-off{opacity:.45;filter:saturate(.5)}
 .slot-off b{text-decoration:line-through;text-decoration-color:var(--border)}
+/* días del horario: cada día en su tarjeta, con patio fijo entre la 3ª y la 4ª clase */
+.day-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--r-xl);box-shadow:var(--sh-s);padding:14px 16px 16px;margin-bottom:20px}
+.day-card.today{border-top:3px solid var(--primary)}
+.day-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.day-head b{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.day-card .row{background:transparent;box-shadow:none;border-color:transparent;border-radius:0;padding:12px 4px}
+.day-card .row + .row{border-top:1px solid var(--border-soft);margin-top:0}
+.day-card .row:hover{background:var(--surface-2);border-color:var(--primary-softer)}
+.recess-row{display:flex;align-items:center;gap:10px;margin:10px 2px 12px;padding:10px 14px;border-radius:var(--r-m);background:var(--surface-2);border:1.5px dashed var(--border);color:var(--text-2)}
+.recess-row .rec-ic{display:flex;color:var(--text-3)}
+.recess-row .rec-time{font-size:12.5px;font-weight:800;letter-spacing:.02em}
+.recess-row .rec-pipe{color:var(--text-3);font-size:12px}
+.recess-row .rec-lbl{flex:1;text-transform:uppercase;letter-spacing:.07em;font-size:11px;font-weight:800;color:var(--text-3)}
+.schedule-maker{margin-bottom:18px}
+.schedule-maker .field{margin-bottom:12px}
+.schedule-maker .wchips{margin-bottom:12px}
 /* agenda de clase: pestañas, clase actual, Para después, historial */
 .cls-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px;margin:-6px -2px 16px;scrollbar-width:none}
 .cls-tabs::-webkit-scrollbar{display:none}
@@ -1396,6 +1412,36 @@ function pickSubject(title, cb) {
   document.body.appendChild(ov);
 }
 
+function pickSlotSubject(slot) {
+  closeOverlays();
+  const ov = h('div', { class: 'overlay', style: 'z-index:65', onclick: (e) => { if (e.target === ov) ov.remove(); } });
+  const subs = S.subjects || [];
+  const sh = h('div', { class: 'sheet', style: 'max-width:390px', role: 'menu' }, h('div', { class: 'grabber' }),
+    h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:4px' }, timeTxt(slot.start) + ' — ' + timeTxt(slot.end)),
+    h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, WEEK_FULL[slot.day] + ' · toca una asignatura para ponerla en este hueco.'));
+  if (!subs.length) {
+    sh.append(h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, 'Todavía no tienes asignaturas creadas. Puedes dejar el hueco vacío y crearlas luego.'),
+      h('button', { class: 'btn btn-primary btn-block', onclick: () => { ov.remove(); go('subjectForm'); } }, 'Crear asignatura'));
+  }
+  for (const s of subs) sh.append(h('button', { class: 'set-row', onclick: () => {
+    slot.subjectId = s.id; save(); ov.remove(); render(); toast('Asignado a ' + s.name);
+  } },
+    h('span', { class: 'r-ic', style: 'background:' + tintHex(s.color, '22') + ';color:' + s.color, html: icon(s.icon || 'book', 17) }),
+    h('span', null, s.name),
+    slot.subjectId === s.id ? h('span', { class: 'nav-badge' }, 'actual') : null));
+  sh.append(h('button', { class: 'set-row', onclick: () => {
+    slot.subjectId = null; save(); ov.remove(); render(); toast('Hueco sin asignatura');
+  } },
+    h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('x', 17) }),
+    h('span', null, 'Sin asignatura'),
+    !slot.subjectId ? h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, 'actual') : null));
+  sh.append(h('button', { class: 'set-row', onclick: () => { ov.remove(); go('slotForm', { id: slot.id }); } },
+    h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('pencil', 17) }),
+    h('span', null, 'Editar hora, día o aula')));
+  ov.append(sh);
+  document.body.appendChild(ov);
+}
+
 /* ---------- la clase de ahora (tarjeta viva, se refresca sola) ---------- */
 function slotRowEl(s, opts) {
   opts = opts || {};
@@ -1403,7 +1449,7 @@ function slotRowEl(s, opts) {
   return h('button', {
     class: 'row slot-row' + (s.active === false ? ' slot-off' : ''),
     style: 'border-left-color:' + (sub ? sub.color : 'var(--border)'),
-    onclick: () => go('slotForm', { id: s.id })
+    onclick: () => opts.quickSubject ? pickSlotSubject(s) : go('slotForm', { id: s.id })
   },
     h('span', { class: 'slot-time' }, h('b', null, timeTxt(s.start)), h('span', null, timeTxt(s.end))),
     h('span', { style: 'flex:1;min-width:0;text-align:left' },
@@ -1555,12 +1601,32 @@ function scheduleSections(opts) {
   for (let d = 0; d < 7; d++) {
     const daySlots = slotsOfDay(d);
     if (!daySlots.length) continue;
-    frag.append(h('div', { class: 'section-title' + (d === today ? ' cls-today' : '') },
-      h('span', null, WEEK_FULL[d] + (d === today ? ' · hoy' : '')),
-      h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, daySlots.length)));
-    for (const s of daySlots) frag.append(slotRowEl(s, { live: !!(nowS && nowS.id === s.id) }));
+    const card = h('div', { class: 'day-card' + (d === today ? ' today' : '') },
+      h('div', { class: 'day-head' },
+        h('b', null, WEEK_FULL[d] + (d === today ? ' · hoy' : '')),
+        h('span', { style: 'display:flex;align-items:center;gap:8px' },
+          opts.dayActions ? h('button', {
+            class: 'link',
+            style: 'color:var(--danger);font-size:12.5px;text-transform:none;letter-spacing:0;font-weight:700',
+            onclick: () => deleteSlotsOfDay(d)
+          }, 'Vaciar') : null,
+          h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, daySlots.length))));
+    daySlots.forEach((s, i) => {
+      if (i === 3 && daySlots.length >= 4) card.append(recessRow(daySlots[2], daySlots[3]));
+      card.append(slotRowEl(s, { live: !!(nowS && nowS.id === s.id), quickSubject: !!opts.quickSubject }));
+    });
+    frag.append(card);
   }
   return frag;
+}
+// separador de patio: fijo entre la 3ª y la 4ª clase del día, con el hueco real si existe
+function recessRow(prev, nxt) {
+  const hasGap = hm(nxt.start) > hm(prev.end);
+  return h('div', { class: 'recess-row' },
+    h('span', { class: 'rec-ic', html: icon('coffee', 15) }),
+    hasGap ? h('span', { class: 'rec-time' }, timeTxt(prev.end) + ' – ' + timeTxt(nxt.start)) : null,
+    hasGap ? h('span', { class: 'rec-pipe' }, '|') : null,
+    h('span', { class: 'rec-lbl' }, 'Recreo / Patio'));
 }
 function classWeekBody() {
   const wrap = h('div');
@@ -2056,19 +2122,102 @@ function deleteSubject(s) {
 }
 
 /* ================= MODO CLASE: HORARIO ================= */
+function scheduleMakerCard() {
+  const selected = new Set([0, 1, 2, 3, 4]);
+  const durSel = h('select', { class: 'input' },
+    h('option', { value: '55', selected: true }, '55 min'),
+    h('option', { value: '45' }, '45 min'));
+  const summary = h('p', { class: 'field-hint', style: 'text-align:center;margin:2px 0 12px' });
+  function planForDuration(duration) {
+    const start = duration === 45 ? hm('15:20') : hm('14:20');
+    const blocks = [];
+    let m = start;
+    for (let i = 0; i < 3; i++, m += duration) blocks.push({ start: minTxt(m), end: minTxt(m + duration) });
+    m += 30;
+    for (let i = 0; i < 3; i++, m += duration) blocks.push({ start: minTxt(m), end: minTxt(m + duration) });
+    return blocks;
+  }
+  function updateSummary() {
+    const duration = parseInt(durSel.value, 10);
+    const blocks = planForDuration(duration);
+    summary.textContent = 'Empieza a las ' + blocks[0].start + ' · patio de ' + blocks[2].end + ' a ' + blocks[3].start + ' · acaba a las ' + blocks[5].end + '.';
+  }
+  durSel.addEventListener('change', updateSummary);
+  updateSummary();
+  const dayRow = h('div', { class: 'wchips' });
+  WEEK_L.forEach((l, i) => dayRow.append(h('button', {
+    type: 'button', class: 'wchip' + (selected.has(i) ? ' on' : ''),
+    onclick: (e) => {
+      if (selected.has(i)) selected.delete(i); else selected.add(i);
+      e.currentTarget.classList.toggle('on', selected.has(i));
+    }
+  }, l)));
+  const makeBtn = h('button', { class: 'btn btn-primary btn-block', onclick: () => {
+    const duration = parseInt(durSel.value, 10);
+    const days = [...selected].sort((a, b) => a - b);
+    if (!days.length) { toast('Elige al menos un día'); return; }
+    if (![45, 55].includes(duration)) { toast('Elige clases de 45 o 55 min'); return; }
+    const blocks = planForDuration(duration);
+    let created = 0, skipped = 0;
+    for (const day of days) {
+      for (const block of blocks) {
+        const slot = { day, start: block.start, end: block.end };
+        const exists = (S.slots || []).some(x => x.day === slot.day && x.start === slot.start && x.end === slot.end);
+        if (exists) { skipped++; continue; }
+        S.slots.push({ id: uid('c'), createdAt: todayStr(), subjectId: null, room: '', active: true, ...slot });
+        created++;
+      }
+    }
+    if (!created) { toast(skipped ? 'Esos huecos ya existen' : 'No se creó ningún hueco'); return; }
+    save(); render();
+    toast('Horario creado · ' + created + (created === 1 ? ' hueco' : ' huecos') + (skipped ? ' · ' + skipped + ' ya existían' : ''));
+  } }, 'Crear huecos vacíos');
+  return h('div', { class: 'card schedule-maker' },
+    h('p', { class: 'section-title', style: 'margin:0 0 12px' }, h('span', null, 'Crear horario vacío')),
+    h('div', { class: 'field' }, h('label', null, 'Duración de cada clase'), durSel),
+    summary,
+    h('div', { class: 'field' }, h('label', null, 'Días'), dayRow),
+    makeBtn,
+    h('p', { class: 'field-hint', style: 'text-align:center' }, 'Crea 3 clases, patio de 30 min y otras 3 clases. Después toca cada hueco y elige la asignatura.'));
+}
+
 function scrClassSchedule() {
   const wrap = h('div');
   const slots = S.slots || [];
-  const act = slots.filter(s => s.active).length;
+  const act = slots.filter(s => s.active !== false).length;
   wrap.append(headBar('Horario', slots.length ? act + (act === 1 ? ' clase' : ' clases') + ' a la semana' + (slots.length !== act ? ' · ' + (slots.length - act) + ' inactiva' + (slots.length - act === 1 ? '' : 's') : '') : 'Tu semana de clases',
     h('button', { class: 'icon-btn', 'aria-label': 'Asignaturas', onclick: () => go('classSubjects'), html: icon('folder', 20) }),
     h('button', { class: 'icon-btn', 'aria-label': 'Nueva clase', onclick: () => go('slotForm'), html: icon('plus', 20) })));
+  wrap.append(scheduleMakerCard());
   if (!slots.length) {
-    wrap.append(emptyState('calendar', 'Sin horario todavía', 'Añade tus clases con su asignatura, su día y su hora para saber siempre qué toca.', 'Añadir clase', () => go('slotForm')));
+    wrap.append(emptyState('calendar', 'Sin horario todavía', 'Elige si tus clases duran 45 o 55 min y se crearán 3 clases, patio y otras 3 hasta las 20:20.', 'Añadir clase suelta', () => go('slotForm')));
     return wrap;
   }
-  wrap.append(scheduleSections());
+  wrap.append(scheduleSections({ quickSubject: true, dayActions: true }));
   return wrap;
+}
+
+function deleteSlotsOfDay(day) {
+  const daySlots = slotsOfDay(day);
+  if (!daySlots.length) return;
+  confirmDialog({
+    title: '¿Vaciar ' + WEEK_FULL[day] + '?',
+    message: 'Se eliminarán las ' + daySlots.length + (daySlots.length === 1 ? ' clase' : ' clases') + ' de ese día. Las asignaturas y apuntes no se borran.',
+    confirmText: 'Vaciar día',
+    onConfirm: () => {
+      const removed = [];
+      for (let i = (S.slots || []).length - 1; i >= 0; i--) {
+        if (S.slots[i].day === day) removed.push({ item: S.slots.splice(i, 1)[0], index: i });
+      }
+      removed.reverse();
+      save();
+      toast(WEEK_FULL[day] + ' vaciado', { label: 'Deshacer', fn: () => {
+        removed.forEach(x => S.slots.splice(Math.min(x.index, S.slots.length), 0, x.item));
+        save(); render();
+      } });
+      render();
+    }
+  });
 }
 
 function scrSlotForm() {
@@ -2081,15 +2230,13 @@ function scrSlotForm() {
       h('button', { class: 'icon-btn', 'aria-label': 'Eliminar clase', onclick: () => deleteSlot(editing), html: icon('trash', 18) })
     ) : null));
   const subjects = S.subjects || [];
-  // una clase sin asignatura no tiene sentido: se pide crear la primera
-  if (!subjects.length) {
-    wrap.append(emptyState('folder', 'Primero, una asignatura', 'Cada clase del horario pertenece a una asignatura. Crea la primera y seguimos con el horario.', 'Nueva asignatura', () => go('subjectForm', { from: 'slotForm' })));
-    return wrap;
-  }
-  let subjectId = editing ? editing.subjectId : (route.params.subjectId || subjects[0].id);
-  if (!subjectById(subjectId)) subjectId = subjects[0].id;
-  const subSel = h('select', { class: 'input' }, subjects.map(s => h('option', { value: s.id, selected: s.id === subjectId }, s.name)));
+  let subjectId = editing ? (editing.subjectId || '') : (route.params.subjectId || '');
+  if (subjectId && !subjectById(subjectId)) subjectId = '';
+  const subSel = h('select', { class: 'input' },
+    h('option', { value: '', selected: !subjectId }, 'Sin asignatura'),
+    subjects.map(s => h('option', { value: s.id, selected: s.id === subjectId }, s.name)));
   wrap.append(h('div', { class: 'field' }, h('label', null, 'Asignatura'), subSel));
+  if (!subjects.length) wrap.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin:-4px 0 18px', onclick: () => go('subjectForm', { from: 'slotForm' }) }, 'Crear una asignatura'));
   let day = editing ? editing.day : dowIdx(todayStr());
   const dayRow = h('div', { class: 'wchips' });
   WEEK_L.forEach((l, i) => dayRow.append(h('button', {
@@ -2114,11 +2261,11 @@ function scrSlotForm() {
       const start = startIn.value, end = endIn.value;
       if (!start || !end) { toast('Pon la hora de inicio y la de fin'); return; }
       if (hm(end) <= hm(start)) { toast('La hora de fin debe ser posterior a la de inicio'); return; }
-      const data = { subjectId: subSel.value, day, start, end, room: roomIn.value.trim(), active };
+      const data = { subjectId: subSel.value || null, day, start, end, room: roomIn.value.trim(), active };
       if (editing) Object.assign(editing, data);
       else S.slots.push({ id: uid('c'), createdAt: todayStr(), ...data });
       save();
-      const clash = (S.slots || []).find(x => (editing ? x.id !== editing.id : true) && x.active && data.active && slotsOverlap(x, data));
+      const clash = (S.slots || []).find(x => (editing ? x.id !== editing.id : true) && x.active !== false && data.active && slotsOverlap(x, data));
       if (clash) {
         const cs = subjectById(clash.subjectId);
         toast('Se solapa con ' + (cs ? cs.name : 'otra clase') + ' · ' + timeTxt(clash.start) + '—' + timeTxt(clash.end));
