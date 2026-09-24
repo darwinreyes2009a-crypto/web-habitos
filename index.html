@@ -442,7 +442,7 @@ textarea.input{resize:vertical;min-height:70px}
 <div id="toasts"></div>
 <noscript>DailyHub necesita JavaScript para funcionar.</noscript>
 <script src="vendor/supabase.js?v=11"></script>
-<script src="app-sync.js?v=14"></script>
+<script src="app-sync.js?v=15"></script>
 <script>
 'use strict';
 /* ==================================================================
@@ -559,7 +559,55 @@ function icon(name, size, cls) {
 }
 
 /* ---------- estado ---------- */
-const LS_KEY = 'dailyhub_v2';
+const LS_KEY = 'dailyhub_v2';            // legado: solo se LEE como buffer de adopción (nunca se reescribe)
+const ACC_PREFIX = 'dailyhub_v2:acc:';   // bucket por cuenta: estado completo del usuario logueado
+const ACC_INDEX = 'dailyhub_v2:accounts';// índice de cuentas conocidas en este dispositivo
+const ACC_ACTIVE = 'dailyhub_v2:active'; // uid de la cuenta activa (la sesión que hay que restaurar)
+function accountsIndex() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(ACC_INDEX) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
+function saveAccountsIndex(list) { try { localStorage.setItem(ACC_INDEX, JSON.stringify(list)); } catch (e) {} }
+function activeAccountUid() { return localStorage.getItem(ACC_ACTIVE); }
+/* Crea/actualiza la entrada de la cuenta activa en el índice y rellena el email si viene de la sesión. */
+function updateAccountIndex(uid, email) {
+  if (!uid) return;
+  const accs = accountsIndex();
+  const prof = S.profiles.find(p => p.id === S.activeProfileId) || S.profiles[0] || null;
+  const entry = { uid, email: email || '', name: prof ? prof.name : '', color: prof ? prof.color : '#2563EB', photo: prof ? prof.photo : '', pin: prof ? !!prof.pin : false, updatedAt: Date.now() };
+  const i = accs.findIndex(a => a.uid === uid);
+  if (i >= 0) accs[i] = entry; else accs.push(entry);
+  saveAccountsIndex(accs);
+  localStorage.setItem(ACC_ACTIVE, uid);
+}
+/* Adopción: el estado legacy (o el estado actual en memoria, p. ej. bucket previo) pasa
+   a ser el bucket de la cuenta del usuario. Si el uid ya tenía bucket, no se pisa.
+   Cuentas nuevas (sin bucket) con un índice ya poblado empiezan en limpio: copiar el
+   bucket activo filtraría los datos de otra cuenta. */
+function claimAccount(uid, email) {
+  if (!uid || !window.DailySync) return;
+  const accs = accountsIndex();
+  const raw = localStorage.getItem(ACC_PREFIX + uid);
+  if (raw) {
+    // La cuenta ya tenía bucket: no mezcles el estado visible de otra cuenta.
+    S = stateFromRaw(raw);
+    S.meta.onboarded = true;
+    switchProfileData();
+  } else if (!accs.length) {
+    // Primera adopción: el estado legacy actual pasa a esta cuenta.
+    localStorage.setItem(ACC_PREFIX + uid, serializeState());
+  } else {
+    // Cuenta nueva en un dispositivo que ya conoce otras: empieza limpio.
+    S = defaultState();
+    S.meta.onboarded = false;
+    switchProfileData();
+    localStorage.setItem(ACC_PREFIX + uid, serializeState());
+  }
+  if (window.__rebuildPrevCaches) window.__rebuildPrevCaches();
+  updateAccountIndex(uid, email);
+}
 const DEFAULT_CATEGORIES = ['Hábitos', 'Casa', 'Personal', 'Estudio', 'Otros'];
 const DEFAULT_RELATIONSHIPS = ['Pareja', 'Familia', 'Amigo/a', 'Compañero/a', 'Otro'];
 function defaultState() {
@@ -628,25 +676,38 @@ function theme() { return (S.settings && S.settings.theme) || 'auto'; }
 function applyTheme() {
   let t = theme();
   if (t === 'auto') t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', t);
+  if (document.documentElement.getAttribute('data-theme') !== t) document.documentElement.setAttribute('data-theme', t);
 }
 if (window.matchMedia) {
   try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (theme() === 'auto') applyTheme(); }); } catch (e) {}
 }
 applyTheme();
+function stateFromRaw(raw) {
+  const state = Object.assign(defaultState(), JSON.parse(raw));
+  state.settings = Object.assign(defaultState().settings, state.settings || {});
+  state.settings.categories = Array.isArray(state.settings.categories) && state.settings.categories.length ? state.settings.categories : [...DEFAULT_CATEGORIES];
+  state.settings.relationships = Array.isArray(state.settings.relationships) && state.settings.relationships.length ? state.settings.relationships : [...DEFAULT_RELATIONSHIPS];
+  state.settings.notif = Object.assign(defaultState().settings.notif, state.settings.notif || {});
+  state.notes = Array.isArray(state.notes) ? state.notes : [];
+  // las cachés de sesión (__prev/__prevRows) nunca viajan por almacenamiento
+  for (const pid of Object.keys(state.data || {})) {
+    const b = state.data[pid];
+    delete b.__prev; delete b.__prevRows;
+  }
+  normalizeData(state);
+  return state;
+}
 function load() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) {
-      const state = Object.assign(defaultState(), JSON.parse(raw));
-      state.settings = Object.assign(defaultState().settings, state.settings || {});
-      state.settings.categories = Array.isArray(state.settings.categories) && state.settings.categories.length ? state.settings.categories : [...DEFAULT_CATEGORIES];
-      state.settings.relationships = Array.isArray(state.settings.relationships) && state.settings.relationships.length ? state.settings.relationships : [...DEFAULT_RELATIONSHIPS];
-      state.settings.notif = Object.assign(defaultState().settings.notif, state.settings.notif || {});
-      state.notes = Array.isArray(state.notes) ? state.notes : [];
-      normalizeData(state);
-      return state;
+    // 1) estado de la cuenta activa (bucket propio), si la hay
+    const uid = activeAccountUid();
+    if (uid) {
+      const raw = localStorage.getItem(ACC_PREFIX + uid);
+      if (raw) return stateFromRaw(raw);
     }
+    // 2) legado: solo como buffer de adopción (primer arranque; nunca se reescribe)
+    const rawLegacy = localStorage.getItem(LS_KEY);
+    if (rawLegacy) return stateFromRaw(rawLegacy);
   } catch (e) { console.error(e); }
   return defaultState();
 }
@@ -655,29 +716,136 @@ function load() {
    o un pull de realtime que se adelanta). Guardamos los ids borrados en b.__del para que
    el pull no los resucite desde la nube; el push los borra de la nube y el pull los limpia. */
 const SYNC_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions'];
+function rememberPendingDeletes(table, ids) {
+  if (!ids || !ids.length) return;
+  if (!S.__pendingDeletes) S.__pendingDeletes = {};
+  if (!Array.isArray(S.__pendingDeletes[table])) S.__pendingDeletes[table] = [];
+  for (const id of ids) {
+    if (id != null && !S.__pendingDeletes[table].includes(id)) S.__pendingDeletes[table].push(id);
+  }
+}
 function trackDeletes(b) {
   if (!b.__prev) b.__prev = {};
   if (!b.__del) b.__del = {};
   for (const k of SYNC_KEYS) {
     const localIds = (b[k] || []).map(x => x.id);
-    // si un id tombstoned volvió a estar local (p. ej. botón Deshacer), deja de ser borrado pendiente
+    // si un id tombstoned volvió a estar local (p. ej. botón Deshacer), deja de ser borrado pendiente.
+    // El resurgimiento necesita un reloj nuevo: si conserva el updatedAt anterior, el tombstone
+    // de la nube volverá a ganar y el elemento desaparecerá otra vez.
+    for (const row of (b[k] || [])) {
+      if (row && b.__del[k] && b.__del[k].includes(row.id)) row.updatedAt = Date.now();
+      if (row && S.__pendingDeletes && Array.isArray(S.__pendingDeletes[k]) && S.__pendingDeletes[k].includes(row.id)) {
+        row.updatedAt = Date.now();
+        S.__pendingDeletes[k] = S.__pendingDeletes[k].filter(id => id !== row.id);
+      }
+    }
     b.__del[k] = (b.__del[k] || []).filter(id => !localIds.includes(id));
     const gone = (b.__prev[k] || []).filter(id => !localIds.includes(id));
     for (const id of gone) if (!b.__del[k].includes(id)) b.__del[k].push(id);
     b.__prev[k] = localIds;
   }
 }
+/* --- serialización: excluye las cachés de sesión (__prev/__prevRows) del almacenamiento --- */
+function serializeState() {
+  const out = Object.assign({}, S);
+  // Estas cachés son de la sesión actual; nunca deben persistirse.
+  delete out.__prevProfileMap;
+  delete out.__prevSettingsJson;
+  if (out.data) {
+    const d = {};
+    for (const pid of Object.keys(out.data)) {
+      const b = out.data[pid];
+      const bb = {};
+      for (const k of Object.keys(b)) if (k !== '__prev' && k !== '__prevRows') bb[k] = b[k];
+      d[pid] = bb;
+    }
+    out.data = d;
+  }
+  return JSON.stringify(out);
+}
+/* --- relojes dirty-stamp (save) ---
+   Tras un pull, __rebuildPrevCaches fija la "foto" del estado; al guardar comparamos el
+   JSON de cada fila con esa foto y solo estampamos updatedAt en lo que cambió desde
+   entonces (last-writer-wins: el reloj local gana en el push). Sin reloj → no estampa. */
+function stampDirtyRows(b) {
+  if (!b.__prevRows) b.__prevRows = {};
+  for (const k of SYNC_KEYS) {
+    const rows = b[k] || [];
+    const prev = b.__prevRows[k] || (b.__prevRows[k] = {});
+    for (const row of rows) {
+      if (!row || row.id == null) continue;
+      const { updatedAt, ...rest } = row;
+      const j = JSON.stringify(rest);
+      if (prev[row.id] !== undefined && prev[row.id] !== j) row.updatedAt = Date.now();
+      prev[row.id] = j;
+    }
+  }
+}
+function stampDirtyProfiles() {
+  const prevMap = S.__prevProfileMap || (S.__prevProfileMap = {});
+  for (const p of S.profiles) {
+    if (!p || !p.id) continue;
+    const { updatedAt, ...rest } = p;
+    const j = JSON.stringify(rest);
+    if (prevMap[p.id] !== undefined && prevMap[p.id] !== j) p.updatedAt = Date.now();
+    prevMap[p.id] = j;
+  }
+  const ids = new Set(S.profiles.map(p => p && p.id));
+  for (const id of Object.keys(prevMap)) if (!ids.has(id)) delete prevMap[id];
+}
+function settingsClockJson() {
+  const s = Object.assign({}, S.settings || {});
+  delete s.updatedAt;
+  return JSON.stringify({ settings: s, meta: S.meta || {} });
+}
+function stampSettingsClock() {
+  const j = settingsClockJson();
+  if (S.__prevSettingsJson !== undefined && S.__prevSettingsJson !== j && S.settings) S.settings.updatedAt = Date.now();
+  S.__prevSettingsJson = j;
+}
+/* Hook llamado por app-sync tras cada pull: la "foto" de comparación pasa a ser el estado
+   ya fusionado, para que save() no re-estampa lo que acaba de llegar de la nube. */
+window.__rebuildPrevCaches = function () {
+  if (!S.data) return;
+  for (const pid of Object.keys(S.data)) {
+    const b = S.data[pid];
+    b.__prev = {};
+    b.__prevRows = {};
+    for (const k of SYNC_KEYS) {
+      const prev = {};
+      for (const row of (b[k] || [])) if (row && row.id != null) { const { updatedAt, ...rest } = row; prev[row.id] = JSON.stringify(rest); }
+      b.__prevRows[k] = prev;
+      b.__prev[k] = (b[k] || []).map(x => x.id);
+    }
+  }
+  S.__prevProfileMap = {};
+  for (const p of S.profiles) {
+    if (!p || !p.id) continue;
+    const { updatedAt, ...rest } = p;
+    S.__prevProfileMap[p.id] = JSON.stringify(rest);
+  }
+  S.__prevSettingsJson = settingsClockJson();
+};
 let __pushTimer = null;
 function save() {
   try {
     // las listas visibles pertenecen al perfil activo: se guardan en su compartimento
-    if (S.activeProfileId && S.data && S.data[S.activeProfileId]) {
-      const b = S.data[S.activeProfileId];
+    const b = (S.activeProfileId && S.data && S.data[S.activeProfileId]) || null;
+    if (b) {
       trackDeletes(b);
       b.tasks = S.tasks || []; b.people = S.people || []; b.gifts = S.gifts || []; b.notes = S.notes || []; b.subjects = S.subjects || []; b.slots = S.slots || [];
       b.inbox = S.inbox || []; b.sessions = S.sessions || []; b.activeSession = S.activeSession || null;
+      stampDirtyRows(b);
     }
-    localStorage.setItem(LS_KEY, JSON.stringify(S));
+    stampDirtyProfiles();
+    stampSettingsClock();
+    const uid = activeAccountUid();
+    if (uid) {
+      localStorage.setItem(ACC_PREFIX + uid, serializeState());
+      const known = accountsIndex().find(a => a.uid === uid);
+      if (known) updateAccountIndex(uid, known.email);
+    }
+    // sin cuenta activa no se escribe nada (el estado en memoria se adoptará en claimAccount)
   }
   catch (e) { toast('No se pudo guardar: almacenamiento lleno'); }
   // Con sesión iniciada: sube los cambios a Supabase en segundo plano (debounce)
@@ -866,14 +1034,14 @@ function welcomeScreen() {
   const box = h('div', { class: 'welcome-box' },
     h('div', { class: 'logo-mark', html: 'D' }),
     h('h2', null, 'DailyHub'),
-    h('p', { class: 'lead' }, 'Tus tareas, hábitos, regalos y apuntes de clase. Crea perfiles separados con su PIN y, si quieres, sincronízalos entre tus dispositivos con una cuenta.'),
+    h('p', { class: 'lead' }, 'Tus tareas, hábitos, regalos y apuntes de clase, sincronizados en todos tus dispositivos con tu cuenta.'),
     h('div', { style: 'margin-bottom:22px' },
       feat('checksq', 'Tareas y hábitos', 'Marca tu día con un toque'),
       feat('pencil', 'Modo Clase', 'Deberes, material y notas rápidas'),
       feat('gift', 'Regalos por persona', 'Ideas, precios y fechas importantes')
     ),
     h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { S.meta.onboarded = true; save(); go('newProfile', { first: true }); } }, 'Empezar'),
-    h('p', { style: 'font-size:11.5px;color:var(--text-3);margin-top:16px' }, 'Sin cuenta: todo se queda en este dispositivo.\nCon cuenta: se sincroniza en la nube, cifrado por usuario.')
+    h('p', { style: 'font-size:11.5px;color:var(--text-3);margin-top:16px' }, 'Los cambios se sincronizan al instante entre tus dispositivos mediante tu cuenta.')
   );
   return h('div', { class: 'welcome' }, box);
 }
@@ -914,9 +1082,21 @@ function newProfileScreen() {
     const pin = pinIn.value.trim();
     if (pin && !/^\d{4,6}$/.test(pin)) { err.textContent = 'El PIN debe tener entre 4 y 6 dígitos.'; return; }
     if (pin && pin !== pin2In.value.trim()) { err.textContent = 'Los PIN no coinciden.'; return; }
-    const prof = { id: uid('pr'), name, color, photo: newProfPhoto, pin: pin ? hashPin(pin) : null, pinLen: pin ? pin.length : null };
-    S.profiles.push(prof);
-    S.activeProfileId = prof.id;
+    // si ya existe el perfil de la cuenta activa (creado por el sync al entrar), se edita en vez de duplicarlo
+    const auid = activeAccountUid();
+    const existing = first
+      ? (S.profiles.find(p => p.id === auid) || (S.profiles.length === 1 ? S.profiles[0] : null))
+      : (auid ? S.profiles.find(p => p.id === auid) : null);
+    if (existing) {
+      existing.name = name; existing.color = color; existing.photo = newProfPhoto;
+      existing.pin = pin ? hashPin(pin) : null; existing.pinLen = pin ? pin.length : null;
+      existing.updatedAt = Date.now();
+      S.activeProfileId = existing.id;
+    } else {
+      const prof = { id: uid('pr'), name, color, photo: newProfPhoto, pin: pin ? hashPin(pin) : null, pinLen: pin ? pin.length : null };
+      S.profiles.push(prof);
+      S.activeProfileId = prof.id;
+    }
     normalizeData();
     switchProfileData();   // el perfil nuevo empieza con sus listas vacías
     session.unlocked = true;
@@ -958,9 +1138,16 @@ function profileSelectScreen() {
       confirmText: 'Eliminar perfil',
       onConfirm: () => {
         const i = S.profiles.findIndex(x => x.id === p.id);
+        if (i < 0) return;
+        const oldBucket = S.data[p.id] || {};
+        // El perfil y todas sus filas deben dejar de existir también en la nube.
+        // normalizeData() elimina el bucket después de quitar el perfil, por eso
+        // los ids se guardan primero en el acumulador de nivel de cuenta.
+        rememberPendingDeletes('profiles', [p.id]);
+        for (const k of SYNC_KEYS) rememberPendingDeletes(k, (oldBucket[k] || []).map(x => x && x.id));
         if (i >= 0) S.profiles.splice(i, 1);
         delete S.data[p.id];   // borra el compartimento entero del perfil (tareas, personas, regalos y notas)
-        S.activeProfileId = null;   // volver a la selección de perfiles, sin entrar en ninguno
+        S.activeProfileId = S.profiles[0] ? S.profiles[0].id : null;
         switchProfileData();
         session.unlocked = false;
         save();
@@ -3209,7 +3396,7 @@ function scrSettings() {
     h('div', { class: 'set-card' },
       row('info', 'DailyHub v2.0', infoSheet)
     ));
-  wrap.append(h('button', { class: 'btn btn-block', style: 'margin-top:26px;color:var(--danger);background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.45)', onclick: () => { S.activeProfileId = null; switchProfileData(); session.unlocked = false; save(); go('profiles'); } }, 'Cambiar de perfil'));
+  wrap.append(h('button', { class: 'btn btn-block', style: 'margin-top:26px;color:var(--danger);background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.45)', onclick: () => { softLogout(); } }, 'Cambiar de cuenta'));
   return wrap;
 }
 
@@ -3276,8 +3463,8 @@ function scrProfile() {
   ));
   wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Sesión')));
   wrap.append(h('div', { class: 'set-card' },
-    h('button', { class: 'set-row', onclick: () => { S.activeProfileId = null; switchProfileData(); session.unlocked = false; save(); go('profiles'); } },
-      h('span', { class: 'r-ic', html: icon('logout', 18) }), h('span', null, 'Cerrar sesión y cambiar de perfil'), h('span', { class: 'chev', html: icon('chev', 17) }))
+    h('button', { class: 'set-row', onclick: () => { softLogout(); } },
+      h('span', { class: 'r-ic', html: icon('logout', 18) }), h('span', null, 'Cambiar de cuenta'), h('span', { class: 'chev', html: icon('chev', 17) }))
   ));
   return wrap;
 }
@@ -3564,7 +3751,34 @@ function deleteDataSheet() {
           title: '¿Empezar de cero?',
           message: 'Se eliminará TODO, incluidos los perfiles y el PIN. La aplicación volverá a su estado inicial.',
           confirmText: 'Borrar todo',
-          onConfirm: () => { S = defaultState(); S.meta.onboarded = true; save(); session.unlocked = false; closeOverlays(); render(); toast('DailyHub reiniciado'); }
+          onConfirm: () => {
+            // encola tombstones de todo lo que había para vaciar también la nube (no reaparecerá en el pull)
+            const oldData = S.data;
+            const pendingDeletes = {};
+            pendingDeletes.profiles = (S.profiles || []).map(p => p.id).filter(Boolean);
+            for (const pid of Object.keys(oldData)) {
+              const b = oldData[pid];
+              if (!b.__del) b.__del = {};
+              for (const k of SYNC_KEYS) {
+                pendingDeletes[k] = pendingDeletes[k] || [];
+                for (const row of (b[k] || [])) if (row && row.id != null && !pendingDeletes[k].includes(row.id)) pendingDeletes[k].push(row.id);
+                for (const id of (b.__del[k] || [])) if (!pendingDeletes[k].includes(id)) pendingDeletes[k].push(id);
+                b[k] = [];
+              }
+              b.__prev = {};
+              for (const k of SYNC_KEYS) b.__prev[k] = [];
+            }
+            S = defaultState();
+            S.meta.onboarded = true;
+            // conserva todos los borrados pendientes, incluso tras eliminar el perfil que los contenía.
+            S.__pendingDeletes = pendingDeletes;
+            save();
+            // vacía la nube ahora: si el usuario crea un perfil dentro del debounce (1200ms),
+            // normalizeData() eliminaría el bucket de tombstones antes del push programado
+            clearTimeout(__pushTimer);
+            if (window.DailySync && DailySync.status.state === 'online') DailySync.push();
+            session.unlocked = true; closeOverlays(); render(); toast('DailyHub reiniciado');
+          }
         })
       }, 'Borrar todo y empezar de cero')
     );
@@ -3574,7 +3788,7 @@ function deleteDataSheet() {
 
 function infoSheet() {
   openSheet('Información', () => {
-    const size = Math.round((localStorage.getItem(LS_KEY) || '').length / 1024);
+    const size = Math.round(((activeAccountUid() ? localStorage.getItem(ACC_PREFIX + activeAccountUid()) : null) || localStorage.getItem(LS_KEY) || '').length / 1024);
     return h('div', { style: 'text-align:center;padding:6px 0 10px' },
       h('div', { class: 'logo-mark', style: 'width:52px;height:52px;font-size:24px;margin-bottom:14px', html: 'D' }),
       h('b', { style: 'font-size:16px' }, 'DailyHub v2.0'),
@@ -3887,26 +4101,106 @@ function startNotificationChecks() {
 })();
 
 /* ================= AUTENTICACIÓN (Supabase) ================= */
+let __authMode = 'picker';          // 'picker' = elegir cuenta guardada | 'login' = formulario
+let __loginEmail = '';
 function authCheck() {
   if (!window.DailySync) return true;               // sin capa de sync: modo local
-  if (S.meta.localMode) return true;                // el usuario eligió usar solo este dispositivo
   const st = DailySync.status.state;
   if (st === 'loading') return true;                 // aún comprobando: se re-renderiza al terminar
   return st === 'online';                            // loggedout u offline → pantalla de cuenta
 }
+function softLogout() {
+  clearTimeout(__pushTimer);
+  if (window.DailySync && DailySync.realtime) DailySync.realtime.stop();
+  DailySync.status.state = 'loggedout';
+  session.unlocked = false;
+  closeOverlays();
+  render();
+}
+function switchAccount(acc) {
+  toast('Entrando…');
+  DailySync.restoreSession(acc.uid).then(user => {
+    if (!user) {
+      // la sesión guardada caducó: pedir contraseña de nuevo
+      toast('La sesión ha caducado. Vuelve a entrar.');
+      __authMode = 'login'; __loginEmail = acc.email || '';
+      render();
+      return;
+    }
+    localStorage.setItem(ACC_ACTIVE, acc.uid);
+    const raw = localStorage.getItem(ACC_PREFIX + acc.uid);
+    S = raw ? stateFromRaw(raw) : defaultState();
+    switchProfileData();
+    if (window.__rebuildPrevCaches) window.__rebuildPrevCaches();
+    updateAccountIndex(acc.uid, user.email || acc.email || '');
+    DailySync.status.state = 'online';
+    session.unlocked = false;   // el perfil de esta cuenta puede tener PIN propio
+    applyTheme();
+    DailySync.pull().then(ok => {
+      toast(ok ? 'Datos de ' + (user.email || 'la cuenta') + ' cargados' : 'Conectado, pero la nube no responde');
+      if (ok && DailySync.realtime) DailySync.realtime.start();
+      render();
+    });
+  }).catch(() => { toast('No se pudo entrar en esa cuenta'); render(); });
+}
+function removeDeviceAccount() {
+  const uid = activeAccountUid();
+  if (!uid) { closeOverlays(); return; }
+  confirmDialog({
+    title: '¿Quitar esta cuenta del dispositivo?',
+    message: 'Se borrará la copia guardada de esta cuenta en este navegador. Los datos de la nube se conservan: podrás volver a entrar cuando quieras.',
+    confirmText: 'Quitar cuenta',      onConfirm: async () => {
+      if (window.DailySync && DailySync.realtime) DailySync.realtime.stop();
+      if (window.DailySync && DailySync.removeAuthBlob) await DailySync.removeAuthBlob(uid);
+      try {
+        localStorage.removeItem(ACC_PREFIX + uid);
+        saveAccountsIndex(accountsIndex().filter(a => a.uid !== uid));
+        localStorage.removeItem(ACC_ACTIVE);
+      } catch (e) {}
+      S = defaultState();
+      switchProfileData();
+      applyTheme();
+      DailySync.status.state = 'loggedout';
+      session.unlocked = false;
+      closeOverlays();
+      render();
+      toast('Cuenta eliminada de este dispositivo');
+    }
+  });
+}
 function authScreen() {
   const st = DailySync.status.state;
+  const accs = accountsIndex();
   const wrap = h('div', { class: 'center-page' }, h('div', { class: 'center-box' }));
   const box = wrap.firstChild;
   box.append(h('div', { class: 'auth-logo', html: 'D' }), h('h2', { style: 'font-size:24px;font-weight:800;letter-spacing:-.03em' }, 'Bienvenido a DailyHub'));
   if (st === 'offline') {
     box.append(
-      h('p', { style: 'font-size:13.5px;color:var(--text-2);margin:8px 0 20px;line-height:1.6' }, 'No hay conexión con el servidor. Puedes usar la app con los datos guardados en este dispositivo.'),
-      h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { DailySync.status.state = 'loggedout'; render(); } }, 'Continuar sin conexión'),
-      h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: () => { DailySync.status.state = 'loading'; render(); DailySync.boot(); } }, 'Reintentar')
+      h('p', { style: 'font-size:13.5px;color:var(--text-2);margin:8px 0 20px;line-height:1.6' }, 'No hay conexión con el servidor. Comprueba tu conexión y vuelve a intentarlo para entrar en tu cuenta.'),
+      h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { DailySync.status.state = 'loading'; render(); DailySync.boot(); } }, 'Reintentar')
     );
     return wrap;
   }
+  // Picker de cuentas conocidas en este dispositivo
+  if (accs.length && __authMode !== 'login') {
+    box.append(h('p', { style: 'font-size:13px;color:var(--text-2);margin:4px 0 18px;text-align:center' }, '¿Quién eres?'));
+    const list = h('div', { style: 'display:flex;flex-direction:column;gap:10px;margin-bottom:14px' });
+    for (const a of accs) {
+      list.append(h('button', {
+        class: 'btn btn-soft btn-block', style: 'display:flex;align-items:center;gap:12px;padding:12px 16px',
+        onclick: () => switchAccount(a)
+      },
+        avatarEl(a.name || '?', a.color || '#2563EB', 40, a.photo || ''),
+        h('div', { style: 'text-align:left;min-width:0' },
+          h('b', { style: 'display:block;font-size:14.5px' }, a.name || 'Cuenta'),
+          h('span', { style: 'font-size:12px;color:var(--text-2);word-break:break-all' }, a.email || a.uid))
+      ));
+    }
+    box.append(list);
+    box.append(h('button', { class: 'btn btn-primary btn-block', onclick: () => { __authMode = 'login'; render(); } }, 'Añadir otra cuenta'));
+    return wrap;
+  }
+  // Formulario de acceso (login/signup)
   const emailIn = h('input', { class: 'input', type: 'email', placeholder: 'tucorreo@ejemplo.com', autocomplete: 'email' });
   const passIn = h('input', { class: 'input', type: 'password', placeholder: 'Mínimo 6 caracteres', autocomplete: 'current-password' });
   const msg = h('p', { class: 'field-hint', style: 'min-height:18px;text-align:center' });
@@ -3934,10 +4228,14 @@ function authScreen() {
         btn.disabled = false; mode = 'login'; btn.textContent = 'Entrar';
         return;
       }
+      const user = r.data.session.user;
       DailySync.status.state = 'online';
-      S.meta.localMode = false;
       msg.style.color = ''; msg.textContent = '';
+      claimAccount(user.id, user.email || email);   // adopción del estado actual (legacy o bucket previo)
+      session.unlocked = false;
+      applyTheme();
       const okPull = await DailySync.pull();
+      if (okPull && DailySync.realtime) DailySync.realtime.start();
       render();
       if (!okPull) toast('Conectado, pero la nube no responde. ¿Aplicaste supabase/schema.sql en Supabase?');
     } catch (e) {
@@ -3953,8 +4251,9 @@ function authScreen() {
     h('div', { class: 'field', style: 'text-align:left;margin-top:20px' }, h('label', null, 'Email'), emailIn),
     h('div', { class: 'field', style: 'text-align:left' }, h('label', null, 'Contraseña'), passIn),
     msg, btn, modeBtn,
-    h('button', { class: 'link', style: 'font-size:12px;margin-top:8px;color:var(--text-3)', onclick: () => { DailySync.status.state = 'loggedout'; S.meta.localMode = true; save(); render(); } }, 'Usar solo este dispositivo (sin cuenta)')
+    accs.length ? h('button', { class: 'link', style: 'font-size:12px;margin-top:8px;color:var(--text-3)', onclick: () => { __authMode = 'picker'; render(); } }, '← Volver a elegir cuenta') : null
   );
+  emailIn.value = __loginEmail || '';
   return wrap;
 }
 function accountSheet() {
@@ -3963,27 +4262,25 @@ function accountSheet() {
     DailySync.getUser().then(async (user) => {
       box.innerHTML = '';
       if (user) {
-        const local = (localStorage.getItem(LS_KEY) || '').length;
+        const uid = user.id;
+        const local = (localStorage.getItem(ACC_PREFIX + uid) || '').length;
+        const prof = S.profiles.find(p => p.id === S.activeProfileId) || null;
         box.append(
           h('div', { style: 'text-align:center;margin-bottom:16px' },
             h('div', { class: 'auth-logo', style: 'width:48px;height:48px;font-size:20px;margin-bottom:10px', html: (user.email || '?').charAt(0).toUpperCase() }),
             h('b', { style: 'font-size:15px;display:block' }, user.email),
-            h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, 'Tus datos se sincronizan en todos tus dispositivos')
+            h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, prof ? 'Perfil: ' + prof.name : 'Tus datos se sincronizan en todos tus dispositivos')
           ),
           h('button', { class: 'btn btn-soft btn-block', onclick: async () => { toast('Sincronizando…'); const ok = await DailySync.push(); toast(ok ? 'Todo sincronizado ✓' : 'No se pudo sincronizar'); } }, 'Sincronizar ahora'),
           h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: async () => { toast('Descargando…'); const ok = await DailySync.pull(); toast(ok ? 'Datos actualizados ✓' : 'No se pudo descargar'); if (ok) render(); } }, 'Descargar cambios del servidor'),
-          h('button', { class: 'btn btn-danger btn-block btn-lg', style: 'margin-top:18px', onclick: () => confirmDialog({
-            title: '¿Cerrar sesión?',
-            message: 'Los datos de este dispositivo se guardarán y podrás verlos sin conexión. Podrás volver a entrar cuando quieras.',
-            confirmText: 'Cerrar sesión',
-            onConfirm: async () => { await window.sb.auth.signOut(); DailySync.status.state = 'loggedout'; session.unlocked = false; closeOverlays(); render(); toast('Sesión cerrada'); }
-          }) }, 'Cerrar sesión'),
+          h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: () => { softLogout(); } }, 'Cambiar de cuenta'),
+          h('button', { class: 'btn btn-danger btn-block btn-lg', style: 'margin-top:10px', onclick: removeDeviceAccount }, 'Quitar esta cuenta del dispositivo'),
           h('p', { style: 'font-size:11px;color:var(--text-3);margin-top:14px;text-align:center' }, 'Copia local: ' + Math.round(local / 1024) + ' KB')
         );
       } else {
         box.append(
-          h('p', { style: 'font-size:13.5px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:16px' }, 'Estás usando DailyHub sin cuenta: los datos solo están en este navegador. Crea una cuenta para tenerlos en todos tus dispositivos.'),
-          h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { S.meta.localMode = false; DailySync.status.state = 'loggedout'; save(); closeOverlays(); render(); } }, 'Crear cuenta o iniciar sesión')
+          h('p', { style: 'font-size:13.5px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:16px' }, 'Tus datos se guardan en la nube con tu cuenta. Inicia sesión para tenerlos en todos tus dispositivos.'),
+          h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { DailySync.status.state = 'loggedout'; closeOverlays(); render(); } }, 'Crear cuenta o iniciar sesión')
         );
       }
     });
@@ -4018,12 +4315,35 @@ function accountSheet() {
 if (('serviceWorker' in navigator) && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-render();
-if (window.DailySync) DailySync.boot();
-maybeNotify();
-scheduleGiftNotification();
-startNotificationChecks();
-window.addEventListener('focus', () => { maybeNotify(); scheduleGiftNotification(); });
+(async () => {
+  // si hay una cuenta activa en este dispositivo, asegura que la sesión restaurada sea la suya
+  if (window.DailySync) {
+    const auid = activeAccountUid();
+    if (auid) {
+      try {
+        const u = await DailySync.getUser();
+        if (!u || u.id !== auid) await DailySync.restoreSession(auid);
+      } catch (e) {}
+    }
+  }
+  // Inicializa las fotos de borrado/dirty-stamp también sin conexión: si no,
+  // una eliminación hecha tras recargar no tendría el id anterior que tombstonear.
+  if (window.__rebuildPrevCaches) window.__rebuildPrevCaches();
+  render();
+  if (window.DailySync) DailySync.boot();
+  maybeNotify();
+  scheduleGiftNotification();
+  startNotificationChecks();
+  window.addEventListener('focus', () => { maybeNotify(); scheduleGiftNotification(); });
+})();
+// Flush: al ocultar/cerrar la pestaña, sube los cambios pendientes sin esperar al debounce
+['pagehide', 'visibilitychange'].forEach(ev => document.addEventListener(ev, () => {
+  if (ev === 'visibilitychange' && document.visibilityState !== 'hidden') return;
+  if (window.DailySync && DailySync.status.state === 'online') {
+    clearTimeout(__pushTimer);
+    DailySync.push();
+  }
+}));
 </script>
 </body>
 </html>

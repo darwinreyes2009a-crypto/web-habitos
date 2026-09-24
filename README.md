@@ -20,7 +20,7 @@ DailyHub (PWA)
     └── RLS       → cada usuario solo accede a SUS filas
 ```
 
-**Separación código/datos:** puedes cambiar todo el frontend sin tocar la base de datos. Los datos viven en Supabase; el navegador guarda una copia (`localStorage`, clave `dailyhub_v2`) para funcionar sin conexión y sincroniza automáticamente (subida con debounce de 1,2 s tras cada cambio; descarga al arrancar).
+**Separación código/datos:** puedes cambiar todo el frontend sin tocar la base de datos. Los datos viven en Supabase; el navegador guarda una copia por cuenta (`dailyhub_v2:acc:<uid>`) para funcionar sin conexión y sincroniza automáticamente (subida con debounce de 1,2 s tras cada cambio; descarga al arrancar). `dailyhub_v2` queda como buffer de adopción de versiones antiguas.
 
 ## Archivos
 
@@ -32,15 +32,17 @@ DailyHub (PWA)
 | `sw.js` | Service worker — cachea la app para uso offline |
 | `manifest.webmanifest` | Manifest PWA (nombre, iconos, colores) |
 | `icon.svg` | Icono de la app |
-| `supabase/schema.sql` | SQL para crear tablas + RLS en Supabase |
+| `supabase/schema.sql` | SQL completo para tablas, RLS, relojes y tombstones |
+| `supabase/migrations/20260923000000_accounts_sync.sql` | Migración idempotente para instalaciones existentes |
 
 ## Puesta en marcha
 
 ### 1. Base de datos (Supabase)
 
 1. Entra en [supabase.com](https://supabase.com) → tu proyecto.
-2. Abre **SQL Editor → New query**, pega el contenido de `supabase/schema.sql` y pulsa **Run**.
-3. Comprueba en **Table Editor** que aparecen las tablas: `profiles`, `tasks`, `people`, `gifts`, `settings`.
+2. Para una instalación nueva, abre **SQL Editor → New query**, pega `supabase/schema.sql` y pulsa **Run**. El archivo incluye `updated_at` en las tablas de datos y la tabla `tombstones` usada por la sincronización.
+3. Si ya tienes una instalación anterior, ejecuta además `supabase/migrations/20260923000000_accounts_sync.sql`; es idempotente y conserva los datos existentes.
+4. Comprueba en **Table Editor** que aparecen `profiles`, `tasks`, `people`, `gifts`, `settings` y `tombstones`.
 
 ### 2. Frontend
 
@@ -57,8 +59,8 @@ Sírvelo por HTTPS (Netlify, Vercel, GitHub Pages…). No hay paso de build: son
 ## Uso
 
 - Primera apertura: bienvenida → **crear cuenta** (email) → crear tu perfil → datos.
-- Sin cuenta: pulsa "Usar solo este dispositivo" — todo funciona igual pero solo en ese navegador.
-- Datos locales de la v1: al iniciar sesión en una cuenta nueva se **suben automáticamente** a la nube (migración). Si la nube ya tiene datos, se usan los de la nube.
+- Los datos de la versión anterior (sin cuenta) se **adoptan automáticamente** solo por la primera cuenta que entra en el dispositivo. Las cuentas posteriores tienen su propio bucket local.
+- Cada dispositivo puede guardar varias cuentas; **Cambiar de cuenta** detiene realtime y restaura la sesión y el estado de la cuenta elegida.
 - El PIN de cada perfil local se guarda **hasheado** (nunca en claro).
 
 ## Desarrollo local

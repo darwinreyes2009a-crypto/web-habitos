@@ -52,11 +52,7 @@ alter table public.people add column if not exists details jsonb not null defaul
 
 -- Aislamiento por perfil: cada fila sabe a qué perfil local pertenece (nullable: filas antiguas)
 alter table public.people add column if not exists profile_id uuid references public.profiles(id) on delete cascade;
-alter table public.gifts  add column if not exists profile_id uuid references public.profiles(id) on delete cascade;
-alter table public.notes  add column if not exists profile_id uuid references public.profiles(id) on delete cascade;
 create index if not exists people_profile_idx on public.people(profile_id);
-create index if not exists gifts_profile_idx  on public.gifts(profile_id);
-create index if not exists notes_profile_idx  on public.notes(profile_id);
 
 -- ---------- GIFTS (regalos) ----------
 create table if not exists public.gifts (
@@ -88,6 +84,13 @@ create table if not exists public.notes (
   created_at timestamptz not null default now()
 );
 create index if not exists notes_user_idx on public.notes(user_id);
+
+-- Estas alters se ejecutan después de crear gifts y notes para que schema.sql
+-- también funcione desde cero, no solo sobre una instalación preexistente.
+alter table public.gifts add column if not exists profile_id uuid references public.profiles(id) on delete cascade;
+alter table public.notes add column if not exists profile_id uuid references public.profiles(id) on delete cascade;
+create index if not exists gifts_profile_idx on public.gifts(profile_id);
+create index if not exists notes_profile_idx on public.notes(profile_id);
 
 -- ---------- SUBJECTS (Modo Clase: asignaturas, funcionan como carpetas) ----------
 create table if not exists public.subjects (
@@ -179,18 +182,61 @@ create policy "push_subs_all" on public.push_subscriptions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ============================================================
+-- SYNC POR FILAS: relojes y tombstones
+-- Esta sección también permite actualizar una instalación anterior
+-- mediante schema.sql sin perder las filas existentes.
+-- ============================================================
+alter table public.profiles       add column if not exists updated_at timestamptz not null default now();
+alter table public.tasks          add column if not exists updated_at timestamptz not null default now();
+alter table public.people         add column if not exists updated_at timestamptz not null default now();
+alter table public.gifts          add column if not exists updated_at timestamptz not null default now();
+alter table public.notes          add column if not exists updated_at timestamptz not null default now();
+alter table public.subjects       add column if not exists updated_at timestamptz not null default now();
+alter table public.class_slots    add column if not exists updated_at timestamptz not null default now();
+alter table public.class_inbox    add column if not exists updated_at timestamptz not null default now();
+alter table public.class_sessions add column if not exists updated_at timestamptz not null default now();
+
+create table if not exists public.tombstones (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  key text not null,
+  id uuid not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, key, id)
+);
+create index if not exists tombstones_user_idx on public.tombstones(user_id);
+alter table public.tombstones enable row level security;
+drop policy if exists "tombstones_all" on public.tombstones;
+create policy "tombstones_all" on public.tombstones
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ============================================================
 -- REALTIME: habilita la replicación para que los cambios
 -- aparezcan al instante en otros dispositivos
+-- El guard evita fallar al reejecutar schema.sql.
 -- ============================================================
-alter publication supabase_realtime add table public.profiles;
-alter publication supabase_realtime add table public.tasks;
-alter publication supabase_realtime add table public.people;
-alter publication supabase_realtime add table public.gifts;
-alter publication supabase_realtime add table public.notes;
-alter publication supabase_realtime add table public.subjects;
-alter publication supabase_realtime add table public.class_slots;
-alter publication supabase_realtime add table public.class_inbox;
-alter publication supabase_realtime add table public.class_sessions;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'profiles')
+    then alter publication supabase_realtime add table public.profiles; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'tasks')
+    then alter publication supabase_realtime add table public.tasks; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'people')
+    then alter publication supabase_realtime add table public.people; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'gifts')
+    then alter publication supabase_realtime add table public.gifts; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notes')
+    then alter publication supabase_realtime add table public.notes; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'subjects')
+    then alter publication supabase_realtime add table public.subjects; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'class_slots')
+    then alter publication supabase_realtime add table public.class_slots; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'class_inbox')
+    then alter publication supabase_realtime add table public.class_inbox; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'class_sessions')
+    then alter publication supabase_realtime add table public.class_sessions; end if;
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'tombstones')
+    then alter publication supabase_realtime add table public.tombstones; end if;
+end $$;
 
 -- ============================================================
 -- RLS: cada usuario solo puede leer/escribir SUS filas
