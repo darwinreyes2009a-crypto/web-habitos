@@ -640,6 +640,7 @@ function realtimeApply() {
   if (__rtIgnore) return;
   clearTimeout(__rtTimer);
   __rtTimer = setTimeout(async () => {
+    if (!syncIsOnline()) return;
     const u = await syncGetUser();
     if (!u) return;
     const ok = await syncQueue(syncPullAll);

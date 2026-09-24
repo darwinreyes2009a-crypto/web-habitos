@@ -1144,7 +1144,7 @@ function profileSelectScreen() {
         // normalizeData() elimina el bucket después de quitar el perfil, por eso
         // los ids se guardan primero en el acumulador de nivel de cuenta.
         rememberPendingDeletes('profiles', [p.id]);
-        for (const k of SYNC_KEYS) rememberPendingDeletes(k, (oldBucket[k] || []).map(x => x && x.id));
+        for (const k of SYNC_KEYS) rememberPendingDeletes(k, (oldBucket[k] || []).map(x => x && x.id).concat((oldBucket.__del && oldBucket.__del[k]) || []));
         if (i >= 0) S.profiles.splice(i, 1);
         delete S.data[p.id];   // borra el compartimento entero del perfil (tareas, personas, regalos y notas)
         S.activeProfileId = S.profiles[0] ? S.profiles[0].id : null;
@@ -3755,7 +3755,12 @@ function deleteDataSheet() {
             // encola tombstones de todo lo que había para vaciar también la nube (no reaparecerá en el pull)
             const oldData = S.data;
             const pendingDeletes = {};
-            pendingDeletes.profiles = (S.profiles || []).map(p => p.id).filter(Boolean);
+            // Conserva también tombstones que ya estaban pendientes en el
+            // acumulador de nivel de cuenta, incluso si ya no tienen bucket.
+            for (const [table, ids] of Object.entries(S.__pendingDeletes || {})) {
+              if (Array.isArray(ids)) pendingDeletes[table] = ids.slice();
+            }
+            pendingDeletes.profiles = (pendingDeletes.profiles || []).concat((S.profiles || []).map(p => p.id).filter(Boolean)).filter((id, i, a) => a.indexOf(id) === i);
             for (const pid of Object.keys(oldData)) {
               const b = oldData[pid];
               if (!b.__del) b.__del = {};
