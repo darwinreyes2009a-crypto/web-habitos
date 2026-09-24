@@ -397,7 +397,7 @@ export function registerOnboarding(app) {
         const active = route.name === item.id ||
           (item.id === 'tasks' && (route.name === 'progress' || route.name === 'week')) ||
           (item.id === 'class' && ['noteForm', 'classSubjects', 'subjectForm', 'classSchedule', 'slotForm', 'subjectView', 'classHistory'].includes(route.name)) ||
-          (item.id === 'gifts' && ['person', 'personAbout', 'personForm'].includes(route.name));
+          (item.id === 'gifts' && ['person', 'personAbout', 'personForm', 'giftHistory', 'giftAgenda', 'giftStats'].includes(route.name));
         let badge = null;
         if (item.id === 'tasks') {
           const pending = tasksDueOn(todayStr()).filter(task => !isDoneOn(task, todayStr())).length;

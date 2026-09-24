@@ -17,6 +17,7 @@ export function registerConstants(app) {
   const WEEK_FULL = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
   const GIFT_STATUSES = ['Idea', 'Comprar', 'Comprado', 'Entregado'];
   const OCCASIONS = ['Cumpleaños', 'Navidad', 'Aniversario', 'Amigo Invisible', 'Graduación', 'Otro'];
+  const REMIND_DAYS = [1, 3, 7, 14, 30];
 
   Object.assign(app.core, {
     DEFAULT_CATEGORIES,
@@ -26,6 +27,7 @@ export function registerConstants(app) {
     WEEK_L,
     WEEK_FULL,
     GIFT_STATUSES,
-    OCCASIONS
+    OCCASIONS,
+    REMIND_DAYS
   });
 }

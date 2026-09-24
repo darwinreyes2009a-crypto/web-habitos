@@ -61,7 +61,11 @@ export function registerIcons(app) {
     recycle: '<path d="m7 7-2 3 2 3M5 10h7M17 17l-2-3 2-3M15 14H5M12 5l3-1 3 3M15 4l-3 6"/>',
     copy: '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/>',
     pin: '<path d="M12 17v5"/><path d="M8.5 3h7l-.8 6 3.3 3v2H6v-2l3.3-3z"/>',
-    inbox: '<path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 5h14l2 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/>'
+    inbox: '<path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 5h14l2 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/>',
+    external: '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-9"/>',
+    archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>'
   };
 
   function icon(name, size, className) {

@@ -132,3 +132,7 @@
 .sync-badge.online i { background:#EFF6FF; color:var(--primary); border-color:#BFDBFE }
 .sync-badge.offline i { background:#FEF2F2; color:var(--danger); border-color:#FECACA }
 .auth-logo { width:56px; height:56px; border-radius:18px; background:var(--primary); color:#fff; font-size:26px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 16px }
+/* Regalos: chip de tienda y fila del historial clicable */
+.st-link { display:inline-flex; align-items:center; gap:4px; background:var(--surface-2); color:var(--text-2); text-decoration:none; margin-top:4px; font-size:11px; padding:4px 9px }
+.st-link:hover { color:var(--primary) }
+button.hist-row { display:flex }

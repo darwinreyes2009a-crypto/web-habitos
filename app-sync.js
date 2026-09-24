@@ -167,6 +167,20 @@ function slotToRow(s, uidv, pid) {
     updated_at: toIso(s.updatedAt || null)
   };
 }
+
+/* Sonda de columnas nuevas de gifts (starred, remind_days): se comprueba una
+   vez por sesión y queda en cache. Sin la migración aplicada el push omite
+   esas columnas y todo sigue funcionando. */
+const GIFT_EXTRA_COLUMNS = { starred: true, remind_days: true };
+async function detectGiftExtraColumns() {
+  try {
+    const { error } = await window.sb.from('gifts').select('starred,remind_days').limit(1);
+    if (error) { GIFT_EXTRA_COLUMNS.starred = false; GIFT_EXTRA_COLUMNS.remind_days = false; }
+  } catch (error) {
+    GIFT_EXTRA_COLUMNS.starred = false;
+    GIFT_EXTRA_COLUMNS.remind_days = false;
+  }
+}
 function rowToInbox(r) {
   return {
     id: r.id, text: r.text, date: r.item_date || window.DailyHub.core.todayStr(), time: r.item_time || '',
@@ -203,17 +217,23 @@ function rowToGift(r) {
     id: r.id, title: r.title, personId: r.person_id || null, price: r.price === null ? '' : r.price,
     targetDate: r.target_date || '', link: r.link || '', occasion: r.occasion || 'Cumpleaños',
     status: r.status || 'Idea', notes: r.notes || '', image: r.image || '',
+    starred: !!r.starred, remindDays: r.remind_days == null ? null : Number(r.remind_days),
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
 }
 function giftToRow(g, uidv, pid) {
-  return {
+  const row = {
     id: g.id, user_id: uidv, profile_id: pid || null, person_id: g.personId || null, title: g.title,
     price: g.price === '' || g.price == null ? null : Number(g.price),
     target_date: g.targetDate || null, link: g.link || '', occasion: g.occasion || 'Cumpleaños',
     status: g.status || 'Idea', notes: g.notes || '', image: g.image || null,
     updated_at: toIso(g.updatedAt || null)
   };
+  // Columnas nuevas (favoritas / días de aviso): solo se suben si la migración
+  // está aplicada; si no, el INSERT fallaría por columna desconocida.
+  if (GIFT_EXTRA_COLUMNS.starred) row.starred = !!g.starred;
+  if (GIFT_EXTRA_COLUMNS.remind_days) row.remind_days = g.remindDays == null ? null : Number(g.remindDays);
+  return row;
 }
 
 const STATE_SLOTS = {
@@ -267,31 +287,59 @@ function profileBucketIds() {
   return [...ids];
 }
 
+/* Claves bajo las que puede vivir un borrado pendiente.
+   OJO: el estado local llama `slots`/`inbox`/`sessions` a lo que en Supabase
+   es `class_slots`/`class_inbox`/`class_sessions`. El store registra los
+   borrados con la clave de ESTADO, mientras que el push trabaja con el nombre
+   de TABLA. Hay que mirar las dos o el borrado nunca se sube. */
+function deleteKeys(table) {
+  const stateKey = STATE_SLOTS[table];
+  return stateKey && stateKey !== table ? [table, stateKey] : [table];
+}
+
 /* Los borrados pendientes viven normalmente en el bucket del perfil. Durante
    "Borrar todo" pueden quedar en __pendingDeletes porque ya no existe ningún
    perfil activo; gathering/limpieza centralizados para ambos casos. */
 function pendingDeleteIds(table) {
   const ids = new Set();
-  const top = window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && window.DailyHub.state.S.__pendingDeletes[table];
-  if (Array.isArray(top)) top.forEach(id => ids.add(id));
-  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
-    if (!b || !b.__del || !Array.isArray(b.__del[table])) continue;
-    b.__del[table].forEach(id => ids.add(id));
+  const keys = deleteKeys(table);
+  const S = window.DailyHub.state.S;
+  const top = S && S.__pendingDeletes;
+  for (const key of keys) {
+    if (top && Array.isArray(top[key])) top[key].forEach(id => ids.add(id));
+  }
+  for (const b of Object.values((S && S.data) || {})) {
+    if (!b || !b.__del) continue;
+    for (const key of keys) {
+      if (Array.isArray(b.__del[key])) b.__del[key].forEach(id => ids.add(id));
+    }
   }
   return [...ids];
 }
 function clearPendingDeleteIds(table) {
-  if (window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && Array.isArray(window.DailyHub.state.S.__pendingDeletes[table])) window.DailyHub.state.S.__pendingDeletes[table] = [];
-  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
-    if (b && b.__del && Array.isArray(b.__del[table])) b.__del[table] = [];
+  const S = window.DailyHub.state.S;
+  const keys = deleteKeys(table);
+  if (S && S.__pendingDeletes) {
+    for (const key of keys) if (Array.isArray(S.__pendingDeletes[key])) S.__pendingDeletes[key] = [];
+  }
+  for (const b of Object.values((S && S.data) || {})) {
+    if (!b || !b.__del) continue;
+    for (const key of keys) if (Array.isArray(b.__del[key])) b.__del[key] = [];
   }
 }
 function forgetPendingDeleteId(table, id) {
-  if (window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && Array.isArray(window.DailyHub.state.S.__pendingDeletes[table])) {
-    window.DailyHub.state.S.__pendingDeletes[table] = window.DailyHub.state.S.__pendingDeletes[table].filter(x => x !== id);
+  const S = window.DailyHub.state.S;
+  const keys = deleteKeys(table);
+  if (S && S.__pendingDeletes) {
+    for (const key of keys) {
+      if (Array.isArray(S.__pendingDeletes[key])) S.__pendingDeletes[key] = S.__pendingDeletes[key].filter(x => x !== id);
+    }
   }
-  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
-    if (b && b.__del && Array.isArray(b.__del[table])) b.__del[table] = b.__del[table].filter(x => x !== id);
+  for (const b of Object.values((S && S.data) || {})) {
+    if (!b || !b.__del) continue;
+    for (const key of keys) {
+      if (Array.isArray(b.__del[key])) b.__del[key] = b.__del[key].filter(x => x !== id);
+    }
   }
 }
 
@@ -707,7 +755,11 @@ async function syncPullAll() {
     if (!(await syncSessionStill(uid))) return false;
     rebuildPrevCaches();
     window.DailyHub.state.save();
-    if (needPush) await syncPushAll();   // primer login o filas nuevas sin subir
+    // Un borrado pendiente (tombstone + DELETE físico) debe salir en cuanto
+    // haya conexión, aunque no haya filas nuevas que subir. Así las filas
+    // huérfanas que quedaron antes de un fallo se limpian solas.
+    if (!needPush && SB_TABLES.some(table => pendingDeleteIds(table).length)) needPush = true;
+    if (needPush) await syncPushAll();   // primer login, filas nuevas o borrados pendientes
     return true;
   } catch (e) {
     console.error('syncPullAll', e);
@@ -747,6 +799,7 @@ function realtimeStop() {
 async function syncBoot() {
   const user = await syncGetUser();
   if (!user) { SYNC_STATUS.state = 'loggedout'; realtimeStop(); window.DailyHub.state.save(); if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render(); return; }   // sin sesión
+  await detectGiftExtraColumns();
   const ok = await syncQueue(syncPullAll);
   // El usuario puede haber cambiado de cuenta mientras esperaba la cola.
   if (!(await syncSessionStill(user.id))) {

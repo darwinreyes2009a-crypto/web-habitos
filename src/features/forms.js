@@ -12,7 +12,8 @@ export function registerForms(app) {
     ICON_CHOICES,
     WEEK_L,
     GIFT_STATUSES,
-    OCCASIONS
+    OCCASIONS,
+    REMIND_DAYS
   } = app.core;
   const { S, save } = app.state;
   const {
@@ -246,6 +247,7 @@ export function registerForms(app) {
     const occasionSelect = h('select', { class: 'input' }, OCCASIONS.map(occasion => h('option', { value: occasion, selected: editing && editing.occasion === occasion }, occasion)));
     if (!editing) occasionSelect.value = 'Cumpleaños';
     wrap.append(h('div', { class: 'field' }, h('label', null, 'Ocasión'), occasionSelect));
+
     let status = editing ? editing.status || 'Idea' : 'Idea';
     const statusSegment = h('div', { class: 'seg', style: 'flex-wrap:wrap' });
     for (const option of GIFT_STATUSES) {
@@ -259,6 +261,26 @@ export function registerForms(app) {
       }, option));
     }
     wrap.append(h('div', { class: 'field' }, h('label', null, 'Estado'), statusSegment));
+
+    let starred = editing ? !!editing.starred : false;
+    const starButton = h('button', {
+      class: 'btn btn-soft btn-block',
+      style: 'margin-top:2px' + (starred ? ';color:var(--amber);border-color:var(--amber-border)' : ''),
+      onclick: () => {
+        starred = !starred;
+        starButton.style.color = starred ? 'var(--amber)' : '';
+        starButton.style.borderColor = starred ? 'var(--amber-border)' : '';
+        starButton.lastChild.textContent = starred ? ' Favorita ⭐' : ' Marcar como favorita';
+      }
+    }, h('span', { class: 'ic', html: icon('star', 16) }), starred ? ' Favorita ⭐' : ' Marcar como favorita');
+    wrap.append(starButton);
+
+    const remindSelect = h('select', { class: 'input' },
+      h('option', { value: '', selected: !editing || editing.remindDays == null }, 'Aviso estándar (7 días antes)'),
+      REMIND_DAYS.map(days => h('option', { value: String(days), selected: editing && editing.remindDays === days }, days === 1 ? '1 día antes' : days + ' días antes'))
+    );
+    wrap.append(h('div', { class: 'field' }, h('label', null, 'Avisarme antes'), remindSelect, h('p', { class: 'field-hint' }, 'Se activa cuando hay fecha y el estado es Idea o Comprar.')));
+
     const notesInput = h('textarea', { class: 'input', rows: '2', placeholder: 'Talla, color, detalles…', value: editing ? editing.notes || '' : '' });
     wrap.append(h('div', { class: 'field' }, h('label', null, 'Notas'), notesInput));
     wrap.append(h('button', {
@@ -280,7 +302,9 @@ export function registerForms(app) {
           occasion: occasionSelect.value,
           status,
           notes: notesInput.value.trim(),
-          image: imageData
+          image: imageData,
+          starred,
+          remindDays: remindSelect.value === '' ? null : Number(remindSelect.value)
         };
         if (editing) Object.assign(editing, data);
         else S.gifts.push({ id: uid('g'), createdAt: todayStr(), ...data });
@@ -423,7 +447,10 @@ export function registerForms(app) {
     ));
     const pending = S.gifts.filter(gift => gift.status === 'Idea' || gift.status === 'Comprar');
     const budget = pending.reduce((total, gift) => total + (Number(gift.price) || 0), 0);
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Regalos')));
+    wrap.append(h('div', { class: 'section-title' },
+      h('span', null, 'Regalos'),
+      h('button', { class: 'link', onclick: () => go('giftStats') }, 'Estadísticas')
+    ));
     wrap.append(h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
       h('div', { class: 'card', style: 'text-align:center' }, h('div', { class: 'stat-big', style: 'font-size:26px;color:var(--text)' }, pending.length), h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, 'Regalos pendientes')),
       h('div', { class: 'card', style: 'text-align:center' }, h('div', { class: 'stat-big', style: 'font-size:26px;color:var(--text)' }, budget.toFixed(0) + ' €'), h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, 'Presupuesto estimado'))

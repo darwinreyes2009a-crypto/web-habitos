@@ -54,7 +54,9 @@ export function registerNotifications(app) {
       const gifts = sortedUpcomingGifts().filter(gift =>
         gift.targetDate && gift.targetDate >= today && (gift.status === 'Idea' || gift.status === 'Comprar')
       );
-      const gift = gifts.find(item => item._lastNotified !== today && daysUntil(item.targetDate) <= 7);
+      // Cada regalo puede tener su propio margen de aviso (remindDays);
+      // si no, se usa el estándar de 7 días.
+      const gift = gifts.find(item => item._lastNotified !== today && daysUntil(item.targetDate) <= (item.remindDays != null ? item.remindDays : 7));
       if (!gift) return false;
       const person = S.people.find(item => item.id === gift.personId);
       const days = daysUntil(gift.targetDate);
