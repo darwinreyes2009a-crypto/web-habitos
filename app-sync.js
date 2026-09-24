@@ -2,7 +2,7 @@
    DailyHub — Capa de datos con Supabase (app-sync.js)
    - Cuentas por email: cada dispositivo guarda la sesión de su usuario
    - Sync POR FILAS con reloj updated_at (last-writer-wins)
-   - Borrados = tombstones (nunca se borran filas físicamente)
+   - Borrados = tombstone temporal + DELETE físico de la fila en la nube
    ============================================================ */
 'use strict';
 
@@ -12,7 +12,7 @@ const SYNC_STATUS = { state: 'loading', error: null };  // loading | online | of
 
 const authBlobKey = (uid) => 'dailyhub_v2:auth:' + uid;          // blob de sesión guardado por cuenta
 
-window.sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+window.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ---------- helpers de sesion ---------- */
 async function syncGetUser() {
@@ -130,7 +130,7 @@ function personToRow(p, uidv, pid) {
 }
 function rowToNote(r) {
   return {
-    id: r.id, text: r.text, kind: r.kind || 'nota', date: r.note_date || todayStr(), time: r.note_time || '',
+    id: r.id, text: r.text, kind: r.kind || 'nota', date: r.note_date || window.DailyHub.core.todayStr(), time: r.note_time || '',
     done: !!r.done, starred: !!r.starred,
     subjectId: r.subject_id || null, sessionId: r.session_id || null,
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
@@ -139,7 +139,7 @@ function rowToNote(r) {
 function noteToRow(n, uidv, pid) {
   return {
     id: n.id, user_id: uidv, profile_id: pid || null, text: n.text, kind: n.kind || 'nota',
-    note_date: n.date || todayStr(), note_time: n.time || '',
+    note_date: n.date || window.DailyHub.core.todayStr(), note_time: n.time || '',
     done: !!n.done, starred: !!n.starred,
     subject_id: n.subjectId || null, session_id: n.sessionId || null,
     updated_at: toIso(n.updatedAt || null)
@@ -156,19 +156,20 @@ function rowToSlot(r) {
   return {
     id: r.id, subjectId: r.subject_id || null, day: r.day || 0,
     start: r.start_time || '09:00', end: r.end_time || '10:00', room: r.room || '',
-    active: r.active !== false, updatedAt: toMs(r.updated_at), createdAt: r.created_at
+    kind: r.room === 'patio' ? 'patio' : 'class',
+    updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
 }
 function slotToRow(s, uidv, pid) {
   return {
     id: s.id, user_id: uidv, profile_id: pid || null, subject_id: s.subjectId || null, day: s.day || 0,
-    start_time: s.start || '09:00', end_time: s.end || '10:00', room: s.room || '', active: s.active !== false,
+    start_time: s.start || '09:00', end_time: s.end || '10:00', room: s.room || '', active: true,
     updated_at: toIso(s.updatedAt || null)
   };
 }
 function rowToInbox(r) {
   return {
-    id: r.id, text: r.text, date: r.item_date || todayStr(), time: r.item_time || '',
+    id: r.id, text: r.text, date: r.item_date || window.DailyHub.core.todayStr(), time: r.item_time || '',
     subjectId: r.subject_id || null, sessionId: r.session_id || null,
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
@@ -176,7 +177,7 @@ function rowToInbox(r) {
 function inboxToRow(x, uidv, pid) {
   return {
     id: x.id, user_id: uidv, profile_id: pid || null, text: x.text,
-    item_date: x.date || todayStr(), item_time: x.time || '',
+    item_date: x.date || window.DailyHub.core.todayStr(), item_time: x.time || '',
     subject_id: x.subjectId || null, session_id: x.sessionId || null,
     updated_at: toIso(x.updatedAt || null)
   };
@@ -184,7 +185,7 @@ function inboxToRow(x, uidv, pid) {
 function rowToSession(r) {
   return {
     id: r.id, subjectId: r.subject_id || null, slotId: r.slot_id || null,
-    date: r.session_date || todayStr(), start: r.start_time || '', end: r.end_time || '',
+    date: r.session_date || window.DailyHub.core.todayStr(), start: r.start_time || '', end: r.end_time || '',
     room: r.room || '', endedAt: r.ended_at || null, counts: r.counts || { inbox: 0, notes: 0, important: 0 },
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
@@ -192,7 +193,7 @@ function rowToSession(r) {
 function sessionToRow(s, uidv, pid) {
   return {
     id: s.id, user_id: uidv, profile_id: pid || null, subject_id: s.subjectId || null, slot_id: s.slotId || null,
-    session_date: s.date || todayStr(), start_time: s.start || '', end_time: s.end || '', room: s.room || '',
+    session_date: s.date || window.DailyHub.core.todayStr(), start_time: s.start || '', end_time: s.end || '', room: s.room || '',
     ended_at: s.endedAt || null, counts: s.counts || {},
     updated_at: toIso(s.updatedAt || null)
   };
@@ -222,23 +223,23 @@ const STATE_SLOTS = {
 const DATA_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions'];
 function bucketFor(pid) {
   if (!pid) return null;
-  if (!S.data || typeof S.data !== 'object') S.data = {};
-  if (!S.data[pid]) S.data[pid] = { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], activeSession: null, __del: {} };
-  const b = S.data[pid];
+  if (!window.DailyHub.state.S.data || typeof window.DailyHub.state.S.data !== 'object') window.DailyHub.state.S.data = {};
+  if (!window.DailyHub.state.S.data[pid]) window.DailyHub.state.S.data[pid] = { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], activeSession: null, __del: {} };
+  const b = window.DailyHub.state.S.data[pid];
   if (!b.__del) b.__del = {};
   for (const k of DATA_KEYS) if (!Array.isArray(b[k])) b[k] = [];
   return b;
 }
 function localListFor(table, pid) {
   const k = STATE_SLOTS[table];
-  if (k === 'profiles') return S.profiles;
+  if (k === 'profiles') return window.DailyHub.state.S.profiles;
   const b = bucketFor(pid);
   if (!b) return [];
   if (!Array.isArray(b[k])) b[k] = [];
   return b[k];
 }
 function localEntries(table) {
-  if (table === 'profiles') return (S.profiles || []).map(row => ({ row, pid: null }));
+  if (table === 'profiles') return (window.DailyHub.state.S.profiles || []).map(row => ({ row, pid: null }));
   const out = [], index = new Map();
   const add = (row, pid) => {
     if (!row || row.id == null) return;
@@ -250,19 +251,19 @@ function localEntries(table) {
     index.set(row.id, out.length);
     out.push({ row, pid });
   };
-  for (const pid of Object.keys((S && S.data) || {})) {
+  for (const pid of Object.keys((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
     const k = STATE_SLOTS[table];
-    for (const row of (S.data[pid] && S.data[pid][k]) || []) add(row, pid);
+    for (const row of (window.DailyHub.state.S.data[pid] && window.DailyHub.state.S.data[pid][k]) || []) add(row, pid);
   }
   // Compatibilidad con estados legacy que aún solo tienen las listas globales.
-  const activeArr = S[STATE_SLOTS[table]];
-  if (Array.isArray(activeArr)) for (const row of activeArr) add(row, S.activeProfileId || null);
+  const activeArr = window.DailyHub.state.S[STATE_SLOTS[table]];
+  if (Array.isArray(activeArr)) for (const row of activeArr) add(row, window.DailyHub.state.S.activeProfileId || null);
   return out;
 }
 function profileBucketIds() {
-  const ids = new Set((S.profiles || []).map(p => p && p.id).filter(Boolean));
-  if (S.activeProfileId) ids.add(S.activeProfileId);
-  for (const pid of Object.keys((S && S.data) || {})) if (ids.has(pid)) ids.add(pid);
+  const ids = new Set((window.DailyHub.state.S.profiles || []).map(p => p && p.id).filter(Boolean));
+  if (window.DailyHub.state.S.activeProfileId) ids.add(window.DailyHub.state.S.activeProfileId);
+  for (const pid of Object.keys((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) if (ids.has(pid)) ids.add(pid);
   return [...ids];
 }
 
@@ -271,25 +272,25 @@ function profileBucketIds() {
    perfil activo; gathering/limpieza centralizados para ambos casos. */
 function pendingDeleteIds(table) {
   const ids = new Set();
-  const top = S && S.__pendingDeletes && S.__pendingDeletes[table];
+  const top = window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && window.DailyHub.state.S.__pendingDeletes[table];
   if (Array.isArray(top)) top.forEach(id => ids.add(id));
-  for (const b of Object.values((S && S.data) || {})) {
+  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
     if (!b || !b.__del || !Array.isArray(b.__del[table])) continue;
     b.__del[table].forEach(id => ids.add(id));
   }
   return [...ids];
 }
 function clearPendingDeleteIds(table) {
-  if (S && S.__pendingDeletes && Array.isArray(S.__pendingDeletes[table])) S.__pendingDeletes[table] = [];
-  for (const b of Object.values((S && S.data) || {})) {
+  if (window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && Array.isArray(window.DailyHub.state.S.__pendingDeletes[table])) window.DailyHub.state.S.__pendingDeletes[table] = [];
+  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
     if (b && b.__del && Array.isArray(b.__del[table])) b.__del[table] = [];
   }
 }
 function forgetPendingDeleteId(table, id) {
-  if (S && S.__pendingDeletes && Array.isArray(S.__pendingDeletes[table])) {
-    S.__pendingDeletes[table] = S.__pendingDeletes[table].filter(x => x !== id);
+  if (window.DailyHub.state.S && window.DailyHub.state.S.__pendingDeletes && Array.isArray(window.DailyHub.state.S.__pendingDeletes[table])) {
+    window.DailyHub.state.S.__pendingDeletes[table] = window.DailyHub.state.S.__pendingDeletes[table].filter(x => x !== id);
   }
-  for (const b of Object.values((S && S.data) || {})) {
+  for (const b of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
     if (b && b.__del && Array.isArray(b.__del[table])) b.__del[table] = b.__del[table].filter(x => x !== id);
   }
 }
@@ -364,6 +365,19 @@ async function syncPushAll() {
           if (i >= 0) arr.splice(i, 1);
         }
         needRender = true;
+        // Filas muertas ocultas por un tombstone: purga física de la nube.
+        // El tombstone se conserva para que un dispositivo desactualizado
+        // no resucite la fila con su copia local.
+        try {
+          const dropIds = toDrop.map(entry => entry.row.id).filter(Boolean);
+          for (let j = 0; j < dropIds.length; j += 50) {
+            if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
+            const { error } = await window.sb.from(table).delete().in('id', dropIds.slice(j, j + 50));
+            if (error) throw error;
+          }
+        } catch (e) {
+          console.warn('DailyHub: no se pudieron purgar filas muertas de ' + table, e.message || e);
+        }
       }
       if (toRevive.size) {
         if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
@@ -378,33 +392,47 @@ async function syncPushAll() {
         const { error } = await window.sb.from(table).upsert(rows.slice(j, j + 50), { onConflict: 'id' });
         if (error) throw error;
       }
-      // borrados pendientes de este dispositivo → tombstones en la nube
+      // borrados pendientes de este dispositivo → tombstone + DELETE físico en la nube
       const pendDel = pendingDeleteIds(table);
       if (pendDel.length) {
+        const now = new Date().toISOString();
         try {
-          const now = new Date().toISOString();
+          // El tombstone avisa al resto de dispositivos antes de que la fila
+          // desaparezca; en cuanto la fila se borra físicamente se limpia solo.
           const tsRows = pendDel.map(id => ({ user_id: uid, key: table, id, updated_at: now }));
           for (let j = 0; j < tsRows.length; j += 50) {
             const { error } = await window.sb.from('tombstones').upsert(tsRows.slice(j, j + 50), { onConflict: 'user_id,key,id' });
             if (error) throw error;
           }
-          clearPendingDeleteIds(table);   // confirmado en la nube: el tombstone ya vive allí
         } catch (e) {
-          // tabla tombstones aún sin migrar: los borrados quedan pendientes, no se pierden
+          // tabla tombstones aún sin migrar: el borrado físico sigue adelante,
+          // pero otros dispositivos podrían resucitar la fila hasta aplicar la migración
           console.warn('DailyHub: tombstones no disponibles (aplica la migración)', e.message || e);
         }
+        // Borrado físico real: la fila desaparece de Supabase (RLS la limita al usuario).
+        try {
+          for (let j = 0; j < pendDel.length; j += 50) {
+            if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
+            const { error } = await window.sb.from(table).delete().in('id', pendDel.slice(j, j + 50));
+            if (error) throw error;
+          }
+          clearPendingDeleteIds(table);   // confirmado: filas borradas y tombstones escritos
+        } catch (e) {
+          console.error('DailyHub: no se pudo borrar en la nube (' + table + ')', e.message || e);
+          // los pendientes se conservan para reintentar en el siguiente push
+        }
       }
-      if (needRender && typeof render === 'function') render();
-      if (needRender && typeof save === 'function') save();
+      if (needRender && window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+      if (needRender && window.DailyHub && typeof window.DailyHub.state.save === 'function') window.DailyHub.state.save();
     }
     // Settings (un row por usuario) — se sube solo si cambió desde el último push
     if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
-    const su = (S.settings && S.settings.updatedAt) || 0;
-    const metaJson = JSON.stringify(S.meta || {});
+    const su = (window.DailyHub.state.S.settings && window.DailyHub.state.S.settings.updatedAt) || 0;
+    const metaJson = JSON.stringify(window.DailyHub.state.S.meta || {});
     if (su !== __lastPushedSettingsAt || metaJson !== __lastPushedMetaJson) {
-      const data = Object.assign({}, S.settings); delete data.updatedAt;
+      const data = Object.assign({}, window.DailyHub.state.S.settings); delete data.updatedAt;
       const { error } = await window.sb.from('settings').upsert(
-        { user_id: uid, data, meta: S.meta, updated_at: toIso(su || undefined) || new Date().toISOString() },
+        { user_id: uid, data, meta: window.DailyHub.state.S.meta, updated_at: toIso(su || undefined) || new Date().toISOString() },
         { onConflict: 'user_id' });
       if (error) throw error;
       __lastPushedSettingsAt = su;
@@ -450,26 +478,26 @@ async function syncPullAll() {
     const settingsRow = settingsRes.data && settingsRes.data[0];
     if (!(await syncSessionStill(uid))) return false;
 
-    normalizeData();
+    window.DailyHub.state.normalizeData();
     const remoteProfiles = (res.profiles || []).map(rowToProfile);
-    if (!S.profiles.length && remoteProfiles.length) {
+    if (!window.DailyHub.state.S.profiles.length && remoteProfiles.length) {
       // Una cuenta con datos en la nube ya tiene su cabecera; no crear un
       // perfil provisional paralelo al que ya existe en Supabase.
-      S.profiles = remoteProfiles;
-      S.activeProfileId = remoteProfiles[0].id;
+      window.DailyHub.state.S.profiles = remoteProfiles;
+      window.DailyHub.state.S.activeProfileId = remoteProfiles[0].id;
     }
-    if (!S.activeProfileId || !S.profiles.some(p => p.id === S.activeProfileId)) {
-      S.activeProfileId = S.profiles.length ? S.profiles[0].id : null;
+    if (!window.DailyHub.state.S.activeProfileId || !window.DailyHub.state.S.profiles.some(p => p.id === window.DailyHub.state.S.activeProfileId)) {
+      window.DailyHub.state.S.activeProfileId = window.DailyHub.state.S.profiles.length ? window.DailyHub.state.S.profiles[0].id : null;
     }
     // Sin perfil todavía: crear uno provisional para no perder los datos que bajan.
     // La pantalla de bienvenida (index.html) lo renombra / pone foto y PIN después.
-    if (!S.activeProfileId) {
+    if (!window.DailyHub.state.S.activeProfileId) {
       const p = { id: uid, name: 'Sin nombre', color: '#2563EB', photo: '', pin: null, pinLen: null, updatedAt: Date.now() };
-      S.profiles = [p];
-      S.activeProfileId = p.id;
+      window.DailyHub.state.S.profiles = [p];
+      window.DailyHub.state.S.activeProfileId = p.id;
       needPush = true;
     }
-    const pid = S.activeProfileId;
+    const pid = window.DailyHub.state.S.activeProfileId;
     if (!pid) return false;
 
     // tombstone más nuevo (o igual) que la fila → está borrada en la nube
@@ -480,12 +508,12 @@ async function syncPullAll() {
     // Las filas antiguas sin profile_id pertenecen al perfil activo. Un
     // profile_id que ya no existe se ignora para no mover datos al azar.
     const knownProfileIds = new Set([
-      ...(S.profiles || []).map(p => p && p.id).filter(Boolean),
+      ...(window.DailyHub.state.S.profiles || []).map(p => p && p.id).filter(Boolean),
       ...remoteProfiles.map(p => p.id).filter(Boolean)
     ]);
     const remoteBucketId = (r) => {
       if (r.profile_id) return knownProfileIds.has(r.profile_id) ? r.profile_id : null;
-      return S.activeProfileId;
+      return window.DailyHub.state.S.activeProfileId;
     };
     const allProfileIds = [...new Set([...profileBucketIds(), ...remoteProfiles.map(p => p.id).filter(Boolean)])];
     // fusión fila a fila por tabla (tabla → función de mapeo)
@@ -550,7 +578,7 @@ async function syncPullAll() {
     }
     // perfiles: se fusionan por fila, igual que el resto de tablas
     {
-      const localProfMap = new Map(S.profiles.map(p => [p.id, p]));
+      const localProfMap = new Map(window.DailyHub.state.S.profiles.map(p => [p.id, p]));
       const localProfDel = new Set(pendingDeleteIds('profiles'));
       const remoteProfs = remoteProfiles;
       const serverProfIds = new Set(remoteProfs.map(p => p.id));
@@ -578,7 +606,7 @@ async function syncPullAll() {
           profMerged.push(p);
         }
       }
-      for (const p of S.profiles) {
+      for (const p of window.DailyHub.state.S.profiles) {
         if (serverProfIds.has(p.id)) continue;
         const tomb = (tsMap.profiles && tsMap.profiles.get(p.id)) || 0;
         if (localProfDel.has(p.id) && toMs(p.updatedAt) <= (tomb || 0)) continue;
@@ -587,23 +615,23 @@ async function syncPullAll() {
         profMerged.push(p);
         needPush = true;
       }
-      S.profiles = profMerged;
+      window.DailyHub.state.S.profiles = profMerged;
     }
-    if (typeof normalizeData === 'function') normalizeData();
-    if (S.activeProfileId && !S.profiles.some(p => p.id === S.activeProfileId)) {
-      S.activeProfileId = S.profiles.length ? S.profiles[0].id : null;
+    if (window.DailyHub && typeof window.DailyHub.state.normalizeData === 'function') window.DailyHub.state.normalizeData();
+    if (window.DailyHub.state.S.activeProfileId && !window.DailyHub.state.S.profiles.some(p => p.id === window.DailyHub.state.S.activeProfileId)) {
+      window.DailyHub.state.S.activeProfileId = window.DailyHub.state.S.profiles.length ? window.DailyHub.state.S.profiles[0].id : null;
     }
-    if (typeof switchProfileData === 'function') switchProfileData();
+    if (window.DailyHub && typeof window.DailyHub.state.switchProfileData === 'function') window.DailyHub.state.switchProfileData();
 
     // Settings con reloj: la nube SOLO gana si es más nueva que lo local
     const supMs = settingsRow ? toMs(settingsRow.updated_at) : 0;
-    const localSettingsUp = (S.settings && S.settings.updatedAt) || 0;
+    const localSettingsUp = (window.DailyHub.state.S.settings && window.DailyHub.state.S.settings.updatedAt) || 0;
     if (settingsRow && supMs > localSettingsUp) {
-      S.settings = Object.assign(defaultState().settings, settingsRow.data || {});
-      S.settings.updatedAt = supMs;
-      S.meta = Object.assign(defaultState().meta, settingsRow.meta || {});
+      window.DailyHub.state.S.settings = Object.assign(window.DailyHub.state.defaultState().settings, settingsRow.data || {});
+      window.DailyHub.state.S.settings.updatedAt = supMs;
+      window.DailyHub.state.S.meta = Object.assign(window.DailyHub.state.defaultState().meta, settingsRow.meta || {});
       __lastPushedSettingsAt = supMs;
-      __lastPushedMetaJson = JSON.stringify(S.meta || {});
+      __lastPushedMetaJson = JSON.stringify(window.DailyHub.state.S.meta || {});
     } else if (localSettingsUp > supMs) {
       needPush = true;   // el ajuste local es más nuevo; no perderlo tras un pull
     }
@@ -621,9 +649,64 @@ async function syncPullAll() {
         }
       }
     }
+    // Purga de filas fantasma: borradas en algún dispositivo, aún presentes
+    // en la nube porque el tombstone solo las ocultaba (borrados anteriores a
+    // DELETE físico). Si el tombstone tiene más de 7 días y ningún dispositivo
+    // conserva la fila, se purga físicamente. El tombstone se conserva: sigue
+    // protegiendo frente a dispositivos rezagados que aún tengan la copia.
+    // Margen de 30 días para retirar tombstones cuya fila ya no existe:
+    // pasado ese plazo, un dispositivo sin conectar tanto tiempo podría
+    // resucitar su copia local; se asume que ya no está en uso.
+    const GHOST_PURGE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+    const TOMBSTONE_GC_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+    for (const table of SB_TABLES) {
+      const m = tsMap[table];
+      if (!m || !m.size) continue;
+      const serverIds = new Set((res[table] || []).map(r => r.id));
+      const localIds = new Set();
+      if (table === 'profiles') {
+        (window.DailyHub.state.S.profiles || []).forEach(p => { if (p && p.id) localIds.add(p.id); });
+      } else {
+        for (const bucket of Object.values((window.DailyHub.state.S && window.DailyHub.state.S.data) || {})) {
+          for (const row of (bucket && bucket[STATE_SLOTS[table]]) || []) if (row && row.id) localIds.add(row.id);
+        }
+      }
+      const pendNow = pendingDeleteIds(table);
+      const ghostRows = [];
+      const deadTombs = [];
+      for (const [id, ts] of m.entries()) {
+        if (localIds.has(id) || pendNow.includes(id)) continue;
+        const age = Date.now() - ts;
+        if (serverIds.has(id)) {
+          if (age >= GHOST_PURGE_AFTER_MS) ghostRows.push(id);   // fila viva en nube, oculta y abandonada → purgar
+        } else if (age >= TOMBSTONE_GC_AFTER_MS) {
+          deadTombs.push(id);                                     // fila ya borrada y tombstone obsoleto → GC
+        }
+      }
+      if (ghostRows.length) {
+        try {
+          for (let j = 0; j < ghostRows.length; j += 50) {
+            const { error } = await window.sb.from(table).delete().in('id', ghostRows.slice(j, j + 50));
+            if (error) throw error;
+          }
+        } catch (e) {
+          console.warn('DailyHub: no se pudo purgar filas fantasma de ' + table, e.message || e);
+        }
+      }
+      if (deadTombs.length) {
+        try {
+          for (let j = 0; j < deadTombs.length; j += 50) {
+            const { error } = await window.sb.from('tombstones').delete().eq('user_id', uid).eq('key', table).in('id', deadTombs.slice(j, j + 50));
+            if (error) throw error;
+          }
+        } catch (e) {
+          console.warn('DailyHub: no se pudieron limpiar tombstones de ' + table, e.message || e);
+        }
+      }
+    }
     if (!(await syncSessionStill(uid))) return false;
     rebuildPrevCaches();
-    save();
+    window.DailyHub.state.save();
     if (needPush) await syncPushAll();   // primer login o filas nuevas sin subir
     return true;
   } catch (e) {
@@ -644,7 +727,7 @@ function realtimeApply() {
     const u = await syncGetUser();
     if (!u) return;
     const ok = await syncQueue(syncPullAll);
-    if (ok && typeof render === 'function') render();
+    if (ok && window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
   }, 900);
 }
 function realtimeStart() {
@@ -660,21 +743,21 @@ function realtimeStop() {
   if (__rtChannel) { try { window.sb.removeChannel(__rtChannel); } catch (e) {} __rtChannel = null; }
 }
 
-/* ---------- boot de sincronización (se llama desde index.html) ---------- */
+/* ---------- boot de sincronización (lo llama el composition root) ---------- */
 async function syncBoot() {
   const user = await syncGetUser();
-  if (!user) { SYNC_STATUS.state = 'loggedout'; realtimeStop(); save(); if (typeof render === 'function') render(); return; }   // sin sesión
+  if (!user) { SYNC_STATUS.state = 'loggedout'; realtimeStop(); window.DailyHub.state.save(); if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render(); return; }   // sin sesión
   const ok = await syncQueue(syncPullAll);
   // El usuario puede haber cambiado de cuenta mientras esperaba la cola.
   if (!(await syncSessionStill(user.id))) {
     SYNC_STATUS.state = 'loggedout';
     realtimeStop();
-    if (typeof render === 'function') render();
+    if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
     return;
   }
   SYNC_STATUS.state = ok ? 'online' : 'offline';
   if (ok) realtimeStart();
-  if (typeof render === 'function') render();
+  if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
 }
 
 /* ---------- UI de estado de sincronización ---------- */
@@ -686,14 +769,15 @@ function syncBadge() {
     loggedout: { cls: 'sync-badge out', label: 'Sin sesión', dot: '·' }
   };
   const m = map[SYNC_STATUS.state] || map.offline;
-  return h('span', { class: m.cls }, h('i', { html: m.dot }), m.label);
+  return window.DailyHub.core.h('span', { class: m.cls }, window.DailyHub.core.h('i', { html: m.dot }), m.label);
 }
 
-/* ---------- export para index.html ---------- */
+/* ---------- contrato público para la aplicación modular ---------- */
 function queuedSyncPush() { return syncQueue(syncPushAll); }
 function queuedSyncPull() { return syncQueue(syncPullAll); }
 window.DailySync = {
   boot: syncBoot, push: queuedSyncPush, pull: queuedSyncPull, status: SYNC_STATUS, badge: syncBadge,
   getUser: syncGetUser, realtime: { start: realtimeStart, stop: realtimeStop },
-  restoreSession, removeAuthBlob, authBlobKey
+  restoreSession, removeAuthBlob, authBlobKey,
+  config: { url: SUPABASE_URL, key: SUPABASE_KEY }
 };

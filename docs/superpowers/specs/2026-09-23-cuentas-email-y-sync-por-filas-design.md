@@ -2,6 +2,8 @@
 
 Fecha: 2026-09-23 · Estado: aprobado por el usuario · Alcance: DailyHub (habitos-web)
 
+> **Nota de evolución (2026-09-24):** la decisión D8 original («mantener `index.html` como archivo único») fue sustituida por la modularización adoptada en este refactor. `index.html` queda como shell HTML y la aplicación se compone desde `src/app.js` y módulos ES con contratos explícitos. Además, los borrados (D3) se aplican ahora con **DELETE físico** de la fila en la nube: el tombstone es un aviso temporal para coordinar otros dispositivos y se limpia solo; ya no quedan filas «fantasma» en Supabase. El resto de este documento conserva el diseño histórico de cuentas y sincronización.
+
 ## Problema (reportado por el usuario)
 
 1. El tema (claro/oscuro) cambia solo, sobre todo al entrar/recargar.
@@ -138,11 +140,12 @@ CREATE POLICY "tombstones_own" ON public.tombstones
   → push+pull → no vuelve). Además: blindar `giftToRow`/`rowToGift` contra precios no numéricos
   (`Number(g.price)` de un string inválido rompía el push entero).
 
-### D8 — Se mantiene index.html como archivo único
+### D8 — Index.html único (decisión histórica, sustituida)
 
-El usuario planteó dividir en varios HTML "si es mejor". Decisión: **no dividir** — los bugs están en la
-capa de datos (app-sync.js + `save`), no en las vistas; dividir añade complejidad de routing/PWA sin
-arreglar nada. Si el archivo supera ~600 KB en el futuro, se valora Vue/Vite o módulos — fuera de alcance.
+La decisión original de mantener `index.html` como archivo único queda sustituida por la arquitectura
+modular adoptada posteriormente. `index.html` es ahora únicamente el shell de composición; `src/app.js`
+es el composition root y cada sección reside en un módulo ES independiente, conectado mediante contratos
+explícitos y sin duplicar el resto de la aplicación.
 
 ## Archivos afectados
 

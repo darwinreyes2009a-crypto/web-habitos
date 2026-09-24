@@ -1,7 +1,7 @@
 {
   "name": "DailyHub — Tu espacio personal",
   "short_name": "DailyHub",
-  "description": "Tareas, hábitos, Modo Clase y regalos. Perfiles con PIN y sincronización opcional entre dispositivos.",
+  "description": "Tareas, hábitos, Modo Clase y regalos con perfiles protegidos y sincronización por cuenta.",
   "lang": "es",
   "start_url": "./index.html",
   "scope": "./",

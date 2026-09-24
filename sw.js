@@ -1,57 +1,85 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v18';
-const ASSETS = ['./index.html', './manifest.webmanifest', './icon.svg', './vendor/supabase.js', './app-sync.js'];
+const CACHE = 'dailyhub-v22';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon.svg',
+  './vendor/supabase.js',
+  './app-sync.js',
+  './styles/tokens.css',
+  './styles/components.css',
+  './styles/features.css',
+  './src/app.js',
+  './src/core/context.js',
+  './src/core/dom.js',
+  './src/core/dates.js',
+  './src/core/constants.js',
+  './src/core/icons.js',
+  './src/core/security.js',
+  './src/core/interactions.js',
+  './src/state/store.js',
+  './src/navigation/router.js',
+  './src/components/overlays.js',
+  './src/actions/records.js',
+  './src/services/media.js',
+  './src/services/notifications.js',
+  './src/features/auth.js',
+  './src/features/onboarding-shell.js',
+  './src/features/home-tasks.js',
+  './src/features/gifts-people.js',
+  './src/features/forms.js',
+  './src/features/settings.js',
+  './src/features/class/agenda.js',
+  './src/features/class/notes.js',
+  './src/features/class/schedule.js'
+];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS).catch(() => {})).then(() => self.skipWaiting()));
+self.addEventListener('install', (event) => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS).catch(() => {})).then(() => self.skipWaiting()));
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  const url = new URL(e.request.url);
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
   const sameOrigin = url.origin === location.origin;
 
-  // Navegación (el HTML de la app): red primero → si no hay conexión, caché.
-  // Así los usuarios reciben las actualizaciones en cuanto hay internet.
-  if (e.request.mode === 'navigate') {
-    e.respondWith(
-      fetch(e.request)
-        .then((res) => {
-          if (res && res.ok) caches.open(CACHE).then((c) => c.put('./index.html', res.clone()));
-          return res;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.ok) caches.open(CACHE).then(cache => cache.put('./index.html', response.clone()));
+          return response;
         })
-        .catch(() => caches.match('./index.html').then((r) => r || Response.error()))
+        .catch(() => caches.match('./index.html').then(response => response || Response.error()))
     );
     return;
   }
 
-  // Resto de recursos del propio origen: caché primero con actualización en segundo plano.
   if (sameOrigin) {
-    e.respondWith(
-      caches.open(CACHE).then(async (c) => {
-        const cached = await c.match(e.request, { ignoreSearch: true });
-        const network = fetch(e.request)
-          .then((res) => { if (res && res.ok) c.put(e.request, res.clone()); return res; })
+    event.respondWith(
+      caches.open(CACHE).then(async cache => {
+        const cached = await cache.match(event.request, { ignoreSearch: true });
+        const network = fetch(event.request)
+          .then(response => { if (response && response.ok) cache.put(event.request, response.clone()); return response; })
           .catch(() => cached);
         return cached || network;
       })
     );
-  }
-  // Recursos de terceros (fuentes): red normal, con caché si falla.
-  else {
-    e.respondWith(
-      caches.open(CACHE).then(async (c) => {
-        const cached = await c.match(e.request);
-        const network = fetch(e.request)
-          .then((res) => { if (res && res.ok) c.put(e.request, res.clone()); return res; })
+  } else {
+    event.respondWith(
+      caches.open(CACHE).then(async cache => {
+        const cached = await cache.match(event.request);
+        const network = fetch(event.request)
+          .then(response => { if (response && response.ok) cache.put(event.request, response.clone()); return response; })
           .catch(() => cached);
         return cached || network;
       })
@@ -60,11 +88,11 @@ self.addEventListener('fetch', (e) => {
 });
 
 /* ============ NOTIFICACIONES PUSH ============ */
-self.addEventListener('push', (e) => {
+self.addEventListener('push', (event) => {
   let data = {};
-  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+  try { data = event.data ? event.data.json() : {}; } catch (error) { data = { body: event.data && event.data.text() }; }
   const title = data.title || 'DailyHub';
-  const opts = {
+  const options = {
     body: data.body || '',
     icon: './icon.svg',
     badge: './icon.svg',
@@ -72,26 +100,26 @@ self.addEventListener('push', (e) => {
     data: { url: data.url || './index.html' },
     renotify: true
   };
-  e.waitUntil(self.registration.showNotification(title, opts));
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || './index.html';
-  e.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) { if (c.url.includes('index.html')) { return c.focus(); } }
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || './index.html';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) if (client.url.includes('index.html')) return client.focus();
       return self.clients.openWindow(url);
     })
   );
 });
 
-self.addEventListener('pushsubscriptionchange', (e) => {
-  e.waitUntil(
-    self.registration.pushManager.getSubscription().then((sub) =>
-      self.clients.matchAll({ includeUncontrolled: true }).then((list) => {
-        for (const c of list) c.postMessage({ type: 'push-sub-changed', subscription: sub ? sub.toJSON() : null });
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(
+    self.registration.pushManager.getSubscription().then(subscription =>
+      self.clients.matchAll({ includeUncontrolled: true }).then(list => {
+        for (const client of list) client.postMessage({ type: 'push-sub-changed', subscription: subscription ? subscription.toJSON() : null });
       })
     )
- );
+  );
 });
