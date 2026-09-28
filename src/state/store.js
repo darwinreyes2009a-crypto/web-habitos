@@ -5,7 +5,7 @@ export function registerStore(app) {
   const ACC_PREFIX = 'dailyhub_v2:acc:';
   const ACC_INDEX = 'dailyhub_v2:accounts';
   const ACC_ACTIVE = 'dailyhub_v2:active';
-  const SYNC_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions'];
+  const SYNC_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions', 'breaks', 'offs'];
 
   // El objeto no se reemplaza: los módulos conservan una referencia estable.
   const S = {};
@@ -20,13 +20,18 @@ export function registerStore(app) {
     return {
       profiles: [], activeProfileId: null,
       people: [], tasks: [], gifts: [], notes: [],
-      subjects: [], slots: [], inbox: [], sessions: [], activeSession: null,
+      subjects: [], slots: [], inbox: [], sessions: [], breaks: [], offs: [], activeSession: null,
       settings: {
         hideCompleted: false,
         theme: 'auto',
+        fontScale: 1,
+        highContrast: false,
+        haptics: true,
         categories: [...DEFAULT_CATEGORIES],
         relationships: [...DEFAULT_RELATIONSHIPS],
-        notif: { reminders: true, gifts: true, daily: false, quietFrom: '22:00', quietTo: '08:00' }
+        taskTemplates: [],
+        scheduleTemplates: [],
+        notif: { reminders: true, gifts: true, daily: false, classes: true, classLead: 15, quietFrom: '22:00', quietTo: '08:00' }
       },
       meta: { onboarded: false, created: todayStr(), lastNotified: null },
       data: {}
@@ -34,7 +39,7 @@ export function registerStore(app) {
   }
 
   function emptyData() {
-    return { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], activeSession: null };
+    return { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], breaks: [], offs: [], activeSession: null };
   }
 
   function normalizeData(state) {
@@ -52,6 +57,8 @@ export function registerStore(app) {
       if (!Array.isArray(bucket.slots)) bucket.slots = [];
       if (!Array.isArray(bucket.inbox)) bucket.inbox = [];
       if (!Array.isArray(bucket.sessions)) bucket.sessions = [];
+      if (!Array.isArray(bucket.breaks)) bucket.breaks = [];
+      if (!Array.isArray(bucket.offs)) bucket.offs = [];
       if (bucket.activeSession === undefined) bucket.activeSession = null;
     }
     const hasData = Object.keys(target.data).some(profileId =>
@@ -83,6 +90,8 @@ export function registerStore(app) {
       S.slots = bucket.slots;
       S.inbox = bucket.inbox;
       S.sessions = bucket.sessions;
+      S.breaks = bucket.breaks;
+      S.offs = bucket.offs;
       S.activeSession = bucket.activeSession;
     } else {
       S.tasks = [];
@@ -93,6 +102,8 @@ export function registerStore(app) {
       S.slots = [];
       S.inbox = [];
       S.sessions = [];
+      S.breaks = [];
+      S.offs = [];
       S.activeSession = null;
     }
   }
@@ -103,6 +114,11 @@ export function registerStore(app) {
     state.settings.categories = Array.isArray(state.settings.categories) && state.settings.categories.length ? state.settings.categories : [...DEFAULT_CATEGORIES];
     state.settings.relationships = Array.isArray(state.settings.relationships) && state.settings.relationships.length ? state.settings.relationships : [...DEFAULT_RELATIONSHIPS];
     state.settings.notif = Object.assign(defaultState().settings.notif, state.settings.notif || {});
+    state.settings.taskTemplates = Array.isArray(state.settings.taskTemplates) ? state.settings.taskTemplates : [];
+    state.settings.scheduleTemplates = Array.isArray(state.settings.scheduleTemplates) ? state.settings.scheduleTemplates : [];
+    state.settings.fontScale = [1, 1.1, 1.2].includes(Number(state.settings.fontScale)) ? Number(state.settings.fontScale) : 1;
+    state.settings.highContrast = !!state.settings.highContrast;
+    if (state.settings.haptics === undefined) state.settings.haptics = true;
     state.notes = Array.isArray(state.notes) ? state.notes : [];
     for (const profileId of Object.keys(state.data || {})) {
       const bucket = state.data[profileId];
@@ -358,6 +374,9 @@ export function registerStore(app) {
     if (document.documentElement.getAttribute('data-theme') !== selectedTheme) {
       document.documentElement.setAttribute('data-theme', selectedTheme);
     }
+    const settings = S.settings || {};
+    document.documentElement.dataset.contrast = settings.highContrast ? 'high' : 'normal';
+    document.documentElement.style.setProperty('--font-scale', String([1, 1.1, 1.2].includes(Number(settings.fontScale)) ? Number(settings.fontScale) : 1));
   }
 
   replaceState(load());

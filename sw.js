@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v24';
+const CACHE = 'dailyhub-v31';
 const ASSETS = [
   './',
   './index.html',
@@ -19,6 +19,7 @@ const ASSETS = [
   './src/core/security.js',
   './src/core/interactions.js',
   './src/state/store.js',
+  './src/core/routines.js',
   './src/navigation/router.js',
   './src/components/overlays.js',
   './src/actions/records.js',
@@ -27,12 +28,20 @@ const ASSETS = [
   './src/features/auth.js',
   './src/features/onboarding-shell.js',
   './src/features/home-tasks.js',
+  './src/features/task-row.js',
+  './src/features/search.js',
+  './src/features/now.js',
+  './src/features/platform.js',
   './src/features/gifts-people.js',
   './src/features/forms.js',
   './src/features/settings.js',
   './src/features/class/agenda.js',
   './src/features/class/notes.js',
-  './src/features/class/schedule.js'
+  './src/features/class/schedule.js',
+  './src/features/class/calendar-core.js',
+  './src/features/class/schedule-extra.js',
+  './src/features/class/schedule-grid.js',
+  './src/features/class/schedule-import.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -45,6 +54,12 @@ self.addEventListener('activate', (event) => {
       .then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
+});
+
+// La app avisa de que hay versión nueva y el usuario pulsa "Actualizar": es
+// entonces cuando se activa, para no dejar una pestaña a medio cargar.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'skip-waiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {

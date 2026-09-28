@@ -5,6 +5,7 @@ export function registerHomeAndTasks(app) {
     icon,
     avatarEl,
     cap,
+    toYmd,
     todayStr,
     parseYmd,
     addDaysYmd,
@@ -14,7 +15,7 @@ export function registerHomeAndTasks(app) {
     fmtRange,
     WEEK_L
   } = app.core;
-  const { S } = app.state;
+  const { S, save } = app.state;
   const {
     ui,
     go,
@@ -26,6 +27,7 @@ export function registerHomeAndTasks(app) {
     categories,
     freqText,
     isDueOn,
+    streakOf,
     weekStats,
     sortedUpcomingGifts,
     countdownTxt,
@@ -63,7 +65,15 @@ export function registerHomeAndTasks(app) {
     const wrap = h('div');
     wrap.append(headBar(greeting + ', ' + profile.name, cap(fmtLong(todayStr())),
       searchBtn(),
+      h('button', { class: 'icon-btn', 'aria-label': 'Qué toca ahora', onclick: () => go('now'), html: icon('clock', 20) }),
       h('button', { 'aria-label': 'Tu perfil', onclick: () => go('profile'), style: 'border-radius:50%' }, avatarEl(profile.name, profile.color, 40, profile.photo))
+    ));
+
+    // Atajo a "Ahora": un toque y se ve la clase en curso y lo que falta.
+    wrap.append(h('button', { class: 'now-jump', onclick: () => go('now') },
+      h('span', { class: 'ic', html: icon('clock', 16) }),
+      h('span', null, 'Ver qué toca ahora'),
+      h('span', { class: 'chev', html: icon('chev', 16) })
     ));
 
     for (const person of birthdaysToday()) {
@@ -74,7 +84,10 @@ export function registerHomeAndTasks(app) {
       ));
     }
 
-    const due = tasksDueOn(todayStr());
+    const due = tasksDueOn(todayStr()).slice().sort((first, second) =>
+      (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
+      (first.dueDate || '9999-99-99').localeCompare(second.dueDate || '9999-99-99') ||
+      (first.time || '99:99').localeCompare(second.time || '99:99'));
     const done = due.filter(task => isDoneOn(task, todayStr())).length;
     const percentage = due.length ? Math.round(done / due.length * 100) : 0;
     wrap.append(h('button', {
@@ -89,7 +102,7 @@ export function registerHomeAndTasks(app) {
       h('div', { class: 'bar' }, h('i', { style: 'width:' + percentage + '%' }))
     ));
 
-    const openNotes = (S.notes || []).filter(note => !note.done).length;
+    const openNotes = (S.notes || []).filter(note => !note.done && !note.deletedAt).length;
     const inboxCount = (S.inbox || []).length;
     const liveNow = classNow();
     const liveNext = classNext();
@@ -125,10 +138,33 @@ export function registerHomeAndTasks(app) {
       const grid = h('div', { class: 'task-grid' });
       for (const task of list) {
         const done = isDoneOn(task, todayStr());
-        grid.append(h('button', { class: 'task-card' + (done ? ' done' : ''), onclick: () => toggleOn(task.id, todayStr()) },
+        const avoid = app.core.kindOf(task) === 'avoid';
+        const skipped = app.core.isSkipped(task, todayStr());
+        const taskStateClass = done && !avoid ? ' done' : !done && avoid && !skipped ? ' failed' : skipped ? ' skipped' : '';
+        grid.append(h('button', { class: 'task-card' + taskStateClass, disabled: !isDueOn(task, todayStr()) || (app.core.isSkipped(task, todayStr()) && !skipped), 'aria-label': task.title + ' · ' + (skipped ? 'día saltado' : done ? (avoid ? 'día limpio' : 'completada') : (avoid ? 'registrar fallo' : 'pendiente')), onclick: () => {
+          const toggle = () => {
+            if (!isDueOn(task, todayStr())) return;
+            if (skipped) app.core.skipOn(task, todayStr(), false);
+            else if (app.core.isSkipped(task, todayStr())) return;
+            else toggleOn(task.id, todayStr());
+            task.updatedAt = Date.now();
+            save();
+            app.domain.render();
+          };
+          if (avoid && done && !skipped) {
+            app.components.confirmDialog({
+              title: '¿Marcar como fallado?',
+              message: 'Hoy dejará de contar como un día limpio.',
+              confirmText: 'Marcar fallo',
+              onConfirm: toggle
+            });
+            return;
+          }
+          toggle();
+        } },
           h('span', { class: 't-ic', html: icon(task.icon || 'star', 20) }),
           h('b', null, task.title),
-          h('span', { class: 't-state' }, h('span', { class: 't-dot' }), done ? 'Completado' : 'Pendiente')
+          h('span', { class: 't-state' }, h('span', { class: 't-dot' }), skipped ? 'Día saltado' : done ? (avoid ? 'Día limpio' : 'Completado') : (avoid ? 'Registrar fallo' : 'Pendiente'))
         ));
       }
       wrap.append(grid);
@@ -160,14 +196,23 @@ export function registerHomeAndTasks(app) {
   }
 
   function taskViewSegment() {
+    // Cada botón fija su vista. Al salir del resumen se vuelve al periodo
+    // actual, para no aparecer en otra semana/mes/año al regresar.
+    const pick = view => () => {
+      ui.tasksView = view;
+      if (view !== 'stats') ui.statsOffset = 0;
+      go('tasks');
+    };
     return h('div', { class: 'seg', style: 'margin-bottom:18px' },
-      h('button', { class: ui.tasksView === 'lista' ? 'on' : '', onclick: () => { ui.tasksView = 'lista'; go('tasks'); } }, 'Lista'),
-      h('button', { class: ui.tasksView === 'semana' ? 'on' : '', onclick: () => { ui.tasksView = 'semana'; go('tasks'); } }, 'Semana'),
-      h('button', { class: ui.tasksView === 'cal' ? 'on' : '', onclick: () => { ui.tasksView = 'cal'; go('tasks'); } }, 'Calendario')
+      h('button', { class: ui.tasksView === 'lista' ? 'on' : '', onclick: pick('lista') }, 'Lista'),
+      h('button', { class: ui.tasksView === 'semana' ? 'on' : '', onclick: pick('semana') }, 'Semana'),
+      h('button', { class: ui.tasksView === 'cal' ? 'on' : '', onclick: pick('cal') }, 'Calendario'),
+      h('button', { class: ui.tasksView === 'stats' ? 'on' : '', onclick: pick('stats') }, 'Resumen')
     );
   }
 
   function scrTasks() {
+    if (ui.tasksView === 'stats') return scrTaskStats();
     if (ui.tasksView !== 'lista') return scrWeek();
     const wrap = h('div');
     wrap.append(headBar('Tareas', 'Todo lo que haces regularmente', searchBtn(),
@@ -204,20 +249,19 @@ export function registerHomeAndTasks(app) {
         return;
       }
       for (const category of categoryList) {
-        const group = tasks.filter(task => (task.cat || 'Otros') === category);
+        const group = tasks.filter(task => (task.cat || 'Otros') === category).sort((first, second) =>
+          (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
+          (first.dueDate || '9999-99-99').localeCompare(second.dueDate || '9999-99-99') ||
+          first.title.localeCompare(second.title, 'es'));
         if (!group.length) continue;
         listWrap.append(h('div', { class: 'section-title' }, h('span', null, category + ' · ' + group.length)));
         for (const task of group) {
-          const done = isDoneOn(task, today) && isDueOn(task, today);
-          listWrap.append(h('div', { class: 'row' },
-            h('button', { class: 'row-check' + (done ? ' done' : ''), 'aria-label': 'Completar hoy', onclick: () => toggleOn(task.id, today), style: 'flex:none' }),
-            h('div', { style: 'flex:1;min-width:0;cursor:pointer', onclick: () => toggleOn(task.id, today) },
-              h('b', { style: done ? 'color:var(--text-2)' : '' }, task.title),
-              h('span', { class: 'r-sub' }, freqText(task))
-            ),
-            h('span', { class: 'r-ic', html: icon(task.icon || 'star', 19) }),
-            h('button', { class: 'mini-btn', 'aria-label': 'Editar', onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 17) })
-          ));
+          listWrap.append(app.features.taskRow(task, today, {
+            onOpen: item => app.features.routineSheet(item),
+            menu: () => h('button', { class: 'mini-btn', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 17) })
+          }));
+          const bar = app.features.goalBar(task);
+          if (bar) listWrap.append(h('div', { style: 'padding:0 4px 10px' }, bar));
         }
       }
     }
@@ -315,16 +359,25 @@ export function registerHomeAndTasks(app) {
   }
 
   function dayTaskList(ymd, allowToggle) {
-    const due = [...tasksDueOn(ymd)].sort((first, second) => (first.time || '99:99').localeCompare(second.time || '99:99'));
+    const due = [...tasksDueOn(ymd)].sort((first, second) =>
+      (first.time || '99:99').localeCompare(second.time || '99:99') ||
+      (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
+      (first.dueDate || '9999-99-99').localeCompare(second.dueDate || '9999-99-99'));
     if (!due.length) return emptyState('calendar', 'Sin tareas', 'No hay nada programado para este día.', 'Añadir tarea', () => go('taskForm'));
     const column = h('div');
     for (const task of due) {
       const done = isDoneOn(task, ymd);
+      const avoid = app.core.kindOf(task) === 'avoid';
+      const skipped = app.core.isSkipped(task, ymd);
+      const control = allowToggle ? app.features.taskControl(task, ymd) : null;
+      const activateControl = () => {
+        if (!control) return;
+        const button = control.tagName === 'BUTTON' ? control : control.querySelector('.counter-val');
+        if (button && !button.disabled) button.click();
+      };
       column.append(h('div', { class: 'row' },
-        allowToggle
-          ? h('button', { class: 'row-check' + (done ? ' done' : ''), 'aria-label': 'Completar', onclick: () => toggleOn(task.id, ymd), style: 'flex:none' })
-          : h('span', { class: 'row-check' + (done ? ' done' : ''), style: 'flex:none' }),
-        h('div', { style: 'flex:1;min-width:0' + (allowToggle ? ';cursor:pointer' : ''), ...(allowToggle ? { onclick: () => toggleOn(task.id, ymd) } : {}) },
+        control || h('span', { class: 'row-check' + (done && !avoid ? ' done' : '') + (!done && avoid && !skipped ? ' failed' : '') + (skipped ? ' skipped' : ''), style: 'flex:none' }),
+        h('div', { style: 'flex:1;min-width:0' + (allowToggle ? ';cursor:pointer' : ''), ...(allowToggle ? { onclick: activateControl } : {}) },
           h('b', { style: done ? 'color:var(--text-2)' : '' }, task.title),
           h('span', { class: 'r-sub' }, (task.time ? task.time + ' · ' : '') + (task.cat || 'Otros'))
         ),
@@ -392,5 +445,263 @@ export function registerHomeAndTasks(app) {
     );
   }
 
-  Object.assign(app.features, { home: scrHome, tasks: scrTasks, week: scrWeek, giftThumb });
+  /* --- Estadísticas de tareas: semana, mes y año -------------------------- */
+
+  const STAT_PERIODS = [
+    { id: 'semana', label: 'Semana' },
+    { id: 'mes', label: 'Mes' },
+    { id: 'anio', label: 'Año' },
+    { id: '30d', label: '30 días' },
+    { id: '90d', label: '90 días' }
+  ];
+
+  // Rango de fechas del periodo. La unidad del desplazamiento es la semana, el
+  // mes o el año según el periodo, así que los periodos anteriores se obtienen
+  // con el mismo cálculo usando offset - 1.
+  function statsRange(period, offset) {
+    const today = todayStr();
+    if (period === 'semana') {
+      const start = addDaysYmd(weekStartOf(today), offset * 7);
+      return { start, end: addDaysYmd(start, 6) };
+    }
+    if (period === '30d' || period === '90d') {
+      const length = period === '30d' ? 30 : 90;
+      const end = addDaysYmd(today, offset * length);
+      return { start: addDaysYmd(end, -(length - 1)), end };
+    }
+    const date = parseYmd(today);
+    if (period === 'mes') {
+      return {
+        start: toYmd(new Date(date.getFullYear(), date.getMonth() + offset, 1)),
+        end: toYmd(new Date(date.getFullYear(), date.getMonth() + offset + 1, 0))
+      };
+    }
+    const year = date.getFullYear() + offset;
+    return { start: year + '-01-01', end: year + '-12-31' };
+  }
+
+  function statsLabel(period, range) {
+    if (period === 'semana' || period === '30d' || period === '90d') return fmtRange(range.start, range.end);
+    if (period === 'mes') return cap(parseYmd(range.start).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }));
+    return range.start.slice(0, 4);
+  }
+
+  const prevPeriodName = period => period === 'semana' ? 'la semana anterior' : period === 'mes' ? 'el mes anterior' : 'el año anterior';
+
+  // Una tarea sólo cuenta desde el día en que se creó. Sin esto, consultar un
+  // año pasado antes de tener la app mostraría cientos de tareas "incumplidas".
+  const taskStartsOn = task => (task.createdAt ? String(task.createdAt).slice(0, 10) : null);
+
+  // Recuento día a día del periodo. Los días futuros se guardan para el gráfico
+  // pero no suman al porcentaje: no penaliza lo que todavía no ha ocurrido.
+  function statsTally(start, end) {
+    const today = todayStr();
+    const days = [];
+    let due = 0;
+    let done = 0;
+    for (let ymd = start; ymd <= end; ymd = addDaysYmd(ymd, 1)) {
+      let planned = 0;
+      let finished = 0;
+      for (const task of S.tasks) {
+        const since = taskStartsOn(task);
+        if (since && ymd < since) continue;
+        if (!isDueOn(task, ymd)) continue;
+        planned++;
+        if (isDoneOn(task, ymd)) finished++;
+      }
+      const future = ymd > today;
+      if (!future) {
+        due += planned;
+        done += finished;
+      }
+      days.push({ ymd, due: planned, done: finished, future });
+    }
+    return { days, due, done, pct: due ? Math.round(done / due * 100) : 0 };
+  }
+
+  // Agrupa los días del periodo en columnas: una por día (semana), una por
+  // semana (mes) o una por mes (año).
+  function statsBuckets(period, days) {
+    const make = (label, entries) => {
+      const total = entries.reduce((sum, entry) => sum + entry.due, 0);
+      const finished = entries.reduce((sum, entry) => sum + entry.done, 0);
+      return {
+        label,
+        due: total,
+        done: finished,
+        pct: total ? Math.round(finished / total * 100) : 0,
+        future: entries.every(entry => entry.future)
+      };
+    };
+    if (period === 'semana') return days.map((day, index) => make(WEEK_L[index], [day]));
+    if (period === 'mes' || period === '30d' || period === '90d') {
+      const buckets = [];
+      for (let index = 0; index < days.length; index += 7) {
+        buckets.push(make('S' + (buckets.length + 1), days.slice(index, index + 7)));
+      }
+      return buckets;
+    }
+    const byMonth = new Map();
+    for (const day of days) {
+      const key = day.ymd.slice(0, 7);
+      if (!byMonth.has(key)) byMonth.set(key, []);
+      byMonth.get(key).push(day);
+    }
+    return [...byMonth.entries()].map(([key, entries]) =>
+      make(parseYmd(key + '-01').toLocaleDateString('es-ES', { month: 'short' }).slice(0, 3), entries));
+  }
+
+  // Desglose por tarea: sólo cuenta los días ya transcurridos en los que la
+  // tarea estaba prevista y ya existía.
+  function statsPerTask(days) {
+    return S.tasks.map(task => {
+      const since = taskStartsOn(task);
+      let due = 0;
+      let done = 0;
+      for (const day of days) {
+        if (day.future || !isDueOn(task, day.ymd)) continue;
+        if (since && day.ymd < since) continue;
+        due++;
+        if (isDoneOn(task, day.ymd)) done++;
+      }
+      return { task, due, done, pct: due ? Math.round(done / due * 100) : 0 };
+    }).filter(entry => entry.due > 0).sort((first, second) => second.due - first.due || first.pct - second.pct);
+  }
+
+  const statsCard = (value, label) => h('div', { class: 'card', style: 'text-align:center' },
+    h('div', { class: 'stat-big', style: 'font-size:26px;color:var(--text)' }, String(value)),
+    h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, label)
+  );
+
+  function statsNav(period) {
+    const move = amount => () => { ui.statsOffset += amount; go('tasks'); };
+    // No se puede avanzar hacia periodos que todavía no han empezado.
+    const canGoNext = statsRange(period, ui.statsOffset + 1).start <= todayStr();
+    return h('div', { class: 'period-nav' },
+      h('button', { class: 'icon-btn', style: 'width:34px;height:34px', 'aria-label': 'Periodo anterior', onclick: move(-1), html: icon('back', 17) }),
+      h('b', null, statsLabel(period, statsRange(period, ui.statsOffset))),
+      h('button', {
+        class: 'icon-btn',
+        style: 'width:34px;height:34px' + (canGoNext ? '' : ';opacity:.35'),
+        'aria-label': 'Periodo siguiente',
+        disabled: !canGoNext,
+        onclick: move(1),
+        html: icon('chev', 17)
+      })
+    );
+  }
+
+  function scrTaskStats() {
+    const period = STAT_PERIODS.some(item => item.id === ui.statsPeriod) ? ui.statsPeriod : 'semana';
+    const wrap = h('div');
+    wrap.append(headBar('Estadísticas', 'Cómo llevas tus tareas', searchBtn(),
+      h('button', { class: 'icon-btn', 'aria-label': 'Ir a la lista', onclick: () => { ui.tasksView = 'lista'; go('tasks'); }, html: icon('list', 19) })
+    ));
+    wrap.append(taskViewSegment());
+    wrap.append(h('div', { class: 'seg', style: 'margin-bottom:6px' },
+      STAT_PERIODS.map(item => h('button', {
+        class: period === item.id ? 'on' : '',
+        onclick: () => { ui.statsPeriod = item.id; ui.statsOffset = 0; go('tasks'); }
+      }, item.label))
+    ));
+
+    if (!S.tasks.length) {
+      wrap.append(emptyState('chart', 'Sin datos todavía', 'Crea tareas repetitivas y aquí verás tu cumplimiento semana a semana, mes a mes y año a año.', 'Nueva tarea', () => go('taskForm')));
+      return wrap;
+    }
+
+    const range = statsRange(period, ui.statsOffset);
+    const tally = statsTally(range.start, range.end);
+    const previousRange = statsRange(period, ui.statsOffset - 1);
+    const previous = statsTally(previousRange.start, previousRange.end);
+    wrap.append(statsNav(period));
+
+    // Cifra grande de cumplimiento y comparación con el periodo anterior.
+    const diff = tally.due && previous.due ? tally.pct - previous.pct : null;
+    const delta = diff === null
+      ? 'Sin datos del periodo anterior'
+      : diff === 0
+        ? 'Igual que ' + prevPeriodName(period)
+        : (diff > 0 ? '+' + diff + ' puntos' : diff + ' puntos') + ' vs. ' + prevPeriodName(period);
+    wrap.append(h('div', { class: 'card', style: 'text-align:center;margin-bottom:20px' },
+      h('div', { class: 'stat-big' }, tally.due ? tally.pct + '%' : '—'),
+      h('p', { style: 'font-size:13px;color:var(--text-2);margin:4px 0 16px' }, 'de cumplimiento · ' + tally.done + ' de ' + tally.due + ' tareas'),
+      h('div', { class: 'bar' }, h('i', { style: 'width:' + (tally.due ? tally.pct : 0) + '%' })),
+      h('p', { class: 'field-hint', style: 'margin-top:10px' }, delta)
+    ));
+
+    const past = tally.days.filter(day => !day.future);
+    const activeDays = past.filter(day => day.due > 0).length;
+    const perfectDays = past.filter(day => day.due > 0 && day.done === day.due).length;
+    wrap.append(h('div', { style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px' },
+      statsCard(tally.done, 'Completadas'),
+      statsCard(tally.due, 'Previstas'),
+      statsCard(activeDays ? perfectDays + ' / ' + activeDays : '—', 'Días perfectos')
+    ));
+
+    // Gráfico: una columna por día, por semana o por mes según el periodo.
+    wrap.append(h('div', { class: 'section-title' }, h('span', null,
+      period === 'semana' ? 'Ritmo diario' : period === 'mes' || period === '30d' || period === '90d' ? 'Semana a semana' : 'Mes a mes')));
+    const chart = h('div', { class: 'vchart' });
+    for (const bucket of statsBuckets(period, tally.days)) {
+      const height = bucket.due ? Math.max(6, Math.round(bucket.pct * 0.96)) : 5;
+      chart.append(h('div', {
+        class: 'vb' + (bucket.due ? '' : ' nil') + (bucket.future ? ' dim' : ''),
+        title: bucket.label + ' · ' + bucket.done + ' de ' + bucket.due
+      },
+        h('div', { class: 'vb-col' }, h('i', { style: 'height:' + height + 'px' })),
+        h('b', null, bucket.label)
+      ));
+    }
+    wrap.append(h('div', { class: 'card' }, chart));
+
+    const rows = statsPerTask(tally.days);
+    const riskRows = rows.filter(row => row.due >= 3 && row.pct < 50).sort((first, second) => first.pct - second.pct).slice(0, 3);
+    if (riskRows.length) {
+      wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Para recuperar')));
+      for (const row of riskRows) {
+        wrap.append(h('div', { class: 'card', style: 'display:flex;align-items:center;gap:10px;margin-bottom:8px;border-left:3px solid var(--amber)' },
+          h('span', { class: 'r-ic', style: 'background:var(--amber-soft);color:var(--amber)', html: icon('alarm', 17) }),
+          h('div', { style: 'flex:1;min-width:0' }, h('b', null, row.task.title), h('span', { class: 'r-sub' }, row.done + ' de ' + row.due + ' · ' + row.pct + '%')),
+          h('button', { class: 'link', style: 'font-size:12px', onclick: () => go('taskForm', { id: row.task.id }) }, 'Ajustar')
+        ));
+      }
+    }
+    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Tarea por tarea')));
+    if (!rows.length) {
+      wrap.append(h('div', { class: 'card', style: 'margin-bottom:20px' },
+        h('p', { class: 'field-hint', style: 'text-align:center;padding:6px 0' }, 'No hay tareas previstas en este periodo.')));
+    } else {
+      const card = h('div', { class: 'card' });
+      for (const row of rows) {
+        card.append(h('div', { class: 'habit-row' },
+          h('span', { class: 'r-ic', html: icon(row.task.icon || 'star', 18) }),
+          h('div', { class: 'hb-mid' },
+            h('b', null, row.task.title),
+            h('div', { class: 'bar mini' }, h('i', { style: 'width:' + row.pct + '%' }))
+          ),
+          h('span', { class: 'hb-n' }, row.done + ' / ' + row.due)
+        ));
+      }
+      wrap.append(card);
+    }
+
+    const recurring = S.tasks.filter(task => task.freq && task.freq.type !== 'once');
+    const best = Math.max(0, ...recurring.map(task => streakOf(task)));
+    const steadiest = rows.filter(row => row.due >= 3).sort((first, second) => second.pct - first.pct)[0];
+    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Constancia')));
+    wrap.append(h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
+      statsCard(best, 'Mejor racha (días)'),
+      statsCard(steadiest ? steadiest.pct + '%' : '—', 'Tarea más constante')
+    ));
+    if (steadiest) {
+      wrap.append(h('p', { class: 'field-hint', style: 'margin-top:10px' },
+        'Lo que más cumpliste: ' + steadiest.task.title + ' (' + steadiest.done + ' de ' + steadiest.due + ')'));
+    }
+
+    addSwipe(wrap, () => { if (statsRange(period, ui.statsOffset + 1).start <= todayStr()) { ui.statsOffset++; go('tasks'); } }, () => { ui.statsOffset--; go('tasks'); });
+    return wrap;
+  }
+
+  Object.assign(app.features, { home: scrHome, tasks: scrTasks, week: scrWeek, taskStats: scrTaskStats, giftThumb });
 }

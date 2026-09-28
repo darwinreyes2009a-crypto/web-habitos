@@ -8,7 +8,7 @@
 
 const SUPABASE_URL = 'https://clarchsmxdrqvbatfgkp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_PEiFsRJrzlSx81AWS4VaGA_Bkkf5Gz7';
-const SYNC_STATUS = { state: 'loading', error: null };  // loading | online | offline | loggedout
+const SYNC_STATUS = { state: 'loading', error: null, lastSyncAt: null, retryAt: null };  // loading | online | offline | loggedout
 
 const authBlobKey = (uid) => 'dailyhub_v2:auth:' + uid;          // blob de sesión guardado por cuenta
 
@@ -19,18 +19,32 @@ async function syncGetUser() {
   try {
     const { data } = await window.sb.auth.getSession();
     const user = data && data.session ? data.session.user : null;
-    SYNC_STATUS.state = user ? 'online' : 'loggedout';
+    if (user) {
+      // Una lectura local de la sesión puede funcionar sin red. No declares
+      // una sincronización online si el navegador ya sabe que no hay conexión,
+      // ni revivas una sesión que el usuario cerró mientras había una llamada.
+      if (SYNC_STATUS.state !== 'loggedout') {
+        SYNC_STATUS.state = typeof navigator === 'undefined' || navigator.onLine !== false ? 'online' : 'offline';
+      }
+    } else {
+      SYNC_STATUS.state = 'loggedout';
+    }
     return user;
   } catch (e) {
-    SYNC_STATUS.state = 'offline';
-    SYNC_STATUS.error = e;
+    if (SYNC_STATUS.state !== 'loggedout') {
+      SYNC_STATUS.state = 'offline';
+      SYNC_STATUS.error = e && (e.message || String(e));
+      scheduleSyncRetry();
+    }
     return null;
   }
 }
 
-function syncIsOnline() { return !!(window.sb && SYNC_STATUS.state === 'online'); }
+function syncIsOnline() {
+  return !!(window.sb && SYNC_STATUS.state === 'online' && (typeof navigator === 'undefined' || navigator.onLine !== false));
+}
 async function syncSessionStill(uid) {
-  if (!syncIsOnline()) return false;
+  if (!window.sb || SYNC_STATUS.state === 'loggedout') return false;
   try {
     const { data } = await window.sb.auth.getSession();
     return !!(data && data.session && data.session.user && data.session.user.id === uid);
@@ -63,7 +77,8 @@ async function restoreSession(userId) {
     if (!user || user.id !== userId) { SYNC_STATUS.state = 'loggedout'; return null; }
     return user;
   } catch (e) {
-    SYNC_STATUS.state = 'loggedout';
+    SYNC_STATUS.state = 'offline';
+    SYNC_STATUS.error = e && (e.message || String(e));
     return null;
   }
 }
@@ -79,7 +94,7 @@ async function removeAuthBlob(userId) {
 }
 
 /* ---------- mapping local <-> Supabase ---------- */
-const SB_TABLES = ['profiles', 'tasks', 'people', 'gifts', 'notes', 'subjects', 'class_slots', 'class_inbox', 'class_sessions'];
+const SB_TABLES = ['profiles', 'tasks', 'people', 'gifts', 'notes', 'subjects', 'class_slots', 'class_inbox', 'class_sessions', 'class_breaks', 'class_offs'];
 
 const toMs = (v) => (v ? new Date(v).getTime() : 0);
 const toIso = (v) => (v ? new Date(v).toISOString() : null);
@@ -98,19 +113,70 @@ function profileToRow(p, uidv) {
     updated_at: toIso(p.updatedAt || null)
   };
 }
+function isMissingColumnError(error) {
+  const code = String(error && error.code || '');
+  const message = String(error && error.message || error || '').toLowerCase();
+  return code === '42703' || code === 'pgrst204' ||
+    /column\b.*\b(does not exist|not found)|could not find\b.*\bcolumn/.test(message);
+}
+function isMissingTableError(error) {
+  const code = String(error && error.code || '');
+  const message = String(error && error.message || error || '').toLowerCase();
+  return code === '42p01' || code === 'pgrst205' ||
+    /relation\b.*\bdoes not exist|table\b.*\b(not found|does not exist)|could not find\b.*\btable/.test(message);
+}
+
 function rowToTask(r) {
-  return {
+  const task = {
     id: r.id, title: r.title, icon: r.icon || 'star', cat: r.cat || 'Personal',
     freq: r.freq || { type: 'daily' }, time: r.time || '',
     completions: r.completions || [], updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
+  // Columnas nuevas (tipos, valores, saltos, objetivo). Sin migración aplicada
+  // llegan a null y la tarea se comporta como un sí/no de siempre.
+  if (r.kind) task.kind = r.kind;
+  if (r.target != null) task.target = Number(r.target) || 0;
+  if (r.unit) task.unit = r.unit;
+  if (r.goal_per_week != null) task.goal = Number(r.goal_per_week) || 0;
+  if (r.log && typeof r.log === 'object' && Object.keys(r.log).length) task.log = r.log;
+  if (Array.isArray(r.skips) && r.skips.length) task.skips = r.skips;
+  if (r.priority != null) task.priority = Number(r.priority) || 0;
+  if (r.due_date) task.dueDate = r.due_date;
+  if (Array.isArray(r.steps) && r.steps.length) task.steps = r.steps;
+  return task;
 }
 function taskToRow(t, uidv, pid) {
-  return {
+  const row = {
     id: t.id, user_id: uidv, profile_id: pid || null, title: t.title, icon: t.icon || 'star', cat: t.cat || 'Personal',
     freq: t.freq || { type: 'daily' }, time: t.time || '', completions: t.completions || [],
     updated_at: toIso(t.updatedAt || null)
   };
+  if (TASK_EXTRA_COLUMNS.kind) {
+    // Escribir también los valores vacíos permite limpiar en la nube prioridad,
+    // plazo, registros y subtareas cuando el usuario los borra localmente.
+    row.kind = t.kind || 'check';
+    row.target = Number(t.target) || 0;
+    row.unit = String(t.unit || '').slice(0, 24);
+    row.goal_per_week = Number(t.goal) || 0;
+    row.log = t.log && typeof t.log === 'object' ? t.log : {};
+    row.skips = Array.isArray(t.skips) ? t.skips : [];
+    row.priority = Math.max(0, Math.min(2, Number(t.priority) || 0));
+    row.due_date = t.dueDate || null;
+    row.steps = Array.isArray(t.steps) ? t.steps : [];
+  }
+  return row;
+}
+/* Sonda de columnas nuevas de tasks (kind, target, unit, goal_per_week, log,
+   skips, priority, due_date, steps): se comprueba una vez por sesión y queda en
+   cache. Sin la migración aplicada el push las omite y todo sigue funcionando
+   como un sí/no de siempre. */
+const TASK_EXTRA_COLUMNS = { kind: true };
+async function detectTaskExtraColumns() {
+  const { error } = await window.sb.from('tasks').select('kind,target,unit,goal_per_week,log,skips,priority,due_date,steps').limit(1);
+  if (error) {
+    if (!isMissingColumnError(error)) throw error;
+    TASK_EXTRA_COLUMNS.kind = false;
+  }
 }
 function rowToPerson(r) {
   return {
@@ -133,17 +199,30 @@ function rowToNote(r) {
     id: r.id, text: r.text, kind: r.kind || 'nota', date: r.note_date || window.DailyHub.core.todayStr(), time: r.note_time || '',
     done: !!r.done, starred: !!r.starred,
     subjectId: r.subject_id || null, sessionId: r.session_id || null,
+    tags: Array.isArray(r.tags) ? r.tags : [], deletedAt: r.deleted_at || null,
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
 }
+const NOTE_EXTRA_COLUMNS = { tags: true, deleted_at: true };
+async function detectNoteExtraColumns() {
+  const { error } = await window.sb.from('notes').select('tags,deleted_at').limit(1);
+  if (error) {
+    if (!isMissingColumnError(error)) throw error;
+    NOTE_EXTRA_COLUMNS.tags = false;
+    NOTE_EXTRA_COLUMNS.deleted_at = false;
+  }
+}
 function noteToRow(n, uidv, pid) {
-  return {
+  const row = {
     id: n.id, user_id: uidv, profile_id: pid || null, text: n.text, kind: n.kind || 'nota',
     note_date: n.date || window.DailyHub.core.todayStr(), note_time: n.time || '',
     done: !!n.done, starred: !!n.starred,
     subject_id: n.subjectId || null, session_id: n.sessionId || null,
     updated_at: toIso(n.updatedAt || null)
   };
+  if (NOTE_EXTRA_COLUMNS.tags) row.tags = Array.isArray(n.tags) ? n.tags : [];
+  if (NOTE_EXTRA_COLUMNS.deleted_at) row.deleted_at = n.deletedAt || null;
+  return row;
 }
 /* ---------- Modo Clase: asignaturas, horario, Para después e historial ---------- */
 function rowToSubject(r) {
@@ -156,16 +235,36 @@ function rowToSlot(r) {
   return {
     id: r.id, subjectId: r.subject_id || null, day: r.day || 0,
     start: r.start_time || '09:00', end: r.end_time || '10:00', room: r.room || '',
-    kind: r.room === 'patio' ? 'patio' : 'class',
+    // La columna `kind` (clase | patio) es nueva. Sin ella se deducia del aula
+    // o de que el bloque no tenga asignatura: un hueco sin asignatura es un patio.
+    kind: r.kind || (r.room === 'patio' || !r.subject_id ? 'patio' : 'class'),
+    // `active` permite desactivar un bloque sin borrarlo (un trimestre entero
+    // de una asignatura, o un aula que cambia). Ausente = activo.
+    active: r.active === false ? false : true,
     updatedAt: toMs(r.updated_at), createdAt: r.created_at
   };
 }
 function slotToRow(s, uidv, pid) {
-  return {
+  const row = {
     id: s.id, user_id: uidv, profile_id: pid || null, subject_id: s.subjectId || null, day: s.day || 0,
-    start_time: s.start || '09:00', end_time: s.end || '10:00', room: s.room || '', active: true,
+    start_time: s.start || '09:00', end_time: s.end || '10:00', room: s.room || '',
+    active: s.active === false ? false : true,
     updated_at: toIso(s.updatedAt || null)
   };
+  if (SLOT_EXTRA_COLUMNS.kind) row.kind = s.kind || (s.room === 'patio' ? 'patio' : 'class');
+  return row;
+}
+
+/* Sonda de columnas nuevas de class_slots (kind): se comprueba una vez por
+   sesión y queda en cache. Sin la migración aplicada el push omite `kind` y el
+   patio se sigue reconociendo por el aula o por no tener asignatura. */
+const SLOT_EXTRA_COLUMNS = { kind: true };
+async function detectSlotExtraColumns() {
+  const { error } = await window.sb.from('class_slots').select('kind').limit(1);
+  if (error) {
+    if (!isMissingColumnError(error)) throw error;
+    SLOT_EXTRA_COLUMNS.kind = false;
+  }
 }
 
 /* Sonda de columnas nuevas de gifts (starred, remind_days): se comprueba una
@@ -173,13 +272,49 @@ function slotToRow(s, uidv, pid) {
    esas columnas y todo sigue funcionando. */
 const GIFT_EXTRA_COLUMNS = { starred: true, remind_days: true };
 async function detectGiftExtraColumns() {
-  try {
-    const { error } = await window.sb.from('gifts').select('starred,remind_days').limit(1);
-    if (error) { GIFT_EXTRA_COLUMNS.starred = false; GIFT_EXTRA_COLUMNS.remind_days = false; }
-  } catch (error) {
+  const { error } = await window.sb.from('gifts').select('starred,remind_days').limit(1);
+  if (error) {
+    if (!isMissingColumnError(error)) throw error;
     GIFT_EXTRA_COLUMNS.starred = false;
     GIFT_EXTRA_COLUMNS.remind_days = false;
   }
+}
+/* Tablas nuevas que aún no existen en una instalación antigua: se detectan una
+   vez por sesión y quedan fuera del push/pull en vez de romper la sincronización.
+   Así la app funciona igual sin haber aplicado la migración. */
+const MISSING_TABLES = new Set();
+async function detectMissingTables() {
+  for (const table of OPTIONAL_TABLES) {
+    const { error } = await window.sb.from(table).select('id').limit(1);
+    if (error) {
+      if (!isMissingTableError(error)) throw error;
+      MISSING_TABLES.add(table);
+    }
+  }
+}
+const OPTIONAL_TABLES = ['class_breaks', 'class_offs'];
+let __schemaDetectedForUser = '';
+async function ensureSchemaFeatures(userId) {
+  if (!userId || __schemaDetectedForUser === userId) return;
+  // La primera comprobación puede ocurrir antes de iniciar sesión. Vuelve a
+  // sondear por usuario para cubrir login/cambio de cuenta sin recargar.
+  TASK_EXTRA_COLUMNS.kind = true;
+  SLOT_EXTRA_COLUMNS.kind = true;
+  GIFT_EXTRA_COLUMNS.starred = true;
+  GIFT_EXTRA_COLUMNS.remind_days = true;
+  NOTE_EXTRA_COLUMNS.tags = true;
+  NOTE_EXTRA_COLUMNS.deleted_at = true;
+  MISSING_TABLES.clear();
+  await detectGiftExtraColumns();
+  await detectSlotExtraColumns();
+  await detectTaskExtraColumns();
+  await detectNoteExtraColumns();
+  await detectMissingTables();
+  __schemaDetectedForUser = userId;
+}
+// Las tablas que existen siempre; las opcionales se descartan si faltan.
+function activeTables() {
+  return SB_TABLES.filter(table => !MISSING_TABLES.has(table));
 }
 function rowToInbox(r) {
   return {
@@ -212,6 +347,34 @@ function sessionToRow(s, uidv, pid) {
     updated_at: toIso(s.updatedAt || null)
   };
 }
+function rowToBreak(r) {
+  return {
+    id: r.id, from: r.date_from || '', to: r.date_to || '',
+    label: r.label || 'No lectivo', kind: r.kind || 'libre',
+    updatedAt: toMs(r.updated_at), createdAt: r.created_at
+  };
+}
+function breakToRow(b, uidv, pid) {
+  return {
+    id: b.id, user_id: uidv, profile_id: pid || null,
+    date_from: b.from || null, date_to: b.to || null,
+    label: b.label || 'No lectivo', kind: b.kind || 'libre',
+    updated_at: toIso(b.updatedAt || null)
+  };
+}
+function rowToOff(r) {
+  return {
+    id: r.id, slotId: r.slot_id || null, date: r.date_off || '',
+    updatedAt: toMs(r.updated_at), createdAt: r.created_at
+  };
+}
+function offToRow(o, uidv, pid) {
+  return {
+    id: o.id, user_id: uidv, profile_id: pid || null,
+    slot_id: o.slotId || null, date_off: o.date || null,
+    updated_at: toIso(o.updatedAt || null)
+  };
+}
 function rowToGift(r) {
   return {
     id: r.id, title: r.title, personId: r.person_id || null, price: r.price === null ? '' : r.price,
@@ -238,13 +401,14 @@ function giftToRow(g, uidv, pid) {
 
 const STATE_SLOTS = {
   profiles: 'profiles', tasks: 'tasks', people: 'people', gifts: 'gifts', notes: 'notes',
-  subjects: 'subjects', class_slots: 'slots', class_inbox: 'inbox', class_sessions: 'sessions'
+  subjects: 'subjects', class_slots: 'slots', class_inbox: 'inbox', class_sessions: 'sessions',
+  class_breaks: 'breaks', class_offs: 'offs'
 };
-const DATA_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions'];
+const DATA_KEYS = ['tasks', 'people', 'gifts', 'notes', 'subjects', 'slots', 'inbox', 'sessions', 'breaks', 'offs'];
 function bucketFor(pid) {
   if (!pid) return null;
   if (!window.DailyHub.state.S.data || typeof window.DailyHub.state.S.data !== 'object') window.DailyHub.state.S.data = {};
-  if (!window.DailyHub.state.S.data[pid]) window.DailyHub.state.S.data[pid] = { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], activeSession: null, __del: {} };
+  if (!window.DailyHub.state.S.data[pid]) window.DailyHub.state.S.data[pid] = { tasks: [], people: [], gifts: [], notes: [], subjects: [], slots: [], inbox: [], sessions: [], breaks: [], offs: [], activeSession: null, __del: {} };
   const b = window.DailyHub.state.S.data[pid];
   if (!b.__del) b.__del = {};
   for (const k of DATA_KEYS) if (!Array.isArray(b[k])) b[k] = [];
@@ -351,6 +515,78 @@ function syncQueue(fn) {
   return run;
 }
 
+let __syncRetryTimer = null;
+let __syncRetryAttempt = 0;
+let __retryingSync = false;
+function clearSyncRetry() {
+  clearTimeout(__syncRetryTimer);
+  __syncRetryTimer = null;
+  SYNC_STATUS.retryAt = null;
+  __syncRetryAttempt = 0;
+}
+let __syncRetryGeneration = 0;
+function cancelSyncRetry() {
+  __syncRetryGeneration++;
+  clearSyncRetry();
+}
+function scheduleSyncRetry(delayOverride) {
+  if (__syncRetryTimer || SYNC_STATUS.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+  const generation = __syncRetryGeneration;
+  __syncRetryAttempt = Math.min(__syncRetryAttempt + 1, 8);
+  const delay = delayOverride == null ? Math.min(60000, 1000 * (2 ** (__syncRetryAttempt - 1))) : Math.max(0, delayOverride);
+  SYNC_STATUS.retryAt = Date.now() + delay;
+  __syncRetryTimer = setTimeout(() => {
+    __syncRetryTimer = null;
+    SYNC_STATUS.retryAt = null;
+    if (generation !== __syncRetryGeneration || SYNC_STATUS.state === 'loggedout') return;
+    // syncPullAll is intentionally online-only; allow it to re-check the
+    // session and network rather than remaining stuck in the offline state.
+    SYNC_STATUS.state = 'online';
+    __retryingSync = true;
+    syncQueue(syncPullAll).then(ok => {
+      __retryingSync = false;
+      if (generation !== __syncRetryGeneration || SYNC_STATUS.state === 'loggedout') return;
+      if (!ok) {
+        if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
+        scheduleSyncRetry();
+        if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+        return;
+      }
+      SYNC_STATUS.state = 'online';
+      SYNC_STATUS.error = null;
+      SYNC_STATUS.lastSyncAt = Date.now();
+      clearSyncRetry();
+      realtimeStart();
+      if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+    }).catch(error => {
+      __retryingSync = false;
+      if (generation !== __syncRetryGeneration || SYNC_STATUS.state === 'loggedout') return;
+      SYNC_STATUS.error = error && (error.message || String(error));
+      SYNC_STATUS.state = 'offline';
+      scheduleSyncRetry();
+      if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+    });
+  }, delay);
+}
+function registerSyncNetworkEvents() {
+  if (typeof window.addEventListener !== 'function' || window.__dailyHubSyncNetworkHooks) return;
+  window.__dailyHubSyncNetworkHooks = true;
+  window.addEventListener('offline', () => {
+    __syncRetryGeneration++;
+    clearSyncRetry();
+    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
+    if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+  });
+  window.addEventListener('online', () => {
+    if (SYNC_STATUS.state === 'loggedout') return;
+    __syncRetryAttempt = 0;
+    SYNC_STATUS.state = 'loading';
+    scheduleSyncRetry(0);
+    if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+  });
+}
+registerSyncNetworkEvents();
+
 let __rtIgnore = false;   // anti-eco: no reaccionar a los cambios que subimos nosotros
 function scheduleRealtimeResume() { setTimeout(() => { __rtIgnore = false; }, 3000); }
 
@@ -368,7 +604,8 @@ async function syncPushAll() {
   }
   __rtIgnore = true;
   try {
-    for (const table of SB_TABLES) {
+    await ensureSchemaFeatures(uid);
+    for (const table of activeTables()) {
       const entries = localEntries(table);
       const ids = entries.map(e => e.row.id).filter(Boolean);
       const [sRes, tRes] = await Promise.allSettled([
@@ -433,7 +670,8 @@ async function syncPushAll() {
         if (revErr) throw revErr;
       }
       const map = { profiles: profileToRow, tasks: taskToRow, people: personToRow, gifts: giftToRow, notes: noteToRow,
-        subjects: subjectToRow, class_slots: slotToRow, class_inbox: inboxToRow, class_sessions: sessionToRow };
+        subjects: subjectToRow, class_slots: slotToRow, class_inbox: inboxToRow, class_sessions: sessionToRow,
+        class_breaks: breakToRow, class_offs: offToRow };
       const rows = toUpload.map(entry => map[table](entry.row, uid, table === 'profiles' ? undefined : entry.pid));
       for (let j = 0; j < rows.length; j += 50) {
         if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
@@ -487,10 +725,16 @@ async function syncPushAll() {
       __lastPushedMetaJson = metaJson;
     }
     scheduleRealtimeResume();
+    SYNC_STATUS.error = null;
+    SYNC_STATUS.lastSyncAt = Date.now();
+    clearSyncRetry();
     return true;
   } catch (e) {
+    SYNC_STATUS.error = e && (e.message || String(e));
+    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
     console.error('syncPushAll', e);
     scheduleRealtimeResume();
+    if (!__retryingSync) scheduleSyncRetry();
     return false;
   }
 }
@@ -506,18 +750,20 @@ async function syncPullAll() {
   const uid = user.id;
   let needPush = false;
   try {
+    await ensureSchemaFeatures(uid);
+    const tables = activeTables();
     const totals = Promise.all([
       window.sb.from('tombstones').select('id,key,updated_at').eq('user_id', uid),
-      ...SB_TABLES.map(t => window.sb.from(t).select('*').order('created_at')),
+      ...tables.map(t => window.sb.from(t).select('*').order('created_at')),
       window.sb.from('settings').select('*')
     ]);
     const [tsRes, ...rest] = await totals;
-    const fetches = rest.slice(0, SB_TABLES.length);
-    const settingsRes = rest[SB_TABLES.length];
+    const fetches = rest.slice(0, tables.length);
+    const settingsRes = rest[tables.length];
     const res = {};
-    SB_TABLES.forEach((t, i) => { res[t] = fetches[i].data || []; });
+    tables.forEach((t, i) => { res[t] = fetches[i].data || []; });
     const softErr = fetches.slice(5).find(r => r.error);
-    if (softErr) console.warn('DailyHub: tablas de Modo Clase no disponibles todavía', softErr.error.message || softErr.error);
+    if (softErr) console.warn('DailyHub: tablas de Modo Clase no disponibles todavia', softErr.error.message || softErr.error);
     const err = fetches.slice(0, 5).find(r => r.error);
     if (err) throw err.error;
     if (tsRes.error) throw tsRes.error;
@@ -568,7 +814,7 @@ async function syncPullAll() {
     const MERGE = {
       tasks: rowToTask, people: rowToPerson, gifts: rowToGift, notes: rowToNote,
       subjects: rowToSubject, class_slots: rowToSlot, class_inbox: rowToInbox,
-      class_sessions: rowToSession
+      class_sessions: rowToSession, class_breaks: rowToBreak, class_offs: rowToOff
     };
     for (const table of Object.keys(MERGE)) {
       const mapFn = MERGE[table];
@@ -758,11 +1004,20 @@ async function syncPullAll() {
     // Un borrado pendiente (tombstone + DELETE físico) debe salir en cuanto
     // haya conexión, aunque no haya filas nuevas que subir. Así las filas
     // huérfanas que quedaron antes de un fallo se limpian solas.
-    if (!needPush && SB_TABLES.some(table => pendingDeleteIds(table).length)) needPush = true;
-    if (needPush) await syncPushAll();   // primer login, filas nuevas o borrados pendientes
+    if (!needPush && activeTables().some(table => pendingDeleteIds(table).length)) needPush = true;
+    if (needPush && !(await syncPushAll())) {
+      if (!__retryingSync) scheduleSyncRetry();
+      return false;   // primer login, filas nuevas o borrados pendientes
+    }
+    SYNC_STATUS.error = null;
+    SYNC_STATUS.lastSyncAt = Date.now();
+    clearSyncRetry();
     return true;
   } catch (e) {
+    SYNC_STATUS.error = e && (e.message || String(e));
+    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
     console.error('syncPullAll', e);
+    if (!__retryingSync) scheduleSyncRetry();
     return false;
   }
 }
@@ -798,8 +1053,19 @@ function realtimeStop() {
 /* ---------- boot de sincronización (lo llama el composition root) ---------- */
 async function syncBoot() {
   const user = await syncGetUser();
-  if (!user) { SYNC_STATUS.state = 'loggedout'; realtimeStop(); window.DailyHub.state.save(); if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render(); return; }   // sin sesión
-  await detectGiftExtraColumns();
+  if (!user) {
+    if (SYNC_STATUS.state === 'offline') {
+      scheduleSyncRetry();
+      if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+      return;
+    }
+    SYNC_STATUS.state = 'loggedout';
+    cancelSyncRetry();
+    realtimeStop();
+    window.DailyHub.state.save();
+    if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+    return;
+  }   // sin sesión
   const ok = await syncQueue(syncPullAll);
   // El usuario puede haber cambiado de cuenta mientras esperaba la cola.
   if (!(await syncSessionStill(user.id))) {
@@ -809,7 +1075,12 @@ async function syncBoot() {
     return;
   }
   SYNC_STATUS.state = ok ? 'online' : 'offline';
-  if (ok) realtimeStart();
+  if (ok) {
+    clearSyncRetry();
+    realtimeStart();
+  } else {
+    scheduleSyncRetry();
+  }
   if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
 }
 
@@ -831,6 +1102,6 @@ function queuedSyncPull() { return syncQueue(syncPullAll); }
 window.DailySync = {
   boot: syncBoot, push: queuedSyncPush, pull: queuedSyncPull, status: SYNC_STATUS, badge: syncBadge,
   getUser: syncGetUser, realtime: { start: realtimeStart, stop: realtimeStop },
-  restoreSession, removeAuthBlob, authBlobKey,
+  restoreSession, removeAuthBlob, authBlobKey, cancelRetry: cancelSyncRetry,
   config: { url: SUPABASE_URL, key: SUPABASE_KEY }
 };

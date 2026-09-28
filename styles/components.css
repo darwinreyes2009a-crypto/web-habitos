@@ -30,6 +30,15 @@
 .task-card.done .t-ic { background:#DCFCE7; color:var(--green) }
 .task-card.done b { color:var(--text-2); text-decoration:line-through; text-decoration-color:var(--green-border); text-decoration-thickness:2px }
 .task-card.done .t-state { color:var(--green) }
+.task-card.failed { background:var(--danger-soft); border-color:var(--danger-border) }
+.task-card.failed .t-ic { background:var(--danger-soft); color:var(--danger) }
+.task-card.failed .t-state { color:var(--danger) }
+.task-card.failed .t-dot { border-color:var(--danger); background:var(--danger) }
+.task-card.failed .t-dot::after { content:'!'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:800 }
+.task-card.skipped { background:var(--surface-2); border-color:var(--border) }
+.task-card.skipped .t-state { color:var(--text-3) }
+.task-card.skipped .t-dot { border-color:var(--text-3); background:var(--text-3) }
+.task-card.skipped .t-dot::after { content:'–'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--surface); font-size:12px; font-weight:800 }
 .t-dot { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex:none; position:relative }
 .task-card.done .t-dot,.row-check.done { border-color:var(--green); background:var(--green) }
 .task-card.done .t-dot::after,.row-check.done::after { content:""; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/11px no-repeat }
@@ -51,6 +60,8 @@
 .row-check { width:22px; height:22px; border-radius:50%; border:2px solid var(--border); position:relative; flex:none }
 .row-check.done { border-color:var(--green); background:var(--green) }
 .row-check.done::after { content:""; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/12px no-repeat }
+.row-check.skipped { border-color:var(--border); background:var(--surface-2); opacity:.6 }
+.row-check.skipped::after { content:'–'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-3); font-size:15px; font-weight:700 }
 .mini-btn { width:34px; height:34px; border-radius:11px; display:flex; align-items:center; justify-content:center; color:var(--text-3); transition:background .15s }
 .mini-btn:hover { background:var(--surface-2); color:var(--text) }
 .avatar { border-radius:50%; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none; user-select:none; overflow:hidden }

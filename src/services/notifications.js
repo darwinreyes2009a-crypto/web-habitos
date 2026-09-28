@@ -96,12 +96,57 @@ export function registerNotifications(app) {
     }
   }
 
+  /* --- Aviso de clase ------------------------------------------------------ */
+
+  // Avisa de la próxima clase del día si empieza dentro del margen. El margen
+  // sale de los ajustes (`notif.classLead`, por defecto 15 minutos) y solo se
+  // dispara una vez por bloque y día.
+  async function maybeNotifyClass() {
+    try {
+      const settings = S.settings.notif;
+      if (!settings || settings.classes === false || notifPermission() !== 'granted') return false;
+      if (app.class && typeof app.class.breakOn === 'function' && app.class.breakOn(todayStr())) return false;
+      const lead = Number(settings.classLead == null ? 15 : settings.classLead) || 15;
+      const blocks = typeof app.class.slotsOnDate === 'function' ? app.class.slotsOnDate(todayStr()) : [];
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+      const hmOf = time => { const p = String(time || '0:00').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); };
+      const target = blocks
+        .filter(slot => hmOf(slot.start) > minutes && hmOf(slot.start) - minutes <= lead)
+        .sort((first, second) => hmOf(first.start) - hmOf(second.start))[0];
+      if (!target) return false;
+      const today = todayStr();
+      const stamp = 'class:' + target.id;
+      if (S.meta.classNotified === stamp) return false;
+      const patio = target.kind === 'patio' || target.room === 'patio';
+      const name = patio ? 'el patio' : (((app.class.subjectById && app.class.subjectById(target.subjectId)) || {}).name || 'una clase');
+      const when = hmOf(target.start) - minutes;
+      const where = target.room && !/^https?:/i.test(target.room) ? ' en ' + target.room : '';
+      const shown = await showAppNotification(
+        (when <= 1 ? 'Empieza ahora' : 'Empieza en ' + when + ' min'),
+        name + where + ' · ' + String(target.start).slice(0, 5)
+      );
+      if (shown) {
+        S.meta.classNotified = stamp;
+        save();
+      }
+      return shown;
+    } catch (error) {
+      console.warn('Aviso de clase', error);
+      return false;
+    }
+  }
+
   function startNotificationChecks() {
     clearInterval(notificationTimer);
     notificationTimer = setInterval(() => {
       maybeNotify();
       scheduleGiftNotification();
+      maybeNotifyClass();
     }, 60000);
+    // El aviso de clase se busca nada más arrancar: si la app se abre con la
+    // clase a punto de empezar, hay que decirlo igualmente.
+    setTimeout(() => { maybeNotifyClass(); }, 4000);
   }
 
   Object.assign(app.services, {
@@ -111,6 +156,7 @@ export function registerNotifications(app) {
     showAppNotification,
     scheduleGiftNotification,
     maybeNotify,
+    maybeNotifyClass,
     startNotificationChecks
   });
 }

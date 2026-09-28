@@ -1,3 +1,15 @@
+export function markdownPreview(text) {
+  // Solo formato de texto (sin HTML, enlaces ni atributos arbitrarios).
+  // Escapamos antes de introducir las pocas etiquetas permitidas.
+  const escaped = String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return escaped
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/^\s*[-*]\s+(.+)$/gm, '• $1')
+    .replace(/\n/g, '<br>');
+}
+
 export function registerClassNotes(app) {
   const {
     h,
@@ -33,12 +45,22 @@ export function registerClassNotes(app) {
   } = app.class;
   const { showAppNotification } = app.services;
 
+  function archiveNote(note, archived, redraw) {
+    note.deletedAt = archived ? new Date().toISOString() : null;
+    note.updatedAt = Date.now();
+    save();
+    if (redraw) redraw(); else render();
+    toast(archived ? 'Nota en la papelera · puedes deshacer' : 'Nota restaurada', archived
+      ? { label: 'Deshacer', fn: () => { note.deletedAt = null; note.updatedAt = Date.now(); save(); if (redraw) redraw(); else render(); } }
+      : undefined);
+  }
+
   function noteCard(note, redraw) {
     const style = noteKindStyle(note.kind);
     const kind = noteKinds.find(item => item.id === note.kind) || noteKinds[0];
     const subject = subjectById(note.subjectId);
-    const refresh = () => { save(); if (redraw) redraw(); else render(); };
-    return h('div', { class: 'note-card' + (note.done ? ' done' : ''), style: 'border-left:3px solid ' + style.c },
+    const refresh = () => { note.updatedAt = Date.now(); save(); if (redraw) redraw(); else render(); };
+    return h('div', { class: 'note-card' + (note.done ? ' done' : '') + (note.deletedAt ? ' archived' : ''), style: 'border-left:3px solid ' + style.c },
       h('button', {
         class: 'note-check' + (note.done ? ' on' : ''),
         'aria-label': note.done ? 'Marcar como pendiente' : 'Marcar como hecho',
@@ -50,7 +72,8 @@ export function registerClassNotes(app) {
           h('span', { class: 'note-kind', style: 'color:' + style.c + ';background:' + style.bg + ';border:1px solid ' + style.br }, kind.label),
           subject ? h('span', { class: 'subj-chip', style: 'color:' + subject.color + ';background:' + tintHex(subject.color, '22') }, subject.name) : null,
           note.starred ? h('span', { class: 'note-star', style: 'color:var(--amber)', html: icon('star', 13) }) : null,
-          noteTimeStr(note) ? h('span', null, '· ' + noteTimeStr(note)) : null
+          noteTimeStr(note) ? h('span', null, '· ' + noteTimeStr(note)) : null,
+          ...(Array.isArray(note.tags) ? note.tags.slice(0, 3).map(tag => h('span', { class: 'note-tag' }, '#' + tag)) : [])
         )
       ),
       h('button', { class: 'icon-btn', style: 'width:32px;height:32px', 'aria-label': 'Más opciones', onclick: () => noteMenu(note, redraw) }, h('span', { class: 'chev', html: icon('more', 16) }))
@@ -88,7 +111,10 @@ export function registerClassNotes(app) {
         starred: quickKind === 'importante',
         subjectId: (ui.noteSubject && ui.noteSubject !== 'todas' && ui.noteSubject !== 'sin') ? ui.noteSubject : null,
         sessionId: currentSession ? currentSession.id : null,
-        createdAt: new Date().toISOString()
+        tags: [],
+        deletedAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: Date.now()
       });
       save();
       quickInput.value = '';
@@ -97,6 +123,15 @@ export function registerClassNotes(app) {
     });
     wrap.append(kindSegment, quickInput, h('p', { class: 'field-hint', style: 'margin-bottom:4px' }, 'Se guarda con la fecha de hoy.'));
     return wrap;
+  }
+
+  function quickNoteSheet() {
+    openSheet('Nota rápida', () => {
+      const box = h('div');
+      box.append(classNotesCapture(() => { closeOverlays(); render(); }));
+      box.append(h('p', { class: 'field-hint' }, 'Pulsa Enter para guardar. Después podrás editarla, asignarla y etiquetarla.'));
+      return box;
+    });
   }
 
   const pomodoro = { timer: null, left: 25 * 60, running: false, phase: 'focus' };
@@ -168,7 +203,7 @@ export function registerClassNotes(app) {
     function drawSubjectChips() {
       subjectChips.innerHTML = '';
       const options = [{ id: 'todas', label: 'Todas' }].concat((S.subjects || []).map(subject => ({ id: subject.id, label: subject.name })));
-      if ((S.notes || []).some(note => !note.subjectId)) options.push({ id: 'sin', label: 'Sin asignatura' });
+      if ((S.notes || []).some(note => !note.deletedAt && !note.subjectId)) options.push({ id: 'sin', label: 'Sin asignatura' });
       for (const option of options) {
         subjectChips.append(h('button', {
           class: 'chip' + (ui.noteSubject === option.id ? ' on' : ''),
@@ -176,8 +211,8 @@ export function registerClassNotes(app) {
         }, option.label));
       }
     }
-    const filters = ['todas', 'abiertas', 'importante'];
-    const filterLabels = { todas: 'Todas', abiertas: 'Pendientes', importante: 'Importantes' };
+    const filters = ['todas', 'abiertas', 'importante', 'papelera'];
+    const filterLabels = { todas: 'Todas', abiertas: 'Pendientes', importante: 'Importantes', papelera: 'Papelera' };
     let classFilter = filterLabels[ui.noteState] ? ui.noteState : 'todas';
     const filterChips = h('div', { class: 'chips' });
     function drawFilterChips() {
@@ -195,6 +230,8 @@ export function registerClassNotes(app) {
     const listWrap = h('div');
 
     function matchesFilter(note) {
+      const trashed = !!note.deletedAt;
+      if (classFilter === 'papelera' ? !trashed : trashed) return false;
       if (ui.noteSubject === 'sin') {
         if (note.subjectId) return false;
       } else if (ui.noteSubject !== 'todas' && note.subjectId !== ui.noteSubject) return false;
@@ -213,7 +250,7 @@ export function registerClassNotes(app) {
 
     function drawList() {
       listWrap.innerHTML = '';
-      const notes = S.notes.filter(matchesFilter).sort((first, second) => first.date === second.date ? (first.done - second.done) : (first.date < second.date ? 1 : -1));
+      const notes = (S.notes || []).filter(matchesFilter).sort((first, second) => first.date === second.date ? (first.done - second.done) : (first.date < second.date ? 1 : -1));
       if (!notes.length) {
         listWrap.append(emptyState('pencil', 'Nada por aquí', 'Escribe arriba y pulsa Enter para capturar en un segundo.'));
         return;
@@ -237,9 +274,33 @@ export function registerClassNotes(app) {
     return wrap;
   }
 
+  function hardDeleteNote(note, redraw) {
+    confirmDialog({
+      title: '¿Eliminar para siempre?',
+      message: note.text,
+      confirmText: 'Eliminar definitivamente',
+      onConfirm: () => {
+        const index = S.notes.indexOf(note);
+        if (index < 0) return;
+        note.deletedAt = null;
+        note.updatedAt = Date.now();
+        S.notes.splice(index, 1);
+        save();
+        if (redraw) redraw(); else render();
+        toast('Nota eliminada definitivamente', { label: 'Deshacer', fn: () => {
+          note.deletedAt = null;
+          note.updatedAt = Date.now();
+          S.notes.splice(Math.min(index, S.notes.length), 0, note);
+          save();
+          render();
+        } });
+      }
+    });
+  }
+
   function noteMenu(note, redraw) {
     closeOverlays();
-    const done = () => { save(); if (redraw) redraw(); else render(); };
+    const done = () => { note.updatedAt = Date.now(); save(); if (redraw) redraw(); else render(); };
     const overlay = h('div', { class: 'overlay', style: 'z-index:60', onclick: event => { if (event.target === overlay) overlay.remove(); } });
     const subject = subjectById(note.subjectId);
     const sheet = h('div', { class: 'sheet', style: 'max-width:340px', role: 'menu' },
@@ -254,41 +315,30 @@ export function registerClassNotes(app) {
         h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('folder', 17) }),
         h('span', null, subject ? 'Asignatura: ' + subject.name : 'Asignar a una asignatura')
       ),
-      h('button', { class: 'set-row', onclick: () => { overlay.remove(); noteToTask(note, redraw); } },
+      !note.deletedAt ? h('button', { class: 'set-row', onclick: () => { overlay.remove(); noteToTask(note, redraw); } },
         h('span', { class: 'r-ic', html: icon('checksq', 17) }),
         h('span', null, 'Convertir en tarea')
+      ) : null,
+      h('button', { class: 'set-row', onclick: () => { overlay.remove(); archiveNote(note, !note.deletedAt); } },
+        h('span', { class: 'r-ic', style: note.deletedAt ? 'background:var(--green-soft);color:var(--green)' : 'background:var(--amber-soft);color:var(--amber)', html: icon(note.deletedAt ? 'check' : 'archive', 17) }),
+        h('span', null, note.deletedAt ? 'Restaurar de la papelera' : 'Mover a la papelera')
       ),
+      note.deletedAt ? h('button', { class: 'set-row', style: 'color:var(--danger)', onclick: () => { overlay.remove(); hardDeleteNote(note, redraw); } },
+        h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('trash', 17) }),
+        h('span', null, 'Eliminar definitivamente')
+      ) : null,
       h('button', { class: 'set-row', onclick: () => { overlay.remove(); go('noteForm', { id: note.id }); } },
         h('span', { class: 'r-ic', html: icon('pencil', 17) }),
         h('span', null, 'Editar')
       ),
-      h('button', { class: 'set-row', style: 'color:var(--danger)', onclick: () => {
-        overlay.remove();
-        confirmDialog({
-          title: '¿Eliminar la nota?',
-          message: note.text,
-          confirmText: 'Eliminar',
-          onConfirm: () => {
-            const index = S.notes.indexOf(note);
-            if (index < 0) return;
-            const [removed] = S.notes.splice(index, 1);
-            save();
-            if (redraw) redraw();
-            else render();
-            toast('Nota eliminada', { label: 'Deshacer', fn: () => { S.notes.splice(Math.min(index, S.notes.length), 0, removed); save(); render(); } });
-          }
-        });
-      } },
-        h('span', { class: 'r-ic', html: icon('trash', 17) }),
-        h('span', null, 'Eliminar')
-      )
+      null
     );
     overlay.append(sheet);
     document.body.appendChild(overlay);
   }
 
   function noteToTask(note, redraw) {
-    const task = { id: uid('t'), title: note.text, icon: 'checksq', cat: 'Personal', freq: { type: 'once', date: note.date || todayStr() }, time: '', completions: [], createdAt: todayStr() };
+    const task = { id: uid('t'), title: note.text, icon: 'checksq', cat: 'Personal', freq: { type: 'once', date: note.date || todayStr() }, time: '', completions: [], createdAt: todayStr(), priority: 1, dueDate: note.date || '', updatedAt: Date.now() };
     S.tasks.push(task);
     const index = S.notes.indexOf(note);
     if (index >= 0) S.notes.splice(index, 1);
@@ -315,23 +365,31 @@ export function registerClassNotes(app) {
     };
     const wrap = h('div');
     wrap.append(formHead(editing ? 'Editar nota' : 'Nueva nota', back,
-      editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar nota', onclick: () => {
-        confirmDialog({
-          title: '¿Eliminar la nota?',
-          message: editing.text,
-          confirmText: 'Eliminar',
-          onConfirm: () => {
-            S.notes = S.notes.filter(note => note.id !== editing.id);
-            save();
-            back();
-            toast('Nota eliminada');
-          }
-        });
-      }, html: icon('trash', 18) }) : null
+      editing ? h('button', {
+        class: 'icon-btn',
+        'aria-label': editing.deletedAt ? 'Eliminar nota definitivamente' : 'Mover nota a la papelera',
+        onclick: () => editing.deletedAt
+          ? hardDeleteNote(editing, back)
+          : confirmDialog({
+            title: '¿Mover la nota a la papelera?',
+            message: 'Podrás restaurarla desde la papelera.',
+            confirmText: 'Mover a la papelera',
+            onConfirm: () => { archiveNote(editing, true); back(); }
+          }),
+        html: icon(editing.deletedAt ? 'trash' : 'archive', 18)
+      }) : null
     ));
     const textInput = h('textarea', { class: 'input', rows: '4', placeholder: 'Ej. Traer la libreta de mates mañana', maxlength: '500' });
     if (editing) textInput.value = editing.text;
-    wrap.append(h('div', { class: 'field' }, h('label', null, '¿Qué quieres apuntar?'), textInput));
+    const preview = h('div', { class: 'card', style: 'display:none;line-height:1.6;white-space:normal;margin-bottom:14px' });
+    const previewButton = h('button', { class: 'btn btn-soft', type: 'button', style: 'font-size:12px;margin-top:-6px;margin-bottom:12px', onclick: () => {
+      const visible = preview.style.display === 'none';
+      preview.style.display = visible ? 'block' : 'none';
+      preview.innerHTML = visible ? markdownPreview(textInput.value) : '';
+      previewButton.textContent = visible ? 'Ocultar vista previa' : 'Vista previa Markdown';
+    } }, 'Vista previa Markdown');
+    textInput.addEventListener('input', () => { if (preview.style.display !== 'none') preview.innerHTML = markdownPreview(textInput.value); });
+    wrap.append(h('div', { class: 'field' }, h('label', null, '¿Qué quieres apuntar?'), textInput), previewButton, preview);
     let kind = editing ? editing.kind : 'nota';
     const kindSegment = h('div', { class: 'seg', style: 'flex-wrap:wrap;margin-bottom:16px' });
     for (const option of noteKinds) {
@@ -352,6 +410,8 @@ export function registerClassNotes(app) {
       (S.subjects || []).map(subject => h('option', { value: subject.id, selected: subject.id === preselectedSubject }, subject.name))
     );
     wrap.append(h('div', { class: 'field' }, h('label', null, 'Asignatura (opcional)'), subjectSelect));
+    const tagsInput = h('input', { class: 'input', type: 'text', maxlength: '120', placeholder: 'Ej. examen, importante, repasar', value: editing && Array.isArray(editing.tags) ? editing.tags.join(', ') : '' });
+    wrap.append(h('div', { class: 'field' }, h('label', null, 'Etiquetas'), tagsInput, h('p', { class: 'field-hint' }, 'Separa las etiquetas con comas.')));
     const dateInput = h('input', { class: 'input', type: 'date', value: editing ? editing.date : todayStr() });
     wrap.append(h('p', { class: 'big-q' }, '¿De qué día es?'), h('div', { class: 'field' }, dateInput));
     const timeInput = h('input', { class: 'input', type: 'time', value: editing ? (editing.time || '') : '' });
@@ -378,8 +438,9 @@ export function registerClassNotes(app) {
           toast('Escribe algo primero');
           return;
         }
-        const data = { text, kind, date: dateInput.value || todayStr(), time: timeInput.value || '', starred, subjectId: subjectSelect.value || null };
-        if (editing) Object.assign(editing, data);
+        const tags = [...new Set(tagsInput.value.split(',').map(tag => tag.trim().replace(/^#/, '').slice(0, 24)).filter(Boolean))].slice(0, 8);
+        const data = { text, kind, date: dateInput.value || todayStr(), time: timeInput.value || '', starred, subjectId: subjectSelect.value || null, tags, deletedAt: editing ? editing.deletedAt || null : null };
+        if (editing) { Object.assign(editing, data); editing.updatedAt = Date.now(); }
         else S.notes.unshift({ id: uid(), done: false, sessionId: activeSession() ? activeSession().id : null, createdAt: new Date().toISOString(), ...data });
         save();
         back();
@@ -513,7 +574,7 @@ export function registerClassNotes(app) {
         const index = S.subjects.findIndex(item => item.id === subject.id);
         if (index < 0) return;
         const [removed] = S.subjects.splice(index, 1);
-        const touched = (S.notes || []).filter(note => note.subjectId === subject.id);
+        const touched = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
         touched.forEach(note => { note.subjectId = null; });
         const removedSlots = [];
         for (let slotIndex = (S.slots || []).length - 1; slotIndex >= 0; slotIndex--) {
@@ -542,6 +603,10 @@ export function registerClassNotes(app) {
     scrNoteForm,
     scrClassSubjects,
     scrSubjectForm,
-    deleteSubject
+    deleteSubject,
+    quickNoteSheet,
+    markdownPreview,
+    archiveNote,
+    hardDeleteNote
   });
 }

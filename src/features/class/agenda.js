@@ -61,7 +61,11 @@ export function registerClassAgenda(app) {
     const normalized = ((Math.round(minutes) % 1440) + 1440) % 1440;
     return String(Math.floor(normalized / 60)).padStart(2, '0') + ':' + String(normalized % 60).padStart(2, '0');
   };
-  const activeSlotsToday = () => slotsOfDay(dowIdx(todayStr()));
+  // Los bloques de hoy, ya descontando los desactivados, los cancelados para
+  // esta fecha y los días no lectivos (vacaciones, exámenes).
+  const activeSlotsToday = () => app.class.slotsOnDate(todayStr());
+  // Motivo por el que hoy no hay horario, o '' si es un día lectivo normal.
+  const todayBreak = () => app.class.breakOn(todayStr());
   const classNow = () => {
     const minutes = nowMin();
     return activeSlotsToday().find(slot => hm(slot.start) <= minutes && minutes < hm(slot.end)) || null;
@@ -97,7 +101,7 @@ export function registerClassAgenda(app) {
   const activeSession = () => S.activeSession || null;
   const sessionItems = id => ({
     inbox: (S.inbox || []).filter(item => item.sessionId === id),
-    notes: (S.notes || []).filter(note => note.sessionId === id)
+    notes: (S.notes || []).filter(note => note.sessionId === id && !note.deletedAt)
   });
 
   function startSession(slot) {
@@ -142,7 +146,7 @@ export function registerClassAgenda(app) {
   function sessionSummarySheet(record) {
     const subject = subjectById(record.subjectId);
     const counts = record.counts || { inbox: 0, notes: 0, important: 0 };
-    const total = counts.inbox + counts.notes;
+    const total = (counts.inbox || 0) + (counts.notes || 0);
     openSheet('Clase terminada', () => h('div', null,
       h('div', { class: 'now-card', style: 'margin-bottom:14px;border-left-color:' + (subject ? subject.color : 'var(--border)') },
         h('span', { class: 'nw-ic', style: 'background:' + tintHex(subject ? subject.color : '', '22') + ';color:' + (subject ? subject.color : 'var(--text-2)'), html: icon(subject ? (subject.icon || 'book') : 'book', 24) }),
@@ -287,7 +291,19 @@ export function registerClassAgenda(app) {
   }
 
   function inboxToTask(item, redraw) {
-    const task = { id: uid('t'), title: item.text, icon: 'checksq', cat: 'Personal', freq: { type: 'once', date: item.date || todayStr() }, time: '', completions: [], createdAt: todayStr() };
+    const task = {
+      id: uid('t'),
+      title: item.text,
+      icon: 'checksq',
+      cat: 'Personal',
+      freq: { type: 'once', date: item.date || todayStr() },
+      time: '',
+      completions: [],
+      createdAt: todayStr(),
+      priority: 1,
+      dueDate: item.date || '',
+      updatedAt: Date.now()
+    };
     S.tasks.push(task);
     const index = dropFromInbox(item);
     save();
@@ -308,7 +324,10 @@ export function registerClassAgenda(app) {
       starred: kind === 'importante',
       subjectId: subject ? subject.id : (item.subjectId || null),
       sessionId: (current && current.id === item.sessionId) ? current.id : null,
-      createdAt: new Date().toISOString()
+      tags: [],
+      deletedAt: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: Date.now()
     };
     S.notes.unshift(note);
     const index = dropFromInbox(item);
@@ -500,11 +519,27 @@ export function registerClassAgenda(app) {
       const patio = next.kind === 'patio' || next.room === 'patio';
       return 'Después: ' + (patio ? 'Patio' : ((subjectById(next.subjectId) || {}).name || 'clase')) + ' · ' + inTxt(next);
     }
+    const descanso = todayBreak();
+    if (descanso) return descanso.label + ' · hoy no hay clases';
     return activeSlotsToday().length ? 'Has terminado las clases de hoy' : 'Tu agenda de clase';
   }
 
   function classHoyBody() {
     const wrap = h('div');
+    // Si hoy es un día no lectivo se dice arriba del todo, en vez de dejar
+    // una lista vacía sin explicación.
+    const descanso = todayBreak();
+    if (descanso) {
+      wrap.append(h('div', { class: 'card', style: 'border-left:3px solid var(--amber);margin-bottom:16px' },
+        h('div', { class: 'row' },
+          h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--amber)', html: icon('moon', 18) }),
+          h('span', { style: 'flex:1;min-width:0' },
+            h('b', null, descanso.label),
+            h('span', { class: 'r-sub' }, 'Hoy no tienes clases')),
+          h('button', { class: 'btn btn-soft', style: 'padding:8px 12px;font-size:13px', onclick: () => go('nonSchool') }, 'Ver')
+        )
+      ));
+    }
     const nowZone = h('div', { id: 'cls-now' });
     drawNowZone(nowZone);
     wrap.append(nowZone);
@@ -525,7 +560,7 @@ export function registerClassAgenda(app) {
     drawPreview();
     wrap.append(preview);
     if (!live) {
-      const todayNotes = (S.notes || []).filter(note => note.date === todayStr()).slice(0, 3);
+      const todayNotes = (S.notes || []).filter(note => !note.deletedAt && note.date === todayStr()).slice(0, 3);
       if (todayNotes.length) {
         wrap.append(h('div', { class: 'section-title' },
           h('span', null, 'Apuntes de hoy'),
@@ -599,7 +634,7 @@ export function registerClassAgenda(app) {
     }
     const grid = h('div', { class: 'person-grid' });
     for (const subject of subjects) {
-      const notes = (S.notes || []).filter(note => note.subjectId === subject.id);
+      const notes = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
       const pending = notes.filter(note => !note.done).length;
       const classCount = slotsOfSubject(subject.id).length;
       grid.append(h('button', { class: 'person-card', onclick: () => go('subjectView', { id: subject.id }) },
@@ -624,6 +659,7 @@ export function registerClassAgenda(app) {
     wrap.append(headBar('Modo Clase', classSubTxt(),
       h('button', { class: 'icon-btn', 'aria-label': 'Historial de clases', onclick: () => go('classHistory'), html: icon('clock', 20) }),
       h('button', { class: 'icon-btn', 'aria-label': 'Horario', onclick: () => go('classSchedule'), html: icon('calendar', 20) }),
+      h('button', { class: 'icon-btn', 'aria-label': 'Nota rápida', onclick: () => app.class.quickNoteSheet(), html: icon('pencil', 18) }),
       h('button', { class: 'icon-btn', 'aria-label': 'Nueva nota completa', onclick: () => go('noteForm'), html: icon('plus', 20) })
     ));
     const tabs = h('div', { class: 'cls-tabs' });
@@ -656,7 +692,7 @@ export function registerClassAgenda(app) {
         h('button', { class: 'icon-btn', 'aria-label': 'Editar asignatura', onclick: () => go('subjectForm', { id: subject.id }), html: icon('pencil', 18) })
       )
     ));
-    const notes = (S.notes || []).filter(note => note.subjectId === subject.id);
+    const notes = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
     const subjectSlots = (S.slots || []).filter(slot => slot.subjectId === subject.id).sort((first, second) => (first.day - second.day) || (first.start < second.start ? -1 : 1));
     const open = notes.filter(note => !note.done).length;
     wrap.append(h('div', { class: 'card', style: 'display:flex;align-items:center;gap:14px;margin-bottom:8px' },
@@ -740,6 +776,7 @@ export function registerClassAgenda(app) {
     slotsOverlap,
     tintHex,
     activeSlotsToday,
+    todayBreak,
     classNow,
     classNext,
     leftTxt,

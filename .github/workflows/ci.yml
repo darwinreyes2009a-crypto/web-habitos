@@ -1,0 +1,22 @@
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Sintaxis de los módulos, coherencia de la versión, lista ASSETS del
+      # service worker y los tres bancos de pruebas.
+      - name: Comprobaciones
+        run: node tools/test-all.js

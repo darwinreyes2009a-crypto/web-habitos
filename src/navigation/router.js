@@ -37,6 +37,10 @@ export function registerRouter(app) {
     calYM: null,
     calSel: null,
     tasksFilter: 'todas',
+    // Estadísticas de tareas: periodo elegido (semana | mes | año) y cuántas
+    // unidades hacia atrás (semanas / meses / años) se está consultando.
+    statsPeriod: 'semana',
+    statsOffset: 0,
     giftTab: 'personas'
   };
   if (startTab) ui.classTab = startTab;
@@ -75,60 +79,45 @@ export function registerRouter(app) {
     }
   }
 
+  // La lógica de routines (tipos, valores, saltos, recurrencia) vive en
+  // app.core; aquí solo se delega para no tener dos definiciones.
   function isDueOn(task, ymd) {
-    const frequency = task.freq || { type: 'daily' };
-    if (frequency.type === 'daily') return true;
-    if (frequency.type === 'weekdays') return (frequency.days || []).includes(dowIdx(ymd));
-    if (frequency.type === 'weekly') return (frequency.days || [])[0] === dowIdx(ymd);
-    if (frequency.type === 'monthly') {
-      const date = parseYmd(ymd);
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-      return date.getDate() === Math.min(frequency.dom || 1, lastDay);
-    }
-    if (frequency.type === 'once') return frequency.date === ymd;
-    return false;
+    return app.core.isDueOn(task, ymd);
   }
 
-  const isDoneOn = (task, ymd) => (task.completions || []).includes(ymd);
+  const isDoneOn = (task, ymd) => app.core.isDoneOn(task, ymd);
 
   function toggleOn(taskId, ymd) {
     const task = S.tasks.find(item => item.id === taskId);
     if (!task) return;
-    task.completions = task.completions || [];
-    const index = task.completions.indexOf(ymd);
-    if (index >= 0) task.completions.splice(index, 1);
-    else task.completions.push(ymd);
-    save();
-    render();
+    const apply = () => {
+      if (!app.core.isDueOn(task, ymd)) return;
+      if (app.core.isSkipped(task, ymd)) app.core.skipOn(task, ymd, false);
+      else app.core.toggleOn(task, ymd);
+      task.updatedAt = Date.now();
+      if (app.core.haptic) app.core.haptic(app.core.kindOf(task) === 'avoid' && app.core.isDoneOn(task, ymd) ? [12, 24, 12] : undefined);
+      save();
+      render();
+    };
+    if (app.core.kindOf(task) === 'avoid' && app.core.isDoneOn(task, ymd) && !app.core.isSkipped(task, ymd)) {
+      app.components.confirmDialog({
+        title: '¿Marcar como fallado?',
+        message: 'El ' + fmtLong(ymd) + ' contará como un día malo.',
+        confirmText: 'Marcar fallo',
+        onConfirm: apply
+      });
+      return;
+    }
+    apply();
   }
 
   const tasksDueOn = (ymd) => S.tasks.filter(task => isDueOn(task, ymd));
 
   function freqText(task) {
-    const frequency = task.freq || { type: 'daily' };
-    let text = '';
-    if (frequency.type === 'daily') text = 'Todos los días';
-    else if (frequency.type === 'weekdays') text = frequency.days && frequency.days.length ? frequency.days.map(day => WEEK_FULL[day]).join(', ') : 'Días concretos';
-    else if (frequency.type === 'weekly') text = 'Cada semana · ' + (WEEK_FULL[(frequency.days || [])[0]] || '');
-    else if (frequency.type === 'monthly') text = 'Día ' + (frequency.dom || 1) + ' de cada mes';
-    else if (frequency.type === 'once') text = frequency.date ? fmtLong(frequency.date) : 'Una vez';
-    if (task.time) text += ' · ' + task.time;
-    return text;
+    return app.core.freqText(task);
   }
 
-  function streakOf(task) {
-    let streak = 0;
-    let day = todayStr();
-    for (let index = 0; index < 400; index++) {
-      if (isDueOn(task, day)) {
-        if (isDoneOn(task, day)) streak++;
-        else break;
-      }
-      day = addDaysYmd(day, -1);
-      if (streak === 0 && index > 7 && !isDueOn(task, day)) continue;
-    }
-    return streak;
-  }
+  const streakOf = task => app.core.streakOf(task);
 
   function weekStats(offset, fullWeek, habitsOnly) {
     const start = addDaysYmd(weekStartOf(todayStr()), offset * 7);

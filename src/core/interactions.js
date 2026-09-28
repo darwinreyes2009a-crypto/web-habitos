@@ -22,5 +22,11 @@ export function registerInteractions(app) {
     return fired;
   }
 
-  Object.assign(app.core, { startLongPress, cancelLongPress, longPressFired });
+  function haptic(pattern) {
+    if (app.state.S && app.state.S.settings && app.state.S.settings.haptics === false) return false;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return false;
+    try { return navigator.vibrate(pattern == null ? 8 : pattern); } catch (error) { return false; }
+  }
+
+  Object.assign(app.core, { startLongPress, cancelLongPress, longPressFired, haptic });
 }

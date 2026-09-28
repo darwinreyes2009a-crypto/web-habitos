@@ -395,8 +395,9 @@ export function registerOnboarding(app) {
     const navigationElement = vertical => h('div', { style: vertical ? 'display:flex;flex-direction:column;gap:4px' : 'display:contents' },
       navigation.map(item => {
         const active = route.name === item.id ||
+          (item.id === 'home' && route.name === 'now') ||
           (item.id === 'tasks' && (route.name === 'progress' || route.name === 'week')) ||
-          (item.id === 'class' && ['noteForm', 'classSubjects', 'subjectForm', 'classSchedule', 'slotForm', 'subjectView', 'classHistory'].includes(route.name)) ||
+          (item.id === 'class' && ['noteForm', 'classSubjects', 'subjectForm', 'classSchedule', 'classGrid', 'classLoad', 'classTemplates', 'nonSchool', 'slotForm', 'subjectView', 'classHistory'].includes(route.name)) ||
           (item.id === 'gifts' && ['person', 'personAbout', 'personForm', 'giftHistory', 'giftAgenda', 'giftStats'].includes(route.name));
         let badge = null;
         if (item.id === 'tasks') {

@@ -265,6 +265,25 @@ export function registerSettings(app) {
         notificationSettings.daily = value;
         save();
       }));
+      box.append(switchRow('Aviso de clase', 'Te avisa antes de que empiece la siguiente del horario', notificationSettings.classes !== false, value => {
+        notificationSettings.classes = value;
+        save();
+      }));
+      if (notificationSettings.classes !== false) {
+        const leads = [5, 10, 15, 20, 30];
+        const leadRow = h('div', { class: 'chips', style: 'margin:-4px 0 4px' });
+        const drawLeads = () => {
+          leadRow.innerHTML = '';
+          for (const value of leads) {
+            leadRow.append(h('button', {
+              class: 'chip' + (Number(notificationSettings.classLead == null ? 15 : notificationSettings.classLead) === value ? ' on' : ''),
+              onclick: () => { notificationSettings.classLead = value; save(); drawLeads(); }
+            }, value + ' min antes'));
+          }
+        };
+        drawLeads();
+        box.append(leadRow);
+      }
       const quietFrom = h('input', { class: 'input', type: 'time', value: notificationSettings.quietFrom, style: 'padding:9px 10px;font-size:13px' });
       const quietTo = h('input', { class: 'input', type: 'time', value: notificationSettings.quietTo, style: 'padding:9px 10px;font-size:13px' });
       quietFrom.addEventListener('change', () => { notificationSettings.quietFrom = quietFrom.value; save(); });
@@ -358,61 +377,31 @@ export function registerSettings(app) {
     openSheet('Tareas y hábitos', () => {
       const box = h('div');
       box.append(switchRow('Ocultar completadas en Hoy', 'La pantalla Inicio solo mostrará lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }));
+      box.append(switchRow('Vibración al marcar', 'Respuesta háptica en dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }));
+      box.append(h('p', { class: 'section-title', style: 'margin-top:18px' }, h('span', null, 'Tamaño del texto')));
+      const scale = h('div', { class: 'seg' });
+      for (const [value, label] of [[1, 'Normal'], [1.1, 'Grande'], [1.2, 'Muy grande']]) {
+        scale.append(h('button', { class: Number(S.settings.fontScale || 1) === value ? 'on' : '', onclick: event => {
+          S.settings.fontScale = value;
+          save();
+          app.state.applyTheme();
+          [...scale.children].forEach(item => item.classList.remove('on'));
+          event.currentTarget.classList.add('on');
+        } }, label));
+      }
+      box.append(scale, switchRow('Alto contraste', 'Refuerza bordes y colores secundarios', !!S.settings.highContrast, value => {
+        S.settings.highContrast = value;
+        save();
+        app.state.applyTheme();
+      }));
       box.append(h('p', { class: 'field-hint', style: 'text-align:center;margin-top:10px' }, 'Consejo: toca una tarea en cualquier pantalla para marcarla como hecha.'));
       return box;
     });
   }
 
-  function backupSheet() {
-    openSheet('Copia de seguridad', () => {
-      const box = h('div');
-      box.append(
-        h('p', { style: 'font-size:13px;color:var(--text-2);line-height:1.55;margin-bottom:16px' }, 'Exporta todas tus personas, tareas y regalos a un archivo JSON, o importa una copia anterior en este navegador.'),
-        h('button', {
-          class: 'btn btn-primary btn-block btn-lg',
-          onclick: () => {
-            const blob = new Blob([JSON.stringify({ app: 'dailyhub', version: 2, exportedAt: new Date().toISOString(), data: S }, null, 2)], { type: 'application/json' });
-            const link = h('a', { href: URL.createObjectURL(blob), download: 'dailyhub-backup-' + todayStr() + '.json' });
-            document.body.append(link);
-            link.click();
-            link.remove();
-            toast('Copia exportada');
-          }
-        }, 'Exportar copia (JSON)'),
-        h('button', {
-          class: 'btn btn-secondary btn-block btn-lg',
-          style: 'margin-top:10px',
-          onclick: () => {
-            const input = h('input', { type: 'file', accept: 'application/json,.json' });
-            input.addEventListener('change', () => {
-              const file = input.files[0];
-              if (!file) return;
-              const reader = new FileReader();
-              reader.onload = () => {
-                try {
-                  const json = JSON.parse(reader.result);
-                  const data = json && json.app === 'dailyhub' && json.data ? json.data : json;
-                  if (!data || !Array.isArray(data.profiles)) throw new Error('bad');
-                  replaceState(Object.assign(defaultState(), data));
-                  normalizeData();
-                  switchProfileData();
-                  save();
-                  closeOverlays();
-                  render();
-                  toast('Copia importada');
-                } catch (error) {
-                  toast('El archivo no es una copia válida');
-                }
-              };
-              reader.readAsText(file);
-            });
-            input.click();
-          }
-        }, 'Importar copia')
-      );
-      return box;
-    });
-  }
+  // La copia de seguridad vive en features/platform.js:.exporta por perfil y
+  // al importar fusiona en vez de reemplazar, para no perder nada.
+  const backupSheet = () => app.features.backupSheet();
 
   function deleteDataSheet() {
     openSheet('Eliminar datos', () => {

@@ -15,13 +15,15 @@ export function registerOverlays(app) {
     return h('button', { class: 'icon-btn', 'aria-label': 'Buscar', onclick: searchOverlay, html: icon('search', 19) });
   }
 
-  function formHead(title, onBack, extra) {
+  // Acepta varios elementos de acción: casi todas las pantallas pasan más de
+  // uno (contador, asignaturas, guardar, + Día…). `h` aplana y descarta nulos.
+  function formHead(title, onBack, ...extra) {
     return h('div', { class: 'scr-head' },
       h('div', { style: 'display:flex;align-items:center;gap:10px' },
         h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: onBack, html: icon('back', 19) }),
         h('h2', { style: 'font-size:20px' }, title)
       ),
-      h('div', { class: 'head-actions' }, extra || null)
+      h('div', { class: 'head-actions' }, ...extra)
     );
   }
 
@@ -114,10 +116,10 @@ export function registerOverlays(app) {
           results.append(h('p', { class: 'field-hint', style: 'text-align:center;padding:8px 0' }, 'Escribe para buscar en todo DailyHub.'));
           return;
         }
-        const people = S.people.filter(person => person.name.toLowerCase().includes(query));
-        const tasks = S.tasks.filter(task => task.title.toLowerCase().includes(query));
-        const gifts = S.gifts.filter(gift => gift.title.toLowerCase().includes(query) || (gift.notes || '').toLowerCase().includes(query));
-        const notes = (S.notes || []).filter(note => (note.text || '').toLowerCase().includes(query));
+      const people = S.people.filter(person => person.name.toLowerCase().includes(query));
+      const tasks = S.tasks.filter(task => task.title.toLowerCase().includes(query));
+      const gifts = S.gifts.filter(gift => gift.title.toLowerCase().includes(query) || (gift.notes || '').toLowerCase().includes(query));
+        const notes = (S.notes || []).filter(note => !note.deletedAt && (note.text || '').toLowerCase().includes(query));
         const inbox = (S.inbox || []).filter(item => (item.text || '').toLowerCase().includes(query));
         if (!people.length && !tasks.length && !gifts.length && !notes.length && !inbox.length) {
           results.append(h('p', { class: 'field-hint', style: 'text-align:center;padding:10px 0' }, 'Sin resultados para "' + input.value.trim() + '"'));

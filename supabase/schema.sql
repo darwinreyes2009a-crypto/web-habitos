@@ -32,6 +32,19 @@ create table if not exists public.tasks (
 );
 create index if not exists tasks_user_idx on public.tasks(user_id);
 
+-- Columnas de rutinas: tipo de hábito, valores por día, saltos y objetivo semanal
+alter table public.tasks add column if not exists kind text not null default 'check';
+alter table public.tasks add column if not exists target integer not null default 0;
+alter table public.tasks add column if not exists unit text not null default '';
+alter table public.tasks add column if not exists log jsonb not null default '{}';
+alter table public.tasks add column if not exists skips jsonb not null default '[]';
+alter table public.tasks add column if not exists goal_per_week integer not null default 0;
+alter table public.tasks add column if not exists priority integer not null default 0;
+alter table public.tasks add column if not exists due_date date;
+alter table public.tasks add column if not exists steps jsonb not null default '[]';
+alter table public.tasks add column if not exists template_id text;
+create index if not exists tasks_due_idx on public.tasks(user_id, due_date);
+
 -- ---------- PEOPLE (personas para regalos) ----------
 create table if not exists public.people (
   id uuid primary key default gen_random_uuid(),
@@ -81,9 +94,14 @@ create table if not exists public.notes (
   note_time text not null default '',
   done boolean not null default false,
   starred boolean not null default false,
+  tags text[] not null default '{}',
+  deleted_at timestamptz,
   created_at timestamptz not null default now()
 );
 create index if not exists notes_user_idx on public.notes(user_id);
+alter table public.notes add column if not exists tags text[] not null default '{}';
+alter table public.notes add column if not exists deleted_at timestamptz;
+create index if not exists notes_deleted_idx on public.notes(user_id, deleted_at);
 
 -- Estas alters se ejecutan después de crear gifts y notes para que schema.sql
 -- también funcione desde cero, no solo sobre una instalación preexistente.
@@ -115,6 +133,7 @@ create table if not exists public.class_slots (
   start_time text not null default '09:00',   -- HH:MM
   end_time text not null default '10:00',
   room text not null default '',
+  kind text not null default 'class',        -- 'class' | 'patio' (recreo sin asignatura)
   active boolean not null default true,       -- desactivar sin borrar
   created_at timestamptz not null default now()
 );
@@ -153,6 +172,35 @@ create table if not exists public.class_sessions (
 );
 create index if not exists class_sessions_user_idx on public.class_sessions(user_id);
 create index if not exists class_sessions_profile_idx on public.class_sessions(profile_id);
+
+-- ---------- CLASS_BREAKS (días no lectivos: vacaciones, exámenes) ----------
+create table if not exists public.class_breaks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  profile_id uuid references public.profiles(id) on delete cascade,
+  date_from date not null default current_date,
+  date_to date not null default current_date,
+  label text not null default 'No lectivo',
+  kind text not null default 'libre',        -- 'vacaciones' | 'examenes' | 'libre' | 'puente'
+  updated_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists class_breaks_user_idx on public.class_breaks(user_id);
+create index if not exists class_breaks_profile_idx on public.class_breaks(profile_id);
+
+-- ---------- CLASS_OFFS (cancelar un bloque en una fecha concreta) ----------
+create table if not exists public.class_offs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  profile_id uuid references public.profiles(id) on delete cascade,
+  slot_id uuid references public.class_slots(id) on delete cascade,
+  date_off date not null default current_date,
+  updated_at timestamptz,
+  created_at timestamptz not null default now()
+);
+create index if not exists class_offs_user_idx on public.class_offs(user_id);
+create index if not exists class_offs_profile_idx on public.class_offs(profile_id);
+create index if not exists class_offs_slot_idx on public.class_offs(slot_id);
 
 -- Migración suave: los apuntes antiguos se quedan sin asignatura ni sesión (no se pierde nada)
 alter table public.notes add column if not exists subject_id uuid references public.subjects(id) on delete set null;
@@ -252,6 +300,8 @@ alter table public.subjects       enable row level security;
 alter table public.class_slots    enable row level security;
 alter table public.class_inbox    enable row level security;
 alter table public.class_sessions enable row level security;
+alter table public.class_breaks  enable row level security;
+alter table public.class_offs   enable row level security;
 
 drop policy if exists "profiles_all" on public.profiles;
 create policy "profiles_all" on public.profiles
@@ -287,6 +337,14 @@ create policy "class_inbox_all" on public.class_inbox
 
 drop policy if exists "class_sessions_all" on public.class_sessions;
 create policy "class_sessions_all" on public.class_sessions
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "class_breaks_all" on public.class_breaks;
+create policy "class_breaks_all" on public.class_breaks
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+drop policy if exists "class_offs_all" on public.class_offs;
+create policy "class_offs_all" on public.class_offs
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 drop policy if exists "settings_all" on public.settings;

@@ -78,12 +78,106 @@ export function registerForms(app) {
     if (!editing) categorySelect.value = 'Hábitos';
     wrap.append(h('div', { class: 'field' }, h('label', null, 'Categoría'), categorySelect));
 
+    // Plantillas personales guardadas en ajustes (y sincronizadas por cuenta).
+    if (!Array.isArray(S.settings.taskTemplates)) S.settings.taskTemplates = [];
+    const templateSelect = h('select', { class: 'input' },
+      h('option', { value: '' }, 'Elige una plantilla…'),
+      S.settings.taskTemplates.map((template, index) => h('option', { value: String(index) }, template.name || 'Plantilla ' + (index + 1)))
+    );
+    const templateName = h('input', { class: 'input', type: 'text', maxlength: '30', placeholder: 'Nombre para guardar esta plantilla' });
+    const templateMessage = h('span', { class: 'field-hint', 'aria-live': 'polite' });
+    wrap.append(h('div', { class: 'field' },
+      h('label', null, 'Plantillas'),
+      h('div', { style: 'display:flex;gap:8px' },
+        templateSelect,
+        h('button', { class: 'btn btn-soft', style: 'padding:9px 12px;font-size:12px;white-space:nowrap', onclick: () => {
+          const template = S.settings.taskTemplates[Number(templateSelect.value)];
+          if (!template) { toast('Elige una plantilla'); return; }
+          applyTaskTemplate(template);
+          templateMessage.textContent = 'Plantilla cargada';
+        } }, 'Cargar')
+      ),
+      h('div', { style: 'display:flex;gap:8px;margin-top:8px' },
+        templateName,
+        h('button', { class: 'btn btn-soft', style: 'padding:9px 12px;font-size:12px;white-space:nowrap', onclick: () => {
+          const name = templateName.value.trim() || titleInput.value.trim();
+          if (!name) { toast('Pon un nombre antes de guardar la plantilla'); templateName.focus(); return; }
+          const snapshot = readTaskData();
+          snapshot.steps = snapshot.steps.map(step => ({ id: uid('st'), title: step.title, done: false }));
+          if (snapshot.freq.type === 'once') snapshot.freq.date = undefined;
+          S.settings.taskTemplates.push({ name: name.slice(0, 30), data: snapshot, updatedAt: Date.now() });
+          templateSelect.append(h('option', { value: String(S.settings.taskTemplates.length - 1) }, name.slice(0, 30)));
+          templateSelect.value = String(S.settings.taskTemplates.length - 1);
+          templateName.value = '';
+          save();
+          templateMessage.textContent = 'Plantilla guardada y sincronizada';
+          toast('Plantilla guardada');
+        } }, 'Guardar')
+      ),
+      templateMessage
+    ));
+
+    // ---- Tipo de rutina: sí/no, contador, cantidad o evitar -------------------
+    wrap.append(h('p', { class: 'big-q' }, '¿Cómo se cumple?'));
+    let kindId = editing ? app.core.kindOf(editing) : 'check';
+    const kindSegment = h('div', { class: 'seg', style: 'flex-wrap:wrap;margin-bottom:10px' });
+    const kindZone = h('div', { style: 'margin-bottom:18px' });
+    function drawKindSegment() {
+      kindSegment.innerHTML = '';
+      for (const kind of app.core.KINDS) {
+        kindSegment.append(h('button', {
+          class: kindId === kind.id ? 'on' : '',
+          onclick: () => { kindId = kind.id; drawKindSegment(); drawKindZone(); }
+        }, kind.label));
+      }
+    }
+    function drawKindZone() {
+      kindZone.innerHTML = '';
+      targetInput = null;
+      unitInput = null;
+      goalInput = null;
+      const current = app.core.KINDS.find(kind => kind.id === kindId);
+      kindZone.append(h('p', { class: 'field-hint', style: 'margin:0 0 10px' }, current.hint));
+      if (app.core.isNumeric({ kind: kindId })) {
+        const target = h('input', { class: 'input', type: 'number', min: '0', max: '999', value: editing && editing.target ? editing.target : (kindId === 'count' ? 2 : 10), style: 'max-width:120px' });
+        targetInput = target;
+        const unit = h('input', { class: 'input', type: 'text', maxlength: '14', value: editing && editing.unit ? editing.unit : '', placeholder: 'vasos, páginas, min' });
+        unitInput = unit;
+        kindZone.append(h('div', { style: 'display:grid;grid-template-columns:120px 1fr;gap:10px' },
+          h('div', { class: 'field' }, h('label', null, kindId === 'count' ? 'Al día' : 'Objetivo'), target),
+          h('div', { class: 'field' }, h('label', null, 'Unidad'), unit)
+        ));
+        kindZone.append(h('p', { class: 'field-hint' }, 'Podrás sumar y restar con los botones, o poner la cifra exacta con un toque.'));
+      }
+      if (kindId !== 'avoid') kindZone.append(goalField());
+      if (kindId === 'avoid') {
+        kindZone.append(h('p', { class: 'field-hint' }, 'Los días que no marques cuentan como buenos. Marcar es decir «lo he hecho mal».'));
+      }
+    }
+    let targetInput = null;
+    let unitInput = null;
+    let goalInput = null;
+    function goalField() {
+      const input = h('input', { class: 'input', type: 'number', min: '0', max: '7', value: editing && editing.goal ? editing.goal : '', placeholder: '5', style: 'max-width:110px' });
+      goalInput = input;
+      return h('div', { class: 'field' },
+        h('label', null, 'Objetivo semanal'),
+        input,
+        h('p', { class: 'field-hint' }, 'Opcional. Con esto la app te avisa cuando llegas al 4 de 7, por ejemplo.')
+      );
+    }
+    drawKindSegment();
+    drawKindZone();
+    wrap.append(kindSegment, kindZone);
+
     wrap.append(h('p', { class: 'big-q' }, '¿Cuándo?'));
     let frequencyType = editing ? (editing.freq || {}).type || 'daily' : 'daily';
     const frequencySegment = h('div', { class: 'seg', style: 'flex-wrap:wrap;margin-bottom:14px' });
-    const frequencyOptions = [['daily', 'Todos los días'], ['weekdays', 'Días concretos'], ['weekly', 'Semanal'], ['monthly', 'Mensual'], ['once', 'Una vez']];
+    const frequencyOptions = [['daily', 'Todos los días'], ['weekdays', 'Días concretos'], ['weekly', 'Semanal'], ['monthly', 'Mensual'], ['every', 'Cada N días'], ['once', 'Una vez']];
     let frequencyDays = editing && editing.freq ? (editing.freq.days || []).slice() : [];
     let monthDay = editing && editing.freq ? editing.freq.dom || 1 : 1;
+    let everyValue = editing && editing.freq ? editing.freq.every || 3 : 3;
+    let fromValue = editing && editing.freq ? editing.freq.from || todayStr() : todayStr();
     let onceDate = editing && editing.freq ? editing.freq.date || todayStr() : todayStr();
     const frequencyZone = h('div', { style: 'margin-bottom:16px' });
     for (const [value, label] of frequencyOptions) {
@@ -125,6 +219,19 @@ export function registerForms(app) {
         }
         frequencyZone.append(h('label', { style: 'display:block;font-size:12.5px;font-weight:700;margin-bottom:10px' }, frequencyType === 'weekly' ? '¿Qué día de la semana?' : 'Elige los días'), row);
         if (!frequencyDays.length && frequencyType === 'weekly') frequencyDays = [dowIdx(todayStr())];
+      } else if (frequencyType === 'every') {
+        const everyInput = h('input', { class: 'input', type: 'number', min: '1', max: '60', value: everyValue, style: 'max-width:110px' });
+        const fromInput = h('input', { class: 'input', type: 'date', value: fromValue, style: 'max-width:180px' });
+        everyInput.addEventListener('input', () => { everyValue = Number(everyInput.value) || 1; });
+        fromInput.addEventListener('change', () => {
+          fromValue = fromInput.value || '';
+          fromAnyInput.value = fromValue;
+        });
+        frequencyZone.append(h('label', { style: 'display:block;font-size:12.5px;font-weight:700;margin-bottom:10px' }, '¿Cada cuántos días?'),
+          everyInput,
+          h('label', { style: 'display:block;font-size:12.5px;font-weight:700;margin:14px 0 10px' }, 'Contando desde…'),
+          fromInput,
+          h('p', { class: 'field-hint' }, 'Ej.: cada 3 días para ir al gimnasio, o cada 2 para cambiar las sábanas.'));
       } else if (frequencyType === 'monthly') {
         const dayInput = h('input', { class: 'input', type: 'number', min: '1', max: '31', value: String(monthDay), style: 'max-width:120px' });
         dayInput.addEventListener('input', () => { monthDay = Math.max(1, Math.min(31, parseInt(dayInput.value) || 1)); });
@@ -144,6 +251,135 @@ export function registerForms(app) {
     drawFrequencyZone();
     const timeInput = h('input', { class: 'input', type: 'time', value: editing ? editing.time || '' : '' });
     wrap.append(h('p', { class: 'big-q' }, '¿A qué hora?'), h('div', { class: 'field' }, timeInput, h('p', { class: 'field-hint' }, 'Opcional. Se mostrará como recordatorio junto al nombre.')));
+
+    const prioritySelect = h('select', { class: 'input' },
+      h('option', { value: '0' }, 'Normal'),
+      h('option', { value: '1' }, 'Alta'),
+      h('option', { value: '2' }, 'Urgente')
+    );
+    prioritySelect.value = String(editing ? Number(editing.priority) || 0 : 0);
+    const dueDateInput = h('input', { class: 'input', type: 'date', value: editing ? editing.dueDate || '' : '' });
+    wrap.append(h('p', { class: 'big-q' }, 'Prioridad y fecha límite'),
+      h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
+        h('div', { class: 'field' }, h('label', null, 'Prioridad'), prioritySelect),
+        h('div', { class: 'field' }, h('label', null, 'Fecha límite'), dueDateInput)
+      )
+    );
+
+    let steps = editing && Array.isArray(editing.steps)
+      ? editing.steps.filter(step => step && typeof step === 'object').map(step => ({ id: step.id || uid('st'), title: String(step.title || ''), done: !!step.done }))
+      : [];
+    const stepsList = h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-bottom:10px' });
+    const stepInput = h('input', { class: 'input', type: 'text', maxlength: '80', placeholder: 'Ej. Preparar material' });
+    function drawSteps() {
+      stepsList.innerHTML = '';
+      for (const step of steps) {
+        const title = h('input', { class: 'input', type: 'text', maxlength: '80', value: step.title, style: 'flex:1;min-width:0' });
+        title.addEventListener('input', () => { step.title = title.value; });
+        const check = h('input', { type: 'checkbox', checked: step.done, 'aria-label': 'Subtarea completada' });
+        check.addEventListener('change', () => { step.done = check.checked; });
+        stepsList.append(h('div', { style: 'display:flex;align-items:center;gap:8px' },
+          check,
+          title,
+          h('button', { class: 'mini-btn', type: 'button', 'aria-label': 'Quitar subtarea', onclick: () => { steps = steps.filter(item => item !== step); drawSteps(); }, html: icon('x', 15) })
+        ));
+      }
+    }
+    const addStep = () => {
+      const title = stepInput.value.trim();
+      if (!title) { stepInput.focus(); return; }
+      steps.push({ id: uid('st'), title, done: false });
+      stepInput.value = '';
+      drawSteps();
+      stepInput.focus();
+    };
+    const addStepButton = h('button', { class: 'btn btn-soft', type: 'button', style: 'padding:9px 12px;white-space:nowrap', onclick: addStep }, 'Añadir');
+    stepInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addStep(); } });
+    drawSteps();
+    wrap.append(h('p', { class: 'big-q' }, 'Subtareas'),
+      stepsList,
+      h('div', { style: 'display:flex;gap:8px;margin-bottom:18px' }, stepInput, addStepButton),
+      h('p', { class: 'field-hint', style: 'margin-top:-12px' }, 'Opcional. Puedes marcar cada paso por separado en el formulario de la tarea.')
+    );
+
+    // Fecha de fin: la rutina deja de aparecer pasado ese día (fin de curso,
+    // fin de temporada, hasta que se te pase la mania).
+    const untilInput = h('input', { class: 'input', type: 'date', value: editing && editing.freq ? editing.freq.until || '' : '' });
+    const fromAnyInput = h('input', { class: 'input', type: 'date', value: editing && editing.freq ? editing.freq.from || '' : '' });
+    fromAnyInput.addEventListener('change', () => {
+      if (frequencyType === 'every') fromValue = fromAnyInput.value || '';
+    });
+    wrap.append(h('p', { class: 'big-q' }, '¿Hasta cuándo?'),
+      h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
+        h('div', { class: 'field' }, h('label', null, 'Empieza el'), fromAnyInput),
+        h('div', { class: 'field' }, h('label', null, 'Termina el'), untilInput)
+      ),
+      h('p', { class: 'field-hint' }, 'Opcional. Deja el final en blanco si la rutina no acaba nunca.')
+    );
+    function readTaskData(title) {
+      const numeric = kindId === 'count' || kindId === 'amount';
+      const until = untilInput.value || '';
+      const from = fromAnyInput.value || (frequencyType === 'every' ? fromValue : '');
+      return {
+        title: title == null ? titleInput.value.trim() : title,
+        icon: iconId,
+        cat: categorySelect.value,
+        kind: kindId,
+        target: numeric ? Math.max(0, Math.min(999, Math.round(Number(targetInput && targetInput.value) || 0))) : 0,
+        unit: numeric && unitInput ? unitInput.value.trim().slice(0, 14) : '',
+        goal: goalInput ? Math.max(0, Math.min(7, Math.round(Number(goalInput.value) || 0))) : 0,
+        freq: {
+          type: frequencyType,
+          days: (frequencyType === 'weekdays' || frequencyType === 'weekly') ? [...new Set(frequencyDays)].sort() : undefined,
+          dom: frequencyType === 'monthly' ? Math.max(1, Math.min(31, Math.round(Number(monthDay) || 1))) : undefined,
+          date: frequencyType === 'once' ? onceDate : undefined,
+          every: frequencyType === 'every' ? Math.max(1, Math.min(60, Math.round(Number(everyValue) || 1))) : undefined,
+          from: from || undefined,
+          until: until || undefined
+        },
+        time: timeInput.value || '',
+        priority: Math.max(0, Math.min(2, Number(prioritySelect.value) || 0)),
+        dueDate: dueDateInput.value || '',
+        steps: steps.filter(step => step.title.trim()).map(step => ({ id: step.id || uid('st'), title: step.title.trim().slice(0, 80), done: !!step.done }))
+      };
+    }
+
+    function applyTaskTemplate(template) {
+      const data = template && template.data ? template.data : template;
+      if (!data || typeof data !== 'object') return;
+      titleInput.value = data.title || '';
+      iconId = data.icon || 'star';
+      showingAll = !ICON_CHOICES.slice(0, quickIconCount).some(choice => choice.id === iconId);
+      drawIcons();
+      if (![...categorySelect.options].some(option => option.value === (data.cat || 'Hábitos'))) {
+        categorySelect.append(h('option', { value: data.cat }, data.cat));
+      }
+      categorySelect.value = data.cat || 'Hábitos';
+      kindId = data.kind || 'check';
+      drawKindSegment();
+      drawKindZone();
+      if (targetInput) targetInput.value = String(data.target || 0);
+      if (unitInput) unitInput.value = data.unit || '';
+      if (goalInput) goalInput.value = String(data.goal || '');
+      const freq = data.freq || { type: 'daily' };
+      frequencyType = freq.type || 'daily';
+      frequencyDays = Array.isArray(freq.days) ? [...freq.days] : [];
+      monthDay = Number(freq.dom) || 1;
+      everyValue = Number(freq.every) || 3;
+      fromValue = freq.from || todayStr();
+      onceDate = freq.date || todayStr();
+      frequencySegment.querySelectorAll('button').forEach((button, index) => button.classList.toggle('on', frequencyOptions[index][0] === frequencyType));
+      drawFrequencyZone();
+      timeInput.value = data.time || '';
+      prioritySelect.value = String(Math.max(0, Math.min(2, Number(data.priority) || 0)));
+      dueDateInput.value = data.dueDate || '';
+      fromAnyInput.value = freq.from || '';
+      untilInput.value = freq.until || '';
+      steps = Array.isArray(data.steps) ? data.steps.map(step => ({ id: uid('st'), title: String(step.title || ''), done: false })).filter(step => step.title) : [];
+      drawSteps();
+      templateName.value = template.name || '';
+    }
+
     wrap.append(h('button', {
       class: 'btn btn-primary btn-block btn-lg',
       style: 'margin-top:10px',
@@ -158,34 +394,32 @@ export function registerForms(app) {
           toast('Elige al menos un día');
           return;
         }
-        const data = {
-          title,
-          icon: iconId,
-          cat: categorySelect.value,
-          freq: {
-            type: frequencyType,
-            days: (frequencyType === 'weekdays' || frequencyType === 'weekly') ? [...frequencyDays].sort() : undefined,
-            dom: frequencyType === 'monthly' ? monthDay : undefined,
-            date: frequencyType === 'once' ? onceDate : undefined
-          },
-          time: timeInput.value || ''
-        };
+        const data = readTaskData(title);
+        if ((kindId === 'count' || kindId === 'amount') && !data.target) {
+          toast('Pon el objetivo diario');
+          return;
+        }
+        if (data.freq.from && data.freq.until && data.freq.until < data.freq.from) {
+          toast('La fecha de fin va después de la de inicio');
+          return;
+        }
+        // Evita que un registro anterior conserve el significado equivocado
+        // (p. ej. checks de "leer" interpretados como fallos de "evitar").
+        if (editing) app.core.prepareKindTransition(editing, kindId);
         if (editing) Object.assign(editing, data);
-        else S.tasks.push({ id: uid('t'), createdAt: todayStr(), completions: [], ...data });
+        else S.tasks.push({ id: uid('t'), createdAt: todayStr(), completions: [], log: {}, skips: [], ...data });
         save();
         back();
         toast(editing ? 'Tarea actualizada' : 'Tarea creada');
       }
     }, editing ? 'Guardar cambios' : 'Crear tarea'));
     const submitButton = wrap.querySelector('.btn-primary');
-    if (submitButton) {
-      wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(input => input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          submitButton.click();
-        }
-      }));
-    }
+    if (submitButton) titleInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitButton.click();
+      }
+    });
     return wrap;
   }
 

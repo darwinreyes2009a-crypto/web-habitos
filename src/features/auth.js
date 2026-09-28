@@ -23,16 +23,19 @@ export function registerAuth(app) {
   const render = app.render;
   let mode = 'picker';
   let loginEmail = '';
+  let offlineAccountAccess = !!activeAccountUid();
 
   function authCheck() {
     if (!sync) return true;
-    if (sync.status.state === 'loading') return true;
-    return sync.status.state === 'online';
+    if (sync.status.state === 'loading' || sync.status.state === 'online') return true;
+    return sync.status.state === 'offline' && offlineAccountAccess && !!activeAccountUid();
   }
 
   function softLogout() {
+    offlineAccountAccess = false;
     clearPushTimer();
     if (sync && sync.realtime) sync.realtime.stop();
+    if (sync && sync.cancelRetry) sync.cancelRetry();
     sync.status.state = 'loggedout';
     session.unlocked = false;
     closeOverlays();
@@ -40,7 +43,10 @@ export function registerAuth(app) {
   }
 
   function switchAccount(account) {
+    offlineAccountAccess = false;
     toast('Entrando…');
+    if (sync && sync.cancelRetry) sync.cancelRetry();
+    if (sync && sync.realtime) sync.realtime.stop();
     sync.restoreSession(account.uid).then(user => {
       if (!user) {
         toast('La sesión ha caducado. Vuelve a entrar.');
@@ -55,9 +61,11 @@ export function registerAuth(app) {
       switchProfileData();
       if (window.__rebuildPrevCaches) window.__rebuildPrevCaches();
       updateAccountIndex(account.uid, user.email || account.email || '');
-      sync.status.state = 'online';
+      offlineAccountAccess = true;
+      sync.status.state = typeof navigator === 'undefined' || navigator.onLine !== false ? 'online' : 'offline';
       session.unlocked = false;
       applyTheme();
+      if (sync.cancelRetry) sync.cancelRetry();
       sync.pull().then(ok => {
         toast(ok ? 'Datos de ' + (user.email || 'la cuenta') + ' cargados' : 'Conectado, pero la nube no responde');
         if (ok && sync.realtime) sync.realtime.start();
@@ -80,7 +88,9 @@ export function registerAuth(app) {
       message: 'Se borrará la copia guardada de esta cuenta en este navegador. Los datos de la nube se conservan: podrás volver a entrar cuando quieras.',
       confirmText: 'Quitar cuenta',
       onConfirm: async () => {
+        offlineAccountAccess = false;
         if (sync && sync.realtime) sync.realtime.stop();
+        if (sync && sync.cancelRetry) sync.cancelRetry();
         if (sync && sync.removeAuthBlob) await sync.removeAuthBlob(uid);
         try {
           localStorage.removeItem(ACC_PREFIX + uid);
@@ -174,12 +184,14 @@ export function registerAuth(app) {
           return;
         }
         const user = result.data.session.user;
-        sync.status.state = 'online';
+        sync.status.state = typeof navigator === 'undefined' || navigator.onLine !== false ? 'online' : 'offline';
         message.style.color = '';
         message.textContent = '';
         claimAccount(user.id, user.email || email);
+        offlineAccountAccess = true;
         session.unlocked = false;
         applyTheme();
+        if (sync.cancelRetry) sync.cancelRetry();
         const pullOk = await sync.pull();
         if (pullOk && sync.realtime) sync.realtime.start();
         render();
@@ -214,14 +226,31 @@ export function registerAuth(app) {
         if (user) {
           const localSize = (localStorage.getItem(ACC_PREFIX + user.id) || '').length;
           const profile = S.profiles.find(item => item.id === S.activeProfileId) || null;
+          const status = sync.status;
+          const stateLabel = status.state === 'online' ? 'Conectado'
+            : status.state === 'loading' ? 'Sincronizando…'
+              : status.state === 'offline' ? 'Sin conexión · los cambios siguen guardándose localmente'
+                : 'Sesión no iniciada';
+          const statusNote = h('p', { style: 'font-size:12px;color:' + (status.state === 'offline' ? 'var(--danger)' : 'var(--text-2)') + ';margin-top:4px', 'aria-live': 'polite' }, stateLabel);
+          const syncButton = h('button', { class: 'btn btn-soft btn-block', disabled: status.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false), onclick: async () => {
+            toast('Sincronizando…');
+            const ok = await sync.pull();
+            if (ok && sync.realtime) sync.realtime.start();
+            statusNote.textContent = ok ? 'Conectado · sincronizado ahora' : (status.error ? 'Error: ' + status.error : 'No se pudo sincronizar · los cambios siguen en este dispositivo');
+            statusNote.style.color = ok ? 'var(--green)' : 'var(--danger)';
+            toast(ok ? 'Todo sincronizado ✓' : 'No se pudo sincronizar');
+          } }, 'Sincronizar ahora');
           box.append(
             h('div', { style: 'text-align:center;margin-bottom:16px' },
               h('div', { class: 'auth-logo', style: 'width:48px;height:48px;font-size:20px;margin-bottom:10px', html: (user.email || '?').charAt(0).toUpperCase() }),
               h('b', { style: 'font-size:15px;display:block' }, user.email),
-              h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, profile ? 'Perfil: ' + profile.name : 'Tus datos se sincronizan en todos tus dispositivos')
+              h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:4px' }, profile ? 'Perfil: ' + profile.name : 'Tus datos se sincronizan en todos tus dispositivos'),
+              statusNote,
+              status.error ? h('p', { style: 'font-size:11px;color:var(--danger);overflow-wrap:anywhere;margin-top:4px' }, status.error) : null,
+              status.lastSyncAt ? h('p', { style: 'font-size:11px;color:var(--text-3);margin-top:4px' }, 'Última sincronización: ' + new Date(status.lastSyncAt).toLocaleString('es-ES')) : null
             ),
-            h('button', { class: 'btn btn-soft btn-block', onclick: async () => { toast('Sincronizando…'); const ok = await sync.push(); toast(ok ? 'Todo sincronizado ✓' : 'No se pudo sincronizar'); } }, 'Sincronizar ahora'),
-            h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: async () => { toast('Descargando…'); const ok = await sync.pull(); toast(ok ? 'Datos actualizados ✓' : 'No se pudo descargar'); if (ok) render(); } }, 'Descargar cambios del servidor'),
+            syncButton,
+            h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', disabled: status.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false), onclick: async () => { toast('Descargando…'); const ok = await sync.pull(); toast(ok ? 'Datos actualizados ✓' : 'No se pudo descargar'); if (ok) render(); } }, 'Descargar cambios del servidor'),
             h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:10px', onclick: softLogout }, 'Cambiar de cuenta'),
             h('button', { class: 'btn btn-danger btn-block btn-lg', style: 'margin-top:10px', onclick: removeDeviceAccount }, 'Quitar esta cuenta del dispositivo'),
             h('p', { style: 'font-size:11px;color:var(--text-3);margin-top:14px;text-align:center' }, 'Copia local: ' + Math.round(localSize / 1024) + ' KB')
@@ -229,7 +258,7 @@ export function registerAuth(app) {
         } else {
           box.append(
             h('p', { style: 'font-size:13.5px;color:var(--text-2);text-align:center;line-height:1.6;margin-bottom:16px' }, 'Tus datos se guardan en la nube con tu cuenta. Inicia sesión para tenerlos en todos tus dispositivos.'),
-            h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { sync.status.state = 'loggedout'; closeOverlays(); render(); } }, 'Crear cuenta o iniciar sesión')
+            h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { if (sync.cancelRetry) sync.cancelRetry(); sync.status.state = 'loggedout'; closeOverlays(); render(); } }, 'Crear cuenta o iniciar sesión')
           );
         }
       });

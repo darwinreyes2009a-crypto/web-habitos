@@ -1,4 +1,4 @@
-import '../app-sync.js?v=24';
+import '../app-sync.js?v=31';
 import { createAppContext } from './core/context.js';
 import { registerDom } from './core/dom.js';
 import { registerDates } from './core/dates.js';
@@ -7,6 +7,7 @@ import { registerIcons } from './core/icons.js';
 import { registerSecurity } from './core/security.js';
 import { registerInteractions } from './core/interactions.js';
 import { registerStore } from './state/store.js';
+import { registerRoutines } from './core/routines.js';
 import { registerRouter } from './navigation/router.js';
 import { registerOverlays } from './components/overlays.js';
 import { registerMedia } from './services/media.js';
@@ -16,8 +17,16 @@ import { registerAuth } from './features/auth.js';
 import { registerClassAgenda } from './features/class/agenda.js';
 import { registerClassNotes } from './features/class/notes.js';
 import { registerClassSchedule } from './features/class/schedule.js';
+import { registerClassCalendarCore } from './features/class/calendar-core.js';
+import { registerClassScheduleGrid } from './features/class/schedule-grid.js';
+import { registerClassScheduleExtra } from './features/class/schedule-extra.js';
+import { registerScheduleImport } from './features/class/schedule-import.js';
 import { registerOnboarding } from './features/onboarding-shell.js';
 import { registerHomeAndTasks } from './features/home-tasks.js';
+import { registerTaskRow } from './features/task-row.js';
+import { registerSearch } from './features/search.js';
+import { registerNow } from './features/now.js';
+import { registerPlatform } from './features/platform.js';
 import { registerGiftsAndPeople } from './features/gifts-people.js';
 import { registerForms } from './features/forms.js';
 import { registerSettings } from './features/settings.js';
@@ -36,15 +45,15 @@ app.render = function render() {
     return;
   }
   if (!app.state.S.meta.onboarded) {
-    root.append(app.features.welcomeScreen);
+    root.append(app.features.welcomeScreen());
     return;
   }
   if (app.domain.route.name === 'newProfile') {
-    root.append(app.features.newProfileScreen);
+    root.append(app.features.newProfileScreen());
     return;
   }
   if (!app.state.S.activeProfileId) {
-    root.append(app.features.profileSelectScreen);
+    root.append(app.features.profileSelectScreen());
     return;
   }
   const profile = app.domain.currentProfile();
@@ -52,7 +61,7 @@ app.render = function render() {
     app.state.S.activeProfileId = null;
     app.state.switchProfileData();
     app.state.save();
-    root.append(app.features.profileSelectScreen);
+    root.append(app.features.profileSelectScreen());
     return;
   }
   if (profile.pin && !app.domain.session.unlocked) {
@@ -69,6 +78,7 @@ registerIcons(app);
 registerSecurity(app);
 registerInteractions(app);
 registerStore(app);
+registerRoutines(app);
 registerRouter(app);
 registerOverlays(app);
 
@@ -82,8 +92,16 @@ registerAuth(app);
 registerClassAgenda(app);
 registerClassNotes(app);
 registerClassSchedule(app);
+registerClassCalendarCore(app);
+registerClassScheduleExtra(app);
+registerClassScheduleGrid(app);
+registerScheduleImport(app);
 registerOnboarding(app);
 registerHomeAndTasks(app);
+registerTaskRow(app);
+registerSearch(app);
+registerNow(app);
+registerPlatform(app);
 registerGiftsAndPeople(app);
 registerForms(app);
 registerSettings(app);
@@ -94,6 +112,11 @@ Object.assign(app.features, {
   classSubjects: app.class.scrClassSubjects,
   subjectForm: app.class.scrSubjectForm,
   classSchedule: app.class.scrClassSchedule,
+  classGrid: app.class.scrClassGrid,
+  classLoad: app.class.scrClassLoad,
+  classTemplates: app.class.scrClassTemplates,
+  now: app.features.scrNow,
+  nonSchool: app.class.scrNonSchool,
   slotForm: app.class.scrSlotForm,
   subjectView: app.class.scrSubjectView,
   classHistory: app.class.scrClassHistory
@@ -163,7 +186,12 @@ registerExitGuard();
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
+  app.features.watchUpdates();
+} else {
+  app.features.watchUpdates();
 }
+app.features.watchInstall();
+app.features.searchListen();
 
 ['pagehide', 'visibilitychange'].forEach(eventName => document.addEventListener(eventName, () => {
   if (eventName === 'visibilitychange' && document.visibilityState !== 'hidden') return;
