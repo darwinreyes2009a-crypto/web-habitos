@@ -1,18 +1,22 @@
 /* Calendario, Regalos, Modo Clase, onboarding y estado */
 .day-chips { display:flex; gap:8px; justify-content:space-between; margin-bottom:18px }
 .day-chip { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 4px; border-radius:var(--r-m); border:1.5px solid transparent; transition:all .15s }
-.day-chip .dl { font-size:11px; font-weight:700; color:var(--text-3) }
-.day-chip .dn { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600 }
+.day-chip .dl { font-size:var(--fs-micro); font-weight:var(--fw-bold); color:var(--text-3) }
+.day-chip .dn { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:var(--fs-item); font-weight:var(--fw-semi) }
 .day-chip.on { background:var(--primary-soft); border-color:var(--primary) }
-.day-chip.on .dl { color:var(--primary) }
+.day-chip.on .dl { color:var(--primary-ink) }
 .day-chip.on .dn { background:var(--primary); color:#fff; font-weight:700 }
 .day-chip.today .dn { border:2px solid var(--primary-softer) }
-.cal { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-xl); padding:16px; box-shadow:var(--sh-s) }
-.cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px }
-.cal-head b { font-size:15px; font-weight:700; text-transform:capitalize }
-.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; text-align:center }
-.cal-grid .wd { font-size:11px; font-weight:700; color:var(--text-3); padding:6px 0 }
-.cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13.5px; font-weight:500; border-radius:50%; position:relative; transition:background .12s }
+.cal { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-xl); padding:var(--sp-3); box-shadow:var(--sh-s) }
+/* En móvil estrecho el relleno de la tarjeta se reduce para que las siete
+   celdas quepan con su zona táctil completa de 44px. */
+@media(max-width:400px) { .cal { padding: 4px } .cal-head { padding-inline: 6px } }
+.cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--sp-3) }
+.cal-head b { font-size:var(--fs-body); font-weight:var(--fw-bold); text-transform:capitalize }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center }
+.cal-grid .wd { font-size:var(--fs-micro); font-weight:var(--fw-bold); color:var(--text-3); padding:6px 0 }
+/* La celda se dibuja redonda, pero el área pulsable llega a 44px en móvil. */
+.cal-day { aspect-ratio:1; min-height:40px; display:flex; align-items:center; justify-content:center; font-size:var(--fs-meta); font-weight:var(--fw-medium); border-radius:50%; position:relative; transition:background var(--t-fast) }
 .cal-day:hover { background:var(--surface-2) }
 .cal-day.dim { color:var(--text-3) }
 .cal-day.sel { background:var(--primary); color:#fff; font-weight:700 }
@@ -21,14 +25,14 @@
 .cal-day.sel .dt { background:#fff }
 .gift-row { display:flex; align-items:center; gap:13px; padding:12px 14px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); box-shadow:var(--sh-s) }
 .gift-row + .gift-row { margin-top:10px }
-.gift-thumb { width:52px; height:52px; border-radius:14px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; overflow:hidden; flex:none }
+.gift-thumb { width:52px; height:52px; border-radius:var(--r-m); background:var(--primary-soft); color:var(--primary-ink); display:flex; align-items:center; justify-content:center; overflow:hidden; flex:none }
 .gift-thumb img { width:100%; height:100%; object-fit:cover }
 .person-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px }
 .person-card { background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); padding:16px 14px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; box-shadow:var(--sh-s); transition:border-color .15s,transform .12s }
 .person-card:hover { border-color:var(--primary-softer) }
 .person-card:active { transform:scale(.97) }
-.person-card b { font-size:14px; font-weight:700 }
-.person-card span { font-size:11.5px; color:var(--text-2); font-weight:500 }
+.person-card b { font-size:var(--fs-item); font-weight:var(--fw-bold) }
+.person-card span { font-size:var(--fs-micro); color:var(--text-2); font-weight:var(--fw-medium) }
 .person-card.add { border-style:dashed; border-color:var(--border); color:var(--text-2); justify-content:center; min-height:130px; gap:8px }
 .person-card.add:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-soft) }
 .subject-folder { width:54px; height:54px; border-radius:18px; display:flex; align-items:center; justify-content:center; flex:none }
@@ -96,13 +100,9 @@
 .drop-img { border:2px dashed var(--border); border-radius:var(--r-l); padding:26px; display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-3); font-size:13px; font-weight:600; background:var(--bg); width:100%; transition:border-color .15s }
 .drop-img:hover { border-color:var(--primary); color:var(--primary) }
 .drop-img img { max-height:150px; border-radius:12px }
-.empty { background:var(--surface); border:1.5px dashed var(--border); border-radius:var(--r-xl); padding:34px 22px; text-align:center }
-.empty .e-ic { width:52px; height:52px; border-radius:18px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; margin:0 auto 14px }
-.empty b { font-size:15px; font-weight:700; display:block; margin-bottom:5px }
-.empty p { font-size:13px; color:var(--text-2); max-width:300px; margin:0 auto 16px; line-height:1.5 }
-.welcome { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px; overflow-y:auto }
+.welcome { min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:var(--sp-6); overflow-y:auto }
 .welcome-box { width:100%; max-width:420px; text-align:center }
-.logo-mark { width:64px; height:64px; border-radius:20px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; margin:0 auto 20px; box-shadow:0 10px 30px rgba(37,99,235,.3) }
+.logo-mark { width:64px; height:64px; border-radius:var(--r-l); background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:var(--fw-black); margin:0 auto var(--sp-5); box-shadow:var(--sh-fab) }
 .welcome h2 { font-size:26px; font-weight:800; letter-spacing:-.03em; margin-bottom:8px }
 .welcome .lead { font-size:14px; color:var(--text-2); line-height:1.55; margin-bottom:26px }
 .feat { display:flex; align-items:center; gap:14px; text-align:left; padding:13px 16px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); margin-bottom:10px }
@@ -111,7 +111,9 @@
 .feat span { font-size:12px; color:var(--text-2) }
 .profile-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:12px; margin:22px 0 }
 .profile-card { position:relative }
-.profile-card .profile-del { position:absolute; top:8px; right:8px; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--text-3); background:transparent; transition:background .15s,color .15s }
+.profile-card .profile-del { position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--text-3); background:transparent; transition:background var(--t-fast),color var(--t-fast) }
+/* Zona táctil de 44px sobre un botón de 28px: queda dentro de la tarjeta y no invade la tarjeta vecina. */
+.profile-card .profile-del::before { content:''; position:absolute; left:50%; top:50%; width:var(--tap); height:var(--tap); transform:translate(-50%,-50%) }
 .profile-card .profile-del:hover { background:var(--danger-soft); color:var(--danger) }
 .profile-card .profile-del:active { transform:scale(.9) }
 .center-page { min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; overflow-y:auto }
@@ -126,8 +128,8 @@
 .sr-item span { font-size:12px; color:var(--text-2) }
 .banner { display:flex; align-items:center; gap:13px; background:var(--primary-soft); border:1px solid var(--primary-softer); border-radius:var(--r-l); padding:14px 16px; margin-bottom:16px }
 .banner .b-ic { width:40px; height:40px; border-radius:13px; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; flex:none }
-.banner b { font-size:13.5px; display:block }
-.banner span { font-size:12px; color:var(--text-2) }
+.banner b { font-size:var(--fs-body); display:block }
+.banner span { font-size:var(--fs-label); color:var(--text-2) }
 .banner button { margin-left:auto; background:var(--primary); color:#fff; font-size:12px; font-weight:700; padding:9px 14px; border-radius:12px; flex:none }
 .habit-row { display:flex; align-items:center; gap:12px; margin-bottom:14px }
 .habit-row .r-ic { width:36px; height:36px; border-radius:12px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none }
@@ -135,12 +137,11 @@
 .habit-row b { font-size:13.5px; font-weight:600; display:block; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .habit-row .hb-n { font-size:12px; font-weight:700; color:var(--text-2); flex:none }
 .stat-big { font-size:34px; font-weight:800; letter-spacing:-.03em; color:var(--primary) }
-.hidden { display:none!important }
-.sync-badge { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:600; padding:8px 12px; border-radius:999px; background:var(--surface-2); color:var(--text-2) }
-.sync-badge i { font-style:normal; font-size:12px; width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--primary); border:1px solid var(--border) }
-.sync-badge.online i { background:#EFF6FF; color:var(--primary); border-color:#BFDBFE }
-.sync-badge.offline i { background:#FEF2F2; color:var(--danger); border-color:#FECACA }
-.auth-logo { width:56px; height:56px; border-radius:18px; background:var(--primary); color:#fff; font-size:26px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 16px }
+.sync-badge { display:inline-flex; align-items:center; gap:7px; font-size:var(--fs-label); font-weight:var(--fw-semi); padding:8px var(--sp-3); border-radius:var(--r-pill); background:var(--surface-2); color:var(--text-2) }
+.sync-badge i { font-style:normal; font-size:var(--fs-label); width:20px; height:20px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:var(--surface); color:var(--primary-ink); border:1px solid var(--border) }
+.sync-badge.online i { background:var(--primary-soft); color:var(--primary-ink); border-color:var(--primary-softer) }
+.sync-badge.offline i { background:var(--danger-soft); color:var(--danger); border-color:var(--danger-border) }
+.auth-logo { width:56px; height:56px; border-radius:var(--r-l); background:var(--primary); color:#fff; font-size:26px; font-weight:var(--fw-black); display:flex; align-items:center; justify-content:center; margin:0 auto var(--sp-4) }
 /* Regalos: chip de tienda y fila del historial clicable */
 .st-link { display:inline-flex; align-items:center; gap:4px; background:var(--surface-2); color:var(--text-2); text-decoration:none; margin-top:4px; font-size:11px; padding:4px 9px }
 .st-link:hover { color:var(--primary) }
@@ -224,12 +225,11 @@ button.hist-row { display:flex }
 }
 
 /* ---------- Rutinas: contador, objetivo, heatmap y tira de días ---------- */
-.row-check.skipped { background:var(--surface-2); border-color:var(--border); position:relative }
-.row-check.skipped::after { content:''; position:absolute; left:22%; right:22%; top:48%; height:2px; background:var(--text-3); border-radius:2px; transform:rotate(-45deg) }
-.row-check.failed { border-color:var(--danger); background:var(--danger-soft) }
-.row-check.failed::after { content:'!'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--danger); font-size:14px; font-weight:800 }
+/* Los estados .done / .failed / .skipped se definen una sola vez en
+   components.css y valen igual para el check circular y para el punto de la
+   tarjeta de Inicio. Aquí solo queda la variante de fila. */
 .habit-row.failed-avoid { border-color:var(--danger-border); background:color-mix(in srgb,var(--danger-soft) 45%,var(--surface)) }
-.counter-val { display:inline-flex; align-items:baseline; justify-content:center; gap:1px; min-width:46px; height:32px; padding:0 8px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); color:var(--text-2); font-variant-numeric:tabular-nums }
+.counter-val { display:inline-flex; align-items:baseline; justify-content:center; gap:1px; min-width:46px; height:32px; padding:0 var(--sp-2); border:1px solid var(--border); border-radius:var(--r-s); background:var(--surface-2); color:var(--text-2); font-variant-numeric:tabular-nums }
 .counter-val b { font-size:15px; font-weight:800; color:var(--text) }
 .counter-val span { font-size:11px; color:var(--text-3) }
 .counter-val.partial { border-color:var(--amber); background:var(--amber-soft, var(--surface-2)) }
@@ -277,8 +277,6 @@ button.hist-row { display:flex }
 .stat-trio { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; text-align:center }
 .stat-trio b { display:block; font-size:22px; font-weight:800; letter-spacing:-.02em }
 .stat-trio span { display:block; font-size:11px; color:var(--text-3) }
-.sheet-head { margin-bottom:12px }
-.sheet-head h3 { margin-bottom:2px }
 .heat-grid::-webkit-scrollbar { height:5px }
 .heat-grid::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px }
 .heat-grid::-webkit-scrollbar-track { background:transparent }
@@ -302,18 +300,20 @@ button.hist-row { display:flex }
 .now-hero.live { border-left-width:4px; background:linear-gradient(90deg, var(--primary-soft), var(--surface) 60%) }
 .now-hero.rest { border-left-color:var(--amber) }
 .now-hero .ic { color:var(--text-3); flex:none }
-.now-hero b { display:block; font-size:19px; font-weight:800; letter-spacing:-.02em }
-.now-hero span { display:block; font-size:12.5px; color:var(--text-2); margin-top:2px }
-.now-badge { font-size:10px; font-weight:800; letter-spacing:.08em; color:#fff; background:var(--danger); padding:4px 9px; border-radius:99px; flex:none; align-self:flex-start }
+.now-hero b { display:block; font-size:var(--fs-lead); font-weight:var(--fw-black); letter-spacing:var(--ls-tight) }
+.now-hero span { display:block; font-size:var(--fs-meta); color:var(--text-2); margin-top:2px }
+.now-badge { font-size:var(--fs-micro); font-weight:var(--fw-bold); letter-spacing:.08em; color:#fff; background:var(--danger); padding:4px 9px; border-radius:var(--r-pill); flex:none; align-self:flex-start }
 .now-badge.idle { background:var(--text-3) }
 .now-head { display:flex; align-items:center; gap:10px; margin:0 2px 10px }
 .now-head h3 { font-size:14.5px; font-weight:800; margin:0; flex:1 }
 
 /* ---------- Aviso de versión e instalación ---------- */
-.update-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(18px + env(safe-area-inset-bottom)); z-index:120; display:flex; align-items:center; gap:12px; max-width:min(440px, 92vw); padding:10px 12px 10px 16px; background:var(--text); color:var(--bg); border-radius:16px; box-shadow:var(--sh-l); font-size:13px; font-weight:600 }
+/* Usa los mismos tokens que el toast: en modo oscuro la barra se aclara en
+   lugar de heredear --text, que en ese tema es claro. */
+.update-bar { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(18px + env(safe-area-inset-bottom)); z-index:120; display:flex; align-items:center; gap:var(--sp-3); max-width:min(440px, 92vw); padding:10px 12px 10px 16px; background:var(--toast-bg); color:var(--toast-fg); border-radius:var(--r-m); box-shadow:var(--sh-l); font-size:var(--fs-meta); font-weight:var(--fw-semi) }
 .install-bar { background:var(--primary); color:#fff }
 .install-bar .btn-primary { background:#fff; color:var(--primary) }
 .install-bar .mini-btn { color:rgba(255,255,255,.8) }
-.now-jump { display:flex; align-items:center; gap:10px; width:100%; padding:11px 14px; margin-bottom:18px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); font-size:13px; font-weight:600; color:var(--text-2); box-shadow:var(--sh-s) }
+.now-jump { display:flex; align-items:center; gap:10px; width:100%; min-height:var(--tap); padding:11px var(--sp-4); margin-bottom:var(--sp-4); background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); font-size:var(--fs-body); font-weight:var(--fw-semi); color:var(--text-2); box-shadow:var(--sh-s) }
 .now-jump .ic { color:var(--primary); flex:none }
 .now-jump .chev { margin-left:auto; color:var(--text-3) }

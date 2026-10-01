@@ -12,8 +12,8 @@ DailyHub (PWA)
 ├── Frontend
 │   ├── index.html                 → composition HTML mínima
 │   ├── styles/
-│   │   ├── tokens.css             → tokens, tema, layout y navegación
-│   │   ├── components.css         → controles, tarjetas, formularios y overlays
+│   │   ├── tokens.css             → sistema visual: color, tipografía, espaciado, profundidad, movimiento
+│   │   ├── components.css         → controles, listas, formularios y overlays
 │   │   └── features.css           → Modo Clase, regalos, onboarding y estados
 │   ├── src/app.js                 → composition root + render + bootstrap
 │   ├── src/core/                  → contexto, DOM, fechas, iconos, constantes y seguridad
@@ -44,6 +44,24 @@ DailyHub (PWA)
 
 **Separación código/datos:** puedes cambiar el frontend sin tocar la base de datos. Los datos viven en Supabase; el navegador guarda una copia por cuenta (`dailyhub_v2:acc:<uid>`) para funcionar sin conexión y sincroniza automáticamente con debounce de 1,2 s. `dailyhub_v2` queda como buffer de adopción de versiones antiguas.
 
+## Sistema visual
+
+`styles/tokens.css` es la única fuente de verdad del aspecto. Antes de escribir un color, un tamaño o un espacio en una pantalla, comprueba si ya existe un token:
+
+- **Color** — `--surface` a `--surface-3` (profundidad), `--primary*`, acentos `--green/--amber/--violet/--danger` con sus variantes `-soft` y `-border`, `--toast-*` para avisos flotantes.
+- **Tipografía** — seis roles y nada más: `--fs-hero`, `--fs-title`, `--fs-screen`, `--fs-sub`, `--fs-lead`, `--fs-body`, `--fs-item`, `--fs-meta`, `--fs-label`, `--fs-micro`, con sus pesos `--fw-*` y alturas `--lh-*`.
+- **Espaciado** — `--sp-1` a `--sp-9` (base 4 px).
+- **Radios** — `--r-xs` a `--r-xl` y `--r-pill`.
+- **Profundidad** — solo tres niveles: `--sh-s` reposo, `--sh-m` elevado, `--sh-l` flotante.
+- **Movimiento** — `--t-fast` .12 s, `--t-base` .18 s, `--t-slow` .28 s, con `--ease`.
+
+Reglas de la casa:
+
+- **Zona táctil:** `--tap` (44 px) es el mínimo. Los controles pequeños (`.row-check`, `.mini-btn`, `.profile-del`) amplían su área pulsable con `::before` sin crecer visualmente, para no desalinear la lista.
+- **Estados de un control:** `hecho`, `fallado` y `saltado` se definen **una sola vez** en `components.css` y valen igual para el check circular, el cuadrado de apuntes y el punto de la tarjeta. Ningún estado se comunica solo por color: el fallado añade `!` y el saltado una marca diagonal.
+- **Dark mode:** `--surface` a `--surface-3` mantienen la jerarquía de superficies. Los avisos flotantes invierten sus tokens (`--toast-*`) en vez de fijar un negro o un blanco.
+- `.sheet-head`, `.empty` y `.hidden` viven en `components.css`. No se repiten en `features.css`.
+
 ## Archivos principales
 
 | Ruta | Responsabilidad |
@@ -51,6 +69,7 @@ DailyHub (PWA)
 | `index.html` | Shell HTML, hojas de estilo y entrada del Composition Root |
 | `src/app.js` | Registro de módulos, render, navegación inicial y PWA |
 | `src/core/` | Utilidades sin estado de negocio |
+| `styles/tokens.css` | **Fuente única del sistema visual.** Añade aquí el valor antes de escribirlo suelto en una pantalla |
 | `src/state/store.js` | Estado estable, aislamiento por perfil, guardado y borrados |
 | `src/navigation/router.js` | Router y helpers compartidos de tareas/regalos |
 | `src/features/` | Vistas y flujos independientes por sección |

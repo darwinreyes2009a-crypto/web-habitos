@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v31';
+const CACHE = 'dailyhub-v32';
 const ASSETS = [
   './',
   './index.html',
