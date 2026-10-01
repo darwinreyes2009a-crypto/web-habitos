@@ -5,6 +5,7 @@ export function registerOnboarding(app) {
     icon,
     avatarEl,
     hashPin,
+    verifyAndUpgradePin,
     todayStr,
     COLORS,
     startLongPress,
@@ -88,7 +89,7 @@ export function registerOnboarding(app) {
     );
     const error = h('p', { class: 'field-hint', style: 'color:var(--danger);min-height:16px;text-align:center' });
 
-    function submit() {
+    async function submit() {
       const name = nameInput.value.trim();
       if (!name) {
         error.textContent = 'Escribe tu nombre para continuar.';
@@ -112,12 +113,12 @@ export function registerOnboarding(app) {
         existing.name = name;
         existing.color = color;
         existing.photo = newProfilePhoto;
-        existing.pin = pin ? hashPin(pin) : null;
+        existing.pin = pin ? await hashPin(pin) : null;
         existing.pinLen = pin ? pin.length : null;
         existing.updatedAt = Date.now();
         S.activeProfileId = existing.id;
       } else {
-        const profile = { id: uid('pr'), name, color, photo: newProfilePhoto, pin: pin ? hashPin(pin) : null, pinLen: pin ? pin.length : null };
+        const profile = { id: uid('pr'), name, color, photo: newProfilePhoto, pin: pin ? await hashPin(pin) : null, pinLen: pin ? pin.length : null };
         S.profiles.push(profile);
         S.activeProfileId = profile.id;
       }
@@ -308,11 +309,11 @@ export function registerOnboarding(app) {
       [...dots.children].forEach((dot, index) => dot.classList.toggle('fill', index < pinBuffer.length));
     }
 
-    function check() {
-      let valid = hashPin(pinBuffer) === profile.pin;
+    async function check() {
+      let valid = await verifyAndUpgradePin(pinBuffer, profile, save);
       if (!valid && pinBuffer.length >= 4) {
         for (let length = 4; length <= pinBuffer.length; length++) {
-          if (hashPin(pinBuffer.slice(0, length)) === profile.pin) {
+          if (await verifyAndUpgradePin(pinBuffer.slice(0, length), profile, save)) {
             valid = true;
             break;
           }
@@ -338,13 +339,13 @@ export function registerOnboarding(app) {
         return;
       }
       if (key === 'ok') {
-        if (pinBuffer.length >= 4) check();
+        if (pinBuffer.length >= 4) void check();
         return;
       }
       if (pinBuffer.length >= pinLength) return;
       pinBuffer += key;
       draw();
-      if (pinBuffer.length === pinLength) setTimeout(check, 120);
+      if (pinBuffer.length === pinLength) setTimeout(() => { void check(); }, 120);
     }
 
     const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'];

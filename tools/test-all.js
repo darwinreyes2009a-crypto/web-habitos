@@ -63,7 +63,8 @@ const pasos = [
   { nombre: 'Lógica de calendario (huecos, solapes, carga, .ics)', run: () => execFileSync(process.execPath, ['tools/test-calendar-core.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Importación de horarios CSV/TSV y solapes atómicos', run: () => execFileSync(process.execPath, ['tools/test-schedule-import.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Round-trip de tareas y notas con columnas opcionales', run: () => execFileSync(process.execPath, ['tools/test-sync-enhancements.js'], { cwd: RAIZ, stdio: 'inherit' }) },
-  { nombre: 'Vista previa de notas segura contra HTML', run: () => execFileSync(process.execPath, ['tools/test-notes-preview.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
+  { nombre: 'Vista previa de notas segura contra HTML', run: () => execFileSync(process.execPath, ['tools/test-notes-preview.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Hash PIN PBKDF2 y migración desde djb2', run: () => execFileSync(process.execPath, ['tools/test-pin-security.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
 ];
 
 let fallos = 0;
