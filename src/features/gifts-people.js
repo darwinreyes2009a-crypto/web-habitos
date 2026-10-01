@@ -21,7 +21,7 @@ export function registerGiftsAndPeople(app) {
     statusCls,
     bdayTxt
   } = app.domain;
-  const { headBar, searchBtn, formHead, emptyState, openSheet, closeOverlays, toast } = app.components;
+  const { headBar, searchBtn, formHead, emptyState, openSheet, closeOverlays, confirmDialog, toast } = app.components;
   const { deletePerson } = app.actions;
   const { giftThumb } = app.features;
   const { pickImage, viewImage } = app.services;
@@ -561,10 +561,29 @@ export function registerGiftsAndPeople(app) {
         render();
         toast('Foto de ' + person.name + ' guardada');
       }, 512);
+    }    // Quitar la foto es irreversible —no queda copia en el dispositivo—, así que
+    // se pide confirmación. El aviso con "Deshacer" es la segunda red por si
+    // alguien confirma sin querer.
+    function clearPersonPhoto(person) {
+      confirmDialog({
+        title: '¿Eliminar la foto de ' + person.name + '?',
+        message: 'La foto se borrará del dispositivo. Podrás volver a ponerla, pero esta imagen no se guardará en ningún sitio.',
+        confirmText: 'Eliminar foto',
+        onConfirm: () => {
+          const previous = person.photo;
+          person.photo = '';
+          save();
+          render();
+          toast('Foto de ' + person.name + ' eliminada', {
+            label: 'Deshacer',
+            fn: () => { person.photo = previous; save(); render(); }
+          });
+        }
+      });
     }
 
     // Tocar la foto la abre en grande, y ahí se puede cambiar o eliminar. Si la
-// persona todavía no tiene, el mismo toque ofrece ponerla.
+    // persona todavía no tiene, el mismo toque ofrece ponerla.
     const photoButton = h('button', {
       class: 'person-hero-photo',
       'aria-label': person.photo ? 'Ver la foto de ' + person.name : 'Añadir foto a ' + person.name,
@@ -572,16 +591,7 @@ export function registerGiftsAndPeople(app) {
         if (!person.photo) { setPersonPhoto(person); return; }
         viewImage(person.photo, person.name, [
           { label: 'Cambiar foto', onClick: () => setPersonPhoto(person) },
-          {
-            label: 'Eliminar foto',
-            tone: 'btn-danger',
-            onClick: () => {
-              person.photo = '';
-              save();
-              render();
-              toast('Foto de ' + person.name + ' eliminada');
-            }
-          }
+          { label: 'Eliminar foto', tone: 'btn-danger', onClick: () => clearPersonPhoto(person) }
         ]);
       }
     },

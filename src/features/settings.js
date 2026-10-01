@@ -501,7 +501,27 @@ export function registerSettings(app) {
       avatarPreview.innerHTML = '';
       avatarPreview.append(avatarEl(profile.name, profile.color, 84, photo));
       const remove = avatarPreview.querySelector('.rm-photo');
-      if (!remove && photo) avatarPreview.append(h('button', { class: 'rm-photo', 'aria-label': 'Quitar foto', onclick: () => { photo = ''; profile.photo = ''; save(); drawAvatar(); setPhotoEl(photoButton, ''); toast('Foto quitada'); }, html: icon('x', 15) }));
+      if (!remove && photo) avatarPreview.append(h('button', { class: 'rm-photo', 'aria-label': 'Quitar foto', onclick: () => {
+        // Borrar la foto es irreversible, así que confirmamos y dejamos
+        // "Deshacer" en el aviso por si alguien acepta sin querer.
+        confirmDialog({
+          title: '¿Eliminar tu foto de perfil?',
+          message: 'Se quitará de tu perfil. Podrás volver a ponerla, pero esta imagen no se guardará en ningún sitio.',
+          confirmText: 'Eliminar foto',
+          onConfirm: () => {
+            const previous = profile.photo;
+            photo = '';
+            profile.photo = '';
+            save();
+            drawAvatar();
+            setPhotoEl(photoButton, '');
+            toast('Foto eliminada', {
+              label: 'Deshacer',
+              fn: () => { photo = previous; profile.photo = previous; save(); drawAvatar(); setPhotoEl(photoButton, previous); }
+            });
+          }
+        });
+      }, html: icon('x', 15) }));
     }
     drawAvatar();
     const photoButton = h('button', { class: 'btn btn-soft', style: 'padding:9px 16px;font-size:13px;margin-top:12px', onclick: () => pickImage(data => { photo = data; profile.photo = data; save(); drawAvatar(); setPhotoEl(photoButton, data); toast('Foto actualizada'); }, 512) });
