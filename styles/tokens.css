@@ -96,6 +96,10 @@
   --t-base: .18s;
   --t-slow: .28s;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --ease-out: cubic-bezier(0, 0, .2, 1);
+  --ease-back: cubic-bezier(.34, 1.3, .64, 1);
+  /* Distancia de entrada del contenido. 6px se percibe sin marear. */
+  --enter-shift: 6px;
 
   /* --- Estructura ------------------------------------------------------- */
   --nav-h: 62px;

@@ -63,6 +63,10 @@ export function registerRouter(app) {
     else if (route.name !== name) {
       routeStack.push({ name: route.name, params: route.params || {} });
     }
+    // Avisamos a `render` de que esto es una navegación y no un simple
+    // repintado, para que la entrada animada se muestre solo al cambiar de
+    // pantalla. La dirección fija el sentido en que entra el contenido.
+    app.state.pendingScreenEnter = route.name !== name ? 'forward' : 'replace';
     setRoute(name, params);
     render();
     window.scrollTo(0, 0);
@@ -71,6 +75,7 @@ export function registerRouter(app) {
   function goBack() {
     if (routeStack.length) {
       const previous = routeStack.pop();
+      app.state.pendingScreenEnter = 'back';
       setRoute(previous.name, previous.params);
       render();
       window.scrollTo(0, 0);

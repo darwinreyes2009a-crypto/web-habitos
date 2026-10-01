@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v45';
+const CACHE = 'dailyhub-v46';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './styles/tokens.css',
   './styles/components.css',
   './styles/features.css',
+  './styles/motion.css',
   './src/app.js',
   './src/core/context.js',
   './src/core/dom.js',

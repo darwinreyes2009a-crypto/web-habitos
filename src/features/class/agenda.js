@@ -632,17 +632,17 @@ export function registerClassAgenda(app) {
     if (!subjects.length) {
       return emptyState('folder', 'Sin asignaturas todavía', 'Crea una asignatura para agrupar sus clases, sus deberes y sus apuntes.', 'Nueva asignatura', () => go('subjectForm'));
     }
-    const grid = h('div', { class: 'person-grid' });
-    for (const subject of subjects) {
+    const grid = h('div', { class: 'person-grid stagger' });
+    subjects.forEach((subject, index) => {
       const notes = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
       const pending = notes.filter(note => !note.done).length;
       const classCount = slotsOfSubject(subject.id).length;
-      grid.append(h('button', { class: 'person-card', onclick: () => go('subjectView', { id: subject.id }) },
+      grid.append(h('button', { class: 'person-card', style: '--i:' + index, onclick: () => go('subjectView', { id: subject.id }) },
         h('span', { class: 'subject-folder', style: 'background:' + tintHex(subject.color, '22') + ';color:' + subject.color, html: icon(subject.icon || 'book', 26) }),
         h('b', null, subject.name),
         h('span', null, classCount + (classCount === 1 ? ' clase' : ' clases') + ' · ' + notes.length + (notes.length === 1 ? ' apunte' : ' apuntes') + (pending ? ' · ' + pending + ' abiertos' : ''))
       ));
-    }
+    });
     grid.append(h('button', { class: 'person-card add', onclick: () => go('subjectForm') }, h('span', { html: icon('plus', 22) }), h('b', null, 'Añadir asignatura')));
     return grid;
   }

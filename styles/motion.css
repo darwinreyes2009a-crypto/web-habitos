@@ -1,0 +1,175 @@
+/* ==========================================================================
+   Motion — animaciones sutiles de percepción
+   --------------------------------------------------------------------------
+   Todas parten de los tokens de --t-*/--ease* y usan solo transform/opacity,
+   propiedades que el navegador puede interpolar sin recalcular el layout.
+
+   `.screen-enter` la añade app.js SÓLO al cambiar de pantalla (no en cada
+   render). Sin ese control, marcar una tarea o tocar un contador repintaría
+   la pantalla y el contenido entraría parpadeando en cada pulsación.
+   ========================================================================== */
+
+/* --- Entrada de pantalla ------------------------------------------------ */
+
+@keyframes screenEnter {
+  from { opacity: 0; transform: translate3d(0, var(--enter-shift), 0) }
+  to   { opacity: 1; transform: none }
+}
+
+.content.screen-enter {
+  animation: screenEnter var(--t-slow) var(--ease-out) both;
+  will-change: opacity, transform;
+}
+
+/* Al volver hacia atrás el contenido entra desde el lado opuesto: sugiere
+   que retrocedemos en la pila en lugar de avanzar a una pantalla nueva. */
+.content.screen-enter[data-enter='back'] {
+  animation-name: screenEnterBack;
+}
+
+@keyframes screenEnterBack {
+  from { opacity: 0; transform: translate3d(calc(var(--enter-shift) * -1), 0, 0) }
+  to   { opacity: 1; transform: none }
+}
+
+/* Un `replace` (tras guardar un formulario) no debe parecer que se avanza:
+   la pantalla sustituye a otra, así que entra sin desplazamiento lateral. */
+.content.screen-enter[data-enter='replace'] {
+  animation-name: screenEnter;
+}
+
+/* --- Feedback de pulsación ---------------------------------------------- */
+/* Un toque que no responde se siente como un app roto. Este rebote mínimo
+   —2px y una sombra que se hunde— confirma el toque sin necesidad de sonido. */
+
+.btn:active,
+.icon-btn:active,
+.chip:active,
+.link:active {
+  transform: translateY(1px) scale(.975);
+}
+
+.btn {
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+/* El foco de teclado no debe "`picar`": solo reaccionamos a :active, que
+   solo se activa con puntero o toque real. */
+
+/* Filas y tarjetas: el hundimiento es un poco más marcado porque son
+   superficies grandes y es donde más se toca. */
+.row:active,
+.task-card:active,
+.person-card:active,
+.set-row:active {
+  transform: scale(.99);
+  transition: transform var(--t-fast) var(--ease-out);
+}
+
+/* `.person-card` ya traía su propio `:active` con otra escala; se unifica
+   aquí la escala para que ambas declaraciones no se pisen. */
+.person-card:active {
+  transform: scale(.97);
+}
+
+/* --- Aparición progresiva de listas ------------------------------------- */
+/* Las listas largas (tareas, regalos, celdas del calendario) entran en
+   cascada: da sensación de "cargando contenido" en vez de un bloque que
+   aparece de golpe. El retardo crece con el índice, con tope para que el
+   último elemento de una lista larga no espere medio segundo. */
+
+@keyframes itemEnter {
+  from { opacity: 0; transform: translate3d(0, 4px, 0) }
+  to   { opacity: 1; transform: none }
+}
+
+.stagger > * {
+  animation: itemEnter var(--t-base) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+/* Por encima de ~12 elementos (264ms) el retardo ya se nota como espera, no
+   como cascada, así que se congela. */
+.stagger > *:nth-child(n + 13) {
+  animation-delay: 0ms;
+}
+
+/* --- Toasts ------------------------------------------------------------- */
+/* Sube unos px en lugar de escalar: leer mejor el mensaje desde el borde. */
+
+@keyframes toastEnter {
+  from { opacity: 0; transform: translate(-50%, 10px) }
+  to   { opacity: 1; transform: translate(-50%, 0) }
+}
+
+.toast {
+  animation: toastEnter var(--t-base) var(--ease-out) both;
+}
+
+/* --- Estados de tarea completada --------------------------------------- */
+/* Deliberadamente NO hay animación aquí. `.t-dot` / `.row-check` se repintan
+   en cada `render()`, así que una animation ligada a `.done` se dispararía no
+   solo al completar una tarea, sino tras cualquier acción (un contador, una
+   nota…) y el punto parpadearía sin parar. Este efecto necesita dispararse
+   desde el gesto del usuario, no desde el estilo. */
+
+/* --- Barra de navegación ------------------------------------------------ */
+/* La clase activa es `.on` (ver onboarding-shell.js): `.nav-item` es la barra
+   lateral y `.bn-item` la inferior del móvil. El destino activo se eleva
+   ligeramente, así el cambio de pestaña se lee de un vistazo sin tener que
+   fijarse solo en el color. */
+
+.nav-item,
+.bn-item {
+  transition: transform var(--t-base) var(--ease-back), color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+
+.nav-item:active,
+.bn-item:active {
+  transform: scale(.9);
+}
+
+.nav-item.on,
+.bn-item.on {
+  animation: navBump var(--t-slow) var(--ease-back);
+}
+
+@keyframes navBump {
+  0%   { transform: translateY(0) }
+  40%  { transform: translateY(-2px) }
+  100% { transform: translateY(0) }
+}
+
+/* --- Preferencia del sistema: sin movimiento --------------------------- */
+/* El bloque global de tokens.css ya recorta las duraciones; aquí apagamos
+   además las animaciones que dependen de `both`, porque con retardo 0 y
+   duración ~0 el elemento se queda en su estado inicial si el nombre se
+   aplica después. Esta regla es la red de seguridad. */
+
+@media (prefers-reduced-motion: reduce) {
+  .content.screen-enter,
+  .stagger > *,
+  .toast,
+  .nav-item.on,
+  .bn-item.on {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .btn:active,
+  .icon-btn:active,
+  .row:active,
+  .task-card:active,
+  .person-card:active,
+  .set-row:active,
+  .nav-item:active,
+  .bn-item:active {
+    transform: none !important;
+  }
+}

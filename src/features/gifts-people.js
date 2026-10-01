@@ -86,16 +86,16 @@ export function registerGiftsAndPeople(app) {
     }
 
     wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Personas')));
-    const grid = h('div', { class: 'person-grid' });
-    for (const person of S.people) {
+    const grid = h('div', { class: 'person-grid stagger' });
+    S.people.forEach((person, index) => {
       const count = giftsOf(person.id).length;
-      grid.append(h('button', { class: 'person-card', onclick: () => go('person', { id: person.id }) },
+      grid.append(h('button', { class: 'person-card', style: '--i:' + index, onclick: () => go('person', { id: person.id }) },
         avatarEl(person.name, person.color, 54, person.photo),
         h('b', null, person.name),
         h('span', null, count + (count === 1 ? ' regalo' : ' regalos')),
         person.birthday ? h('span', { style: 'font-size:11px;color:var(--text-3)' }, 'Cumple: ' + fmtShort(person.birthday)) : null
       ));
-    }
+    });
     grid.append(h('button', { class: 'person-card add', onclick: () => go('personForm') }, h('span', { html: icon('plus', 22) }), h('b', null, 'Añadir persona')));
     wrap.append(grid);
     wrap.append(h('div', { class: 'section-title' },

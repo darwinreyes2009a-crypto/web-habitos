@@ -1,4 +1,4 @@
-import '../app-sync.js?v=45';
+import '../app-sync.js?v=46';
 import { createAppContext } from './core/context.js';
 import { registerDom } from './core/dom.js';
 import { registerDates } from './core/dates.js';
@@ -69,6 +69,19 @@ app.render = function render() {
     return;
   }
   root.append(app.features.shell(profile));
+  // La animación de entrada solo debe verse al CAMBIAR de pantalla. `render()`
+  // también se llama tras cada acción (un contador, una nota…), y sin este
+  // aviso el contenido entraría parpadeando en cada pulsación.
+  if (app.state.pendingScreenEnter) {
+    const direction = app.state.pendingScreenEnter;
+    app.state.pendingScreenEnter = false;
+    const view = root.querySelector('.content');
+    if (view) {
+      view.dataset.enter = direction;
+      view.classList.add('screen-enter');
+      view.addEventListener('animationend', () => view.classList.remove('screen-enter'), { once: true });
+    }
+  }
 };
 
 registerDom(app);
