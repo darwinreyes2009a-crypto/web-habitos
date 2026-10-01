@@ -59,7 +59,6 @@ export function registerTaskRow(app) {
       class: 'counter-val' + (info.done ? ' done' : '') + (info.partial ? ' partial' : '') + (info.skipped ? ' skipped' : ''),
       'aria-label': 'Valor del ' + fmtLong(ymd) + ': ' + info.value + (target ? ' de ' + target : ''),
       disabled: !due || info.skipped,
-      style: 'min-width:52px',
       onclick: () => { if (due && !isSkipped(task, ymd)) valueSheet(task, ymd); }
     },
       h('b', null, String(info.value)),
@@ -69,7 +68,6 @@ export function registerTaskRow(app) {
       return h('button', {
         class: 'counter-val skipped',
         'aria-label': 'Día saltado. Toca para volver a hacerlo',
-        style: 'min-width:52px',
         disabled: !due,
         onclick: () => { skipOn(task, ymd, false); task.updatedAt = Date.now(); if (app.core.haptic) app.core.haptic(); after(); }
       }, h('b', null, '–'));
@@ -82,14 +80,14 @@ export function registerTaskRow(app) {
       if (app.core.haptic) app.core.haptic(5);
       after();
     };
-    return h('div', { style: base },
+    return h('div', { class: 'stepper' },
       h('button', {
         class: 'mini-btn', 'aria-label': 'Restar ' + step,
-        disabled: !due || info.skipped || info.value <= 0, style: !due || info.skipped || info.value <= 0 ? 'opacity:.35' : '',
-        onclick: bump(-step), html: icon('x', 15)
+        disabled: !due || info.skipped || info.value <= 0,
+        onclick: bump(-step), html: icon('minus', 16)
       }),
       centre,
-      h('button', { class: 'mini-btn', 'aria-label': 'Sumar ' + step, disabled: !due || info.skipped, onclick: bump(step), html: icon('plus', 15) })
+      h('button', { class: 'mini-btn', 'aria-label': 'Sumar ' + step, disabled: !due || info.skipped, onclick: bump(step), html: icon('plus', 16) })
     );
   }
 
@@ -104,12 +102,12 @@ export function registerTaskRow(app) {
     const kind = kindOf(task);
     const step = kind === 'count' ? 1 : 5;
     let value = info.value;
-    const label = h('b', { style: 'font-size:34px;font-weight:800;letter-spacing:-.02em' });
+    const label = h('b', { class: 'value-display' });
     const unit = task.unit ? ' ' + task.unit : '';
     const target = targetOf(task);
     const draw = () => { label.textContent = value + unit; };
     draw();
-    const input = h('input', { class: 'input', type: 'number', min: '0', value: value, style: 'text-align:center;font-size:20px;font-weight:700' });
+    const input = h('input', { class: 'input value-input', type: 'number', min: '0', value: value });
     input.addEventListener('input', () => { value = Math.max(0, Number(input.value) || 0); draw(); });
     const skipValue = () => {
       if (!isDueOn(task, ymd)) { toast('Ese día no tocaba'); return; }
@@ -123,9 +121,9 @@ export function registerTaskRow(app) {
       box.append(h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, fmtLong(ymd) + (target ? ' · objetivo ' + target + unit : '')));
       box.append(label);
       box.append(h('div', { style: 'display:flex;align-items:center;justify-content:center;gap:14px;margin:18px 0' },
-        h('button', { class: 'mini-btn', onclick: () => { value = Math.max(0, value - step); input.value = value; draw(); }, html: icon('x', 17) }),
+        h('button', { class: 'mini-btn', 'aria-label': 'Restar ' + step, onclick: () => { value = Math.max(0, value - step); input.value = value; draw(); }, html: icon('minus', 18) }),
         input,
-        h('button', { class: 'mini-btn', onclick: () => { value += step; input.value = value; draw(); }, html: icon('plus', 17) })
+        h('button', { class: 'mini-btn', 'aria-label': 'Sumar ' + step, onclick: () => { value += step; input.value = value; draw(); }, html: icon('plus', 18) })
       ));
       box.append(h('div', { style: 'display:flex;gap:8px' },
         h('button', { class: 'btn btn-soft', style: 'flex:1', onclick: () => { app.core.clearDay(task, ymd); task.updatedAt = Date.now(); after(); closeOverlays(); } }, 'Borrar'),
