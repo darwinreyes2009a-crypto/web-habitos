@@ -7,4 +7,4 @@
 //
 // Sube este número cuando cambies un módulo. Después ejecuta:
 //   node tools/sync-version.js
-module.exports = { APP_VERSION: 49 };
+module.exports = { APP_VERSION: 50 };

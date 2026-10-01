@@ -394,26 +394,6 @@ export function registerSettings(app) {
         save();
         app.state.applyTheme();
       }));
-      box.append(h('p', { class: 'section-title', style: 'margin-top:18px' }, h('span', null, 'Animaciones')));
-      const motion = h('div', { class: 'seg' });
-      const motionHint = h('p', { class: 'field-hint', style: 'text-align:center;margin-top:8px' });
-      const motionText = value => value === 'auto'
-        ? 'Sigue el ajuste de animaciones de tu sistema.'
-        : value === 'off'
-          ? 'Sin transiciones ni animaciones de entrada.'
-          : 'Con animaciones, aunque el sistema las tenga desactivadas.';
-      motionHint.textContent = motionText(S.settings.reduceMotion || 'auto');
-      for (const [value, label] of [['auto', 'Según el sistema'], ['off', 'Reducidas'], ['on', 'Completas']]) {
-        motion.append(h('button', { class: (S.settings.reduceMotion || 'auto') === value ? 'on' : '', onclick: event => {
-          S.settings.reduceMotion = value;
-          save();
-          app.state.applyTheme();
-          motionHint.textContent = motionText(value);
-          [...motion.children].forEach(item => item.classList.remove('on'));
-          event.currentTarget.classList.add('on');
-        } }, label));
-      }
-      box.append(motion, motionHint);
       box.append(h('p', { class: 'field-hint', style: 'text-align:center;margin-top:10px' }, 'Consejo: toca una tarea en cualquier pantalla para marcarla como hecha.'));
       return box;
     });
@@ -659,6 +639,40 @@ export function registerSettings(app) {
                 class: theme() === value ? 'on' : '',
                 onclick: event => {
                   S.settings.theme = value;
+                  save();
+                  applyTheme();
+                  [...segment.children].forEach(item => item.classList.remove('on'));
+                  event.currentTarget.classList.add('on');
+                  drawHint();
+                }
+              }, label));
+            }
+            drawHint();
+            return segment;
+          })()
+        ),
+        // Las animaciones son una preferencia de apariencia, igual que el tema,
+        // así que viven aquí y no en "Tareas y hábitos".
+        h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
+          h('span', { class: 'r-ic', html: icon('star', 18) }),
+          h('div', { style: 'flex:1' },
+            h('b', { style: 'font-size:14px;display:block' }, 'Animaciones'),
+            h('span', { id: 'motionHint', style: 'font-size:12px;color:var(--text-2)' }, '')
+          ),
+          (() => {
+            const segment = h('div', { class: 'seg', style: 'display:flex;max-width:210px' });
+            const motionText = value => value === 'auto'
+              ? 'Según tu sistema'
+              : value === 'off' ? 'Sin animaciones' : 'Con animaciones';
+            const drawHint = () => {
+              const hint = document.getElementById('motionHint');
+              if (hint) hint.textContent = motionText(S.settings.reduceMotion || 'auto');
+            };
+            for (const [value, label] of [['auto', 'Auto'], ['off', 'Reducidas'], ['on', 'Completas']]) {
+              segment.append(h('button', {
+                class: (S.settings.reduceMotion || 'auto') === value ? 'on' : '',
+                onclick: event => {
+                  S.settings.reduceMotion = value;
                   save();
                   applyTheme();
                   [...segment.children].forEach(item => item.classList.remove('on'));
