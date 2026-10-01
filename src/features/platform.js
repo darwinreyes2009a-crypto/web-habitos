@@ -13,32 +13,83 @@ export function registerPlatform(app) {
   // recargar solo y perder lo que el usuario estaba haciendo.
   function watchUpdates() {
     if (!('serviceWorker' in navigator)) return;
+
+    // Un aviso sin worker al que activarse es peor que no tener aviso: se queda
+    // en pantalla para siempre. Cada ruta de salida pasa por aquí, y si no hay
+    // `waiting`, el aviso desaparece en vez de mentir.
+    let activeBar = null;
+    const dismissBar = () => { if (activeBar) { activeBar.remove(); activeBar = null; } };
+
+    const applyUpdate = (registration) => {
+      const waiting = registration && registration.waiting;
+      if (!waiting) { dismissBar(); return; }
+      waiting.postMessage({ type: 'skip-waiting' });
+      // `controllerchange` no siempre llega (p. ej. si otro service worker ya
+      // controla la página), así que recargamos pasado un instante como red de
+      // seguridad. Sin esto la recarga se queda colgada.
+      const reload = () => { dismissBar(); location.reload(); };
+      navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
+      setTimeout(reload, 1200);
+    };
+
     const offer = (registration) => {
-      if (!registration || !registration.waiting) return;
-      if (document.querySelector('.update-bar')) return;
+      if (!registration || !registration.waiting) { dismissBar(); return; }
+      if (activeBar && document.body.contains(activeBar)) return;
       const bar = h('div', { class: 'update-bar', role: 'status' },
         h('span', null, 'Hay una versión nueva de DailyHub'),
         h('button', {
           class: 'btn btn-primary',
           style: 'padding:7px 13px;font-size:12.5px',
-          onclick: () => {
-            registration.waiting.postMessage({ type: 'skip-waiting' });
-            navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-          }
-        }, 'Actualizar')
+          onclick: () => applyUpdate(registration)
+        }, 'Actualizar'),
+        h('button', {
+          class: 'icon-btn',
+          'aria-label': 'Ahora no',
+          style: 'width:28px;height:28px;flex:none',
+          html: icon('x', 15),
+          onclick: () => dismissBar()
+        })
       );
+      activeBar = bar;
       document.body.append(bar);
+
+      // El service worker ya NO se activa solo al instalarse (eso era lo que
+      // dejaba el aviso colgado), así que sin esto una actualización podría no
+      // aplicarse nunca. A los 30s se aplica sola y el aviso se retira. El
+      // temporizador se cancela en cuanto el worker esperando se va.
+      setTimeout(() => { if (activeBar === bar) applyUpdate(registration); }, 30000);
     };
+
+    // Si el worker esperando desaparece (otro pestaña ya lo activó, o se
+    // descartó), el aviso se retira en lugar de quedarse huérfano.
+    const watch = (registration) => {
+      if (!registration) return;
+      const stop = () => { if (activeBar && !(registration.waiting)) dismissBar(); };
+      setInterval(stop, 2000);
+    };
+
     navigator.serviceWorker.ready.then(registration => {
       offer(registration);
+      watch(registration);
+
       // Cada vez que se instala uno nuevo, aparece el aviso.
       registration.addEventListener('updatefound', () => {
         const installing = registration.installing;
         if (!installing) return;
-        installing.addEventListener('statechange', () => {
+        const check = () => {
           if (installing.state === 'installed' && navigator.serviceWorker.controller) offer(registration);
-        });
+        };
+        // Si el worker ya terminó de instalarse antes de que enganchemos el
+        // listener, `statechange` no volverá a dispararse y el aviso se
+        // perdería. Por eso comprobamos el estado actual de inmediato.
+        check();
+        installing.addEventListener('statechange', check);
       });
+
+      // Red de seguridad: `updatefound` no se dispara si el navegador ya
+      // había descargado el worker nuevo antes de esta carga (por ejemplo al
+      // recargar con un worker esperando). Consultamos `waiting` una vez.
+      setTimeout(() => offer(registration), 1500);
     }).catch(() => {});
   }
 

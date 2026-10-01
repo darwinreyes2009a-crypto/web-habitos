@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v46';
+const CACHE = 'dailyhub-v48';
 const ASSETS = [
   './',
   './index.html',
@@ -46,7 +46,17 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS).catch(() => {})).then(() => self.skipWaiting()));
+  // SIN skipWaiting aquí a propósito. El service worker nuevo precachea y se
+  // queda en `waiting`; la app muestra el aviso "Hay una versión nueva" y solo
+  // se activa cuando el usuario pulsa "Actualizar" (mensaje `skip-waiting`).
+  //
+  // Antes se llamaba skipWaiting() en install, lo que activaba el worker
+  // nuevo de inmediato y vaciaba `registration.waiting`. El aviso se quedaba
+  // en pantalla sin ningún worker al que activarse, así que "Actualizar" no
+  // hacía nada y el mensaje no se iba nunca. Para que una actualización crítica
+  // se aplique sin pulsar nada, el aviso ofrece un temporizador que llama a
+  // skipWaiting solo.
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS).catch(() => {})));
 });
 
 self.addEventListener('activate', (event) => {
