@@ -19,13 +19,15 @@ export function registerMedia(app) {
     const box = h('div', { style: 'max-width:92vw;max-height:88vh;display:flex;flex-direction:column;gap:12px;align-items:center' },
       h('img', { src, alt: title || 'Foto', style: 'max-width:92vw;max-height:74vh;border-radius:var(--r-xl);box-shadow:var(--sh-l);object-fit:contain;background:var(--bg)' }),
       title ? h('b', { style: 'color:#fff;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.4)' }, title) : null,
-      list.length ? h('div', { class: 'photo-actions' },
+      // "Cerrar" comparte fila con las acciones para que no ocupen dos filas:
+      // en móvil caben los tres en 390px repartidos a partes iguales.
+      h('div', { class: 'photo-actions' },
         list.map(action => h('button', {
           class: 'btn ' + (action.tone || 'btn-soft'),
           onclick: () => { overlay.remove(); action.onClick(); }
-        }, action.label))
-      ) : null,
-      h('button', { class: 'btn btn-soft', onclick: () => overlay.remove() }, 'Cerrar')
+        }, action.label)),
+        h('button', { class: 'btn btn-soft', onclick: () => overlay.remove() }, 'Cerrar')
+      )
     );
     overlay.append(box);
     document.body.appendChild(overlay);
