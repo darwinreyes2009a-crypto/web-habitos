@@ -3,9 +3,9 @@
    Comprueba el round-trip completo y, sobre todo, que la app sigue
    sincronizando cuando la migración todavía NO está aplicada.
 
-   Uso: node tools/test-calendar-sync.js
+   Uso: node tools/test-calendar-sync.cjs
 */
-const { crearBanco, crearAserciones, PID, UID } = require('./harness');
+const { crearBanco, crearAserciones, PID, UID } = require('./harness.cjs');
 
 const HOY = '2026-09-28';   // lunes
 

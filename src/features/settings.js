@@ -41,9 +41,11 @@ export function registerSettings(app) {
       const profile = currentProfile();
       const box = h('div');
       if (profile.pin) {
-        const currentPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'PIN actual' });
-        const newPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', style: 'margin-top:10px' });
-        const newPinConfirmation = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el nuevo PIN', style: 'margin-top:10px' });
+        const currentPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'PIN actual', autocomplete: 'off' });
+        const newPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', style: 'margin-top:10px', autocomplete: 'new-password' });
+        const newPinConfirmation = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el nuevo PIN', style: 'margin-top:10px', autocomplete: 'new-password' });
+        const digitsOnly = input => input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+        [currentPin, newPin, newPinConfirmation].forEach(digitsOnly);
         const error = h('p', { style: 'font-size:12.5px;color:var(--danger);min-height:18px;margin:8px 0' });
         box.append(currentPin, newPin, newPinConfirmation, error,
           h('button', {
@@ -86,8 +88,10 @@ export function registerSettings(app) {
           }, 'Quitar PIN')
         );
       } else {
-        const newPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)' });
-        const newPinConfirmation = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el PIN', style: 'margin-top:10px' });
+        const newPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', autocomplete: 'new-password' });
+        const newPinConfirmation = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el PIN', style: 'margin-top:10px', autocomplete: 'new-password' });
+        const digitsOnly = input => input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+        [newPin, newPinConfirmation].forEach(digitsOnly);
         const error = h('p', { style: 'font-size:12.5px;color:var(--danger);min-height:18px;margin:8px 0' });
         box.append(
           h('p', { style: 'font-size:13px;color:var(--text-2);margin-bottom:14px;line-height:1.5' }, 'Protege este perfil con un PIN de 4 a 6 dígitos. Se pedirá al seleccionar el perfil.'),

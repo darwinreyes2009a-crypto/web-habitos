@@ -1,0 +1,11 @@
+{
+  "name": "web-habitos",
+  "private": true,
+  "description": "DailyHub — PWA de tareas, hábitos, Modo Clase y regalos",
+  "type": "module",
+  "scripts": {
+    "test": "node tools/test-all.cjs",
+    "sync-version": "node tools/sync-version.cjs",
+    "check-pwa": "node tools/check-pwa.cjs"
+  }
+}

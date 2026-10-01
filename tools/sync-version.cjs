@@ -1,15 +1,15 @@
-// Propaga el número de versión de tools/version.js a los tres sitios donde
+// Propaga el número de versión de tools/version.cjs a los tres sitios donde
 // aparecía escrito a mano: el nombre de la caché del service worker, el
 // `?v=` del script de entrada y el `?v=` del import de app-sync.js.
 //
-//   node tools/sync-version.js
+//   node tools/sync-version.cjs
 //
 // Devuelve código de salida 1 si algún fichero queda sin sincronizar, para
 // poder fallar la CI.
 
 const fs = require('fs');
 const path = require('path');
-const { APP_VERSION } = require('./version.js');
+const { APP_VERSION } = require('./version.cjs');
 
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
