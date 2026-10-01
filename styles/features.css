@@ -36,49 +36,22 @@
 .person-card span { font-size:var(--fs-micro); color:var(--text-2); font-weight:var(--fw-medium) }
 .person-card.add { border-style:dashed; border-color:var(--border); color:var(--text-2); justify-content:center; min-height:130px; gap:8px }
 .person-card.add:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-soft) }
-/* Personas: lista de contactos al estilo WhatsApp, con la foto a la izquierda
-   y el nombre a su derecha. Si falta la foto, la fila dice "Añadir foto" y el
-   avatar lleva el distintivo de "añadir", para que nunca haya que entrar a la
-   ficha de la persona a buscarla. */
-.contact-list { display: flex; flex-direction: column; gap: 2px }
-.contact-row {
-  display: flex; align-items: center; gap: var(--sp-3);
-  width: 100%; padding: 10px var(--sp-3);
-  background: var(--surface);
-  border: 1px solid transparent;
-  border-radius: var(--r-l);
-  transition: background var(--t-fast), border-color var(--t-fast);
+/* Avatar grande de la ficha de persona: es pulsable para ver la foto o ponerla. */
+.person-hero-photo {
+  position: relative;
+  border-radius: 50%;
+  display: block;
+  line-height: 0;
+  transition: transform var(--t-fast);
 }
-.contact-row:hover { background: var(--surface-2) }
-.contact-row.add { color: var(--primary); border-color: var(--border) }
-.contact-row.add:hover { background: var(--primary-soft) }
-.contact-row.add .contact-add-icon {
-  width: 48px; height: 48px; border-radius: 50%; flex: none;
-  border: 1.5px dashed var(--primary); color: var(--primary);
-  display: flex; align-items: center; justify-content: center;
-}
-
-.contact-photo { position: relative; flex: none; line-height: 0 }
-.contact-photo .contact-flag {
-  position: absolute; right: -1px; bottom: -1px;
-  width: 20px; height: 20px; border-radius: 50%;
+.person-hero-photo:hover { transform: scale(1.03) }
+.person-hero-photo .contact-flag {
+  position: absolute; right: 0; bottom: 0;
+  width: 26px; height: 26px; border-radius: 50%;
   background: var(--primary); color: #fff;
-  border: 2px solid var(--surface);
+  border: 2.5px solid var(--bg);
   display: flex; align-items: center; justify-content: center;
-  transition: background var(--t-fast);
 }
-.contact-photo:hover .contact-flag { background: var(--primary-2) }
-
-.contact-main { flex: 1; min-width: 0; text-align: left; min-height: var(--tap); display: flex; flex-direction: column; justify-content: center }
-.contact-main b { display: block; font-size: var(--fs-body); font-weight: var(--fw-semi); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.contact-main span { display: block; font-size: var(--fs-meta); color: var(--text-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-
-.contact-add {
-  font-size: var(--fs-label); font-weight: var(--fw-semi);
-  color: var(--primary); flex: none;
-  min-height: var(--tap); padding: 0 var(--sp-2);
-}
-.contact-add:hover { text-decoration: underline }
 .slot-row { border-left:3px solid var(--border) }
 .slot-time { width:54px; flex:none; display:flex; flex-direction:column; line-height:1.25 }
 .slot-time b { font-size:14px; font-weight:700 }
