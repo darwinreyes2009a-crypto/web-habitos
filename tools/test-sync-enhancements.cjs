@@ -1,5 +1,5 @@
 /* Round-trip de mejoras opcionales para tasks y notes contra app-sync.js real. */
-const { crearBanco, crearAserciones, PID } = require('./harness');
+const { crearBanco, crearAserciones, PID } = require('./harness.cjs');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function run() {

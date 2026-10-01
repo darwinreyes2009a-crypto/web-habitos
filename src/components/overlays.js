@@ -45,12 +45,31 @@ export function registerOverlays(app) {
     );
   }
 
+  function bindEscape(overlay, closeFn) {
+    const onKey = event => {
+      if (event.key !== 'Escape') return;
+      const stack = [...document.querySelectorAll('.overlay')];
+      if (stack[stack.length - 1] !== overlay) return;
+      event.preventDefault();
+      closeFn();
+    };
+    document.addEventListener('keydown', onKey);
+    overlay._escapeHandler = onKey;
+  }
+
+  function unbindEscape(overlay) {
+    if (overlay && overlay._escapeHandler) {
+      document.removeEventListener('keydown', overlay._escapeHandler);
+      overlay._escapeHandler = null;
+    }
+  }
+
   function openSheet(title, build) {
     const overlay = h('div', {
       class: 'overlay',
       onclick: event => { if (event.target === overlay) closeOverlays(); }
     });
-    const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-label': title },
+    const sheet = h('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'grabber' }),
       h('div', { class: 'sheet-head' },
         h('h3', null, title),
@@ -61,12 +80,17 @@ export function registerOverlays(app) {
     if (body) sheet.append(body);
     overlay.append(sheet);
     $('#overlays').append(overlay);
+    bindEscape(overlay, closeOverlays);
     const focusable = sheet.querySelector('input,select,textarea,button:not(.icon-btn)');
     if (focusable) focusable.focus({ preventScroll: true });
   }
 
   function closeOverlays() {
-    $('#overlays').innerHTML = '';
+    const root = $('#overlays');
+    if (root) {
+      root.querySelectorAll('.overlay').forEach(unbindEscape);
+      root.innerHTML = '';
+    }
   }
 
   function switchRow(label, hint, checked, onChange) {
@@ -116,9 +140,9 @@ export function registerOverlays(app) {
           results.append(h('p', { class: 'field-hint', style: 'text-align:center;padding:8px 0' }, 'Escribe para buscar en todo DailyHub.'));
           return;
         }
-      const people = S.people.filter(person => person.name.toLowerCase().includes(query));
-      const tasks = S.tasks.filter(task => task.title.toLowerCase().includes(query));
-      const gifts = S.gifts.filter(gift => gift.title.toLowerCase().includes(query) || (gift.notes || '').toLowerCase().includes(query));
+      const people = S.people.filter(person => (person.name || '').toLowerCase().includes(query));
+      const tasks = S.tasks.filter(task => (task.title || '').toLowerCase().includes(query));
+      const gifts = S.gifts.filter(gift => (gift.title || '').toLowerCase().includes(query) || (gift.notes || '').toLowerCase().includes(query));
         const notes = (S.notes || []).filter(note => !note.deletedAt && (note.text || '').toLowerCase().includes(query));
         const inbox = (S.inbox || []).filter(item => (item.text || '').toLowerCase().includes(query));
         if (!people.length && !tasks.length && !gifts.length && !notes.length && !inbox.length) {
@@ -183,21 +207,23 @@ export function registerOverlays(app) {
 
   function confirmDialog({ title, message, confirmText, onConfirm }) {
     const actionLabel = confirmText || 'Eliminar';
+    const dismiss = () => { unbindEscape(overlay); overlay.remove(); };
     const overlay = h('div', {
       class: 'overlay',
       style: 'z-index:70',
-      onclick: event => { if (event.target === overlay) overlay.remove(); }
+      onclick: event => { if (event.target === overlay) dismiss(); }
     });
-    const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-label': title },
+    const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-modal': 'true', 'aria-label': title },
       h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:8px' }, title),
       h('p', { style: 'font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px' }, message),
       h('div', { style: 'display:flex;gap:10px;justify-content:flex-end' },
-        h('button', { class: 'btn btn-soft', onclick: () => overlay.remove() }, 'Cancelar'),
-        h('button', { class: 'btn btn-danger', onclick: () => { overlay.remove(); if (onConfirm) onConfirm(); } }, actionLabel)
+        h('button', { class: 'btn btn-soft', onclick: dismiss }, 'Cancelar'),
+        h('button', { class: 'btn btn-danger', onclick: () => { dismiss(); if (onConfirm) onConfirm(); } }, actionLabel)
       )
     );
     overlay.append(sheet);
     document.body.appendChild(overlay);
+    bindEscape(overlay, dismiss);
     const first = sheet.querySelector('button');
     if (first) first.focus({ preventScroll: true });
   }

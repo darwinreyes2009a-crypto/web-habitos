@@ -6,5 +6,5 @@
 // se crea una caché nueva y se vuelve a bajar todo.
 //
 // Sube este número cuando cambies un módulo. Después ejecuta:
-//   node tools/sync-version.js
-module.exports = { APP_VERSION: 31 };
+//   node tools/sync-version.cjs
+module.exports = { APP_VERSION: 32 };

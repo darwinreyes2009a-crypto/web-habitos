@@ -2,9 +2,9 @@
    Ejecuta el app-sync.js real con el arnés compartido para comprobar que un
    bloque de patio sigue siendo patio tras subirlo y volver a bajarlo.
 
-   Uso: node tools/test-patio-sync.js
+   Uso: node tools/test-patio-sync.cjs
 */
-const { crearBanco, crearAserciones, PID, UID } = require('./harness');
+const { crearBanco, crearAserciones, PID, UID } = require('./harness.cjs');
 
 const { DB, S, DailySync, emptyBucket } = crearBanco({ conKind: true });
 

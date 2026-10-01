@@ -112,30 +112,33 @@ python -m http.server 8477
 Comprobaciones rápidas sin dependencias externas:
 
 ```bash
-node tools/test-all.js   # sintaxis + versión + sincronización, copias, importación y modelos
+node tools/test-all.cjs   # sintaxis + versión + sincronización, copias, importación y modelos
+node tools/test-all.js    # alias ESM para CI (delega en test-all.cjs)
 ```
 
 Equivale a:
 
 ```bash
-node tools/sync-version.js         # coherencia de la versión y de ASSETS del SW
-node tools/test-patio-sync.js      # round-trip de class_slots con y sin migración
-node tools/test-calendar-sync.js   # class_breaks, class_offs y la columna active
+node tools/sync-version.cjs         # coherencia de la versión y de ASSETS del SW
+node tools/test-patio-sync.cjs      # round-trip de class_slots con y sin migración
+node tools/test-calendar-sync.cjs   # class_breaks, class_offs y la columna active
 node tools/test-calendar-core.mjs  # huecos, solapes, carga semanal y .ics
 node tools/test-routines.mjs       # tipos de hábito, recurrencia, rachas y heatmap
 node tools/test-task-kind-transitions.mjs # transiciones entre tipos y días saltados
 node tools/test-backup.mjs          # copia de seguridad: fusionar, referencias, colisiones e idempotencia
 node tools/test-schedule-import.mjs  # CSV/TSV, validación, solapes e importación atómica
-node tools/test-sync-enhancements.js # round-trip de tareas/notas con y sin migración
+node tools/test-sync-enhancements.cjs # round-trip de tareas/notas con y sin migración
 node tools/test-notes-preview.mjs    # salida Markdown segura contra HTML/XSS
 ```
 
-En `.github/workflows/ci.yml` se ejecuta `node tools/test-all.js` en cada push y PR.
+En `.github/workflows/ci.yml` se ejecuta `node tools/test-all.js` en cada push y PR (delega en `test-all.cjs`).
 
-> Nota: `node --check fichero.js` **no** parsea un módulo ESM si el proyecto no
-> tiene `package.json` con `type: module`, así que un error de sintaxis se
-> escapa. Por eso `test-all.js` comprueba sobre una copia `.mjs`. No lo
-> sustituyas por un `node --check` directo.
+> Nota: el `package.json` declara `"type": "module"`. Los scripts de
+> herramientas que usan CommonJS (`require`) viven como `.cjs`
+> (`tools/test-all.cjs`, `tools/sync-version.cjs`, el arnés, etc.).
+> `test-all.cjs` ejecuta `node --check` directamente sobre los módulos ES.
+> La checklist PWA manual está en `docs/pwa-checklist.md`; la parte estática
+> se cubre con `node tools/check-pwa.cjs` (incluido en `npm test`).
 
 ### Publicar una versión
 
@@ -144,14 +147,14 @@ parámetro `?v=` de `index.html` y de los imports de `src/app.js` **no** cambia
 nada en la caché: el botón real es el nombre de `CACHE`. Aun así, el número se
 mantiene en un único sitio para no tener que escribirlo a mano en tres ficheros:
 
-1. sube `APP_VERSION` en `tools/version.js`;
-2. ejecuta `node tools/sync-version.js`, que lo propaga a `sw.js`, `index.html`
+1. sube `APP_VERSION` en `tools/version.cjs`;
+2. ejecuta `node tools/sync-version.cjs`, que lo propaga a `sw.js`, `index.html`
    y `src/app.js`, y comprueba que todo módulo de `src/` esté en `ASSETS`;
-3. `test-all.js` falla si algo queda desincronizado.
+3. `test-all.cjs` falla si algo queda desincronizado.
 
 Al modificar un módulo:
 1. mantén su registro en `src/app.js`;
-2. ejecuta `node tools/sync-version.js` (añade a `ASSETS` lo que falte);
+2. ejecuta `node tools/sync-version.cjs` (añade a `ASSETS` lo que falte);
 3. comprueba las vistas afectadas y los flujos que usan ese contrato.
 
 ## Probar RLS

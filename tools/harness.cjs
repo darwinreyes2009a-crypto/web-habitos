@@ -4,7 +4,7 @@
    reimplementación.
 
    Uso desde un test:
-     const { crearBanco, DailySync, S, DB, PID, UID } = require('./harness');
+     const { crearBanco, DailySync, S, DB, PID, UID } = require('./harness.cjs');
 */
 const fs = require('fs');
 const path = require('path');
