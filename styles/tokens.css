@@ -314,6 +314,14 @@ a { color: var(--primary) }
 }
 .head-actions { display: flex; align-items: center; gap: var(--sp-2); flex: none }
 .head-actions:empty { display: none }
+/* Con tres o cuatro acciones (Regalos, Modo Clase) el título se quedaba sin
+   sitio y el subtítulo se partía en tres líneas. En móvil las acciones bajan a
+   su propia fila, alineadas a la derecha. */
+@media (max-width: 460px) {
+  .scr-head { flex-wrap: wrap }
+  .scr-head > div:first-child { flex: 1 0 100% }
+  .scr-head .head-actions { margin-left: auto }
+}
 
 /* Petición grande dentro de un formulario. */
 .big-q {

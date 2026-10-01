@@ -24,6 +24,7 @@ export function registerGiftsAndPeople(app) {
   const { headBar, searchBtn, formHead, emptyState, openSheet, closeOverlays, toast } = app.components;
   const { deletePerson } = app.actions;
   const { giftThumb } = app.features;
+  const { pickImage, viewImage } = app.services;
 
   ui.giftFilter = ui.giftFilter || 'todas';
   ui.giftStatus = ui.giftStatus || 'todas';
@@ -66,6 +67,54 @@ export function registerGiftsAndPeople(app) {
     return events.sort((first, second) => (first.date < second.date ? -1 : first.date > second.date ? 1 : 0));
   }
 
+  /* --- Lista de personas, al estilo lista de contactos -------------------- */
+
+  function setPersonPhoto(person) {
+    pickImage(data => {
+      person.photo = data;
+      save();
+      render();
+      toast('Foto de ' + person.name + ' actualizada');
+    }, 512);
+  }
+
+  function personRow(person) {
+    const count = giftsOf(person.id).length;
+    const detail = count + (count === 1 ? ' regalo' : ' regalos') + (person.birthday ? ' · cumple el ' + fmtShort(person.birthday) : '');
+    // Tocar el avatar abre la foto en grande si ya hay una; si no, ofrece ponerla.
+    const photoButton = h('button', {
+      class: 'contact-photo',
+      'aria-label': person.photo ? 'Ver o cambiar la foto de ' + person.name : 'Añadir foto a ' + person.name,
+      onclick: () => person.photo ? viewImage(person.photo, person.name) : setPersonPhoto(person)
+    },
+      avatarEl(person.name, person.color, 48, person.photo),
+      person.photo ? null : h('span', { class: 'contact-flag', html: icon('plus', 12) })
+    );
+    return h('div', { class: 'contact-row' },
+      photoButton,
+      h('button', { class: 'contact-main', onclick: () => go('person', { id: person.id }) },
+        h('b', null, person.name),
+        h('span', null, detail)
+      ),
+      person.photo
+        ? h('button', { class: 'contact-add', 'aria-label': 'Cambiar la foto de ' + person.name, onclick: () => setPersonPhoto(person) }, 'Cambiar foto')
+        : h('button', { class: 'contact-add', onclick: () => setPersonPhoto(person) }, 'Añadir foto')
+    );
+  }
+
+  function peopleList() {
+    if (!S.people.length) {
+      return emptyState('users', 'Sin personas todavía', 'Crea a alguien y guarda su foto, sus gustos y sus fechas para acertar siempre con el regalo.', 'Añadir persona', () => go('personForm'));
+    }
+    const list = h('div', { class: 'contact-list' });
+    for (const person of S.people) list.append(personRow(person));
+    list.append(h('button', { class: 'contact-row add', onclick: () => go('personForm') },
+      h('span', { class: 'contact-add-icon', html: icon('plus', 20) }),
+      h('span', { class: 'contact-main', style: 'justify-content:center' }, h('b', null, 'Añadir persona'))
+    ));
+    return list;
+  }
+
   function scrGifts() {
     const wrap = h('div');
     wrap.append(headBar('Regalos', 'Tus ideas y regalos pendientes', searchBtn(),
@@ -85,18 +134,7 @@ export function registerGiftsAndPeople(app) {
     }
 
     wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Personas')));
-    const grid = h('div', { class: 'person-grid' });
-    for (const person of S.people) {
-      const count = giftsOf(person.id).length;
-      grid.append(h('button', { class: 'person-card', onclick: () => go('person', { id: person.id }) },
-        avatarEl(person.name, person.color, 54, person.photo),
-        h('b', null, person.name),
-        h('span', null, count + (count === 1 ? ' regalo' : ' regalos')),
-        person.birthday ? h('span', { style: 'font-size:11px;color:var(--text-3)' }, 'Cumple: ' + fmtShort(person.birthday)) : null
-      ));
-    }
-    grid.append(h('button', { class: 'person-card add', onclick: () => go('personForm') }, h('span', { html: icon('plus', 22) }), h('b', null, 'Añadir persona')));
-    wrap.append(grid);
+    wrap.append(peopleList());
     wrap.append(h('div', { class: 'section-title' },
       h('span', null, 'Próximos regalos'),
       h('button', { class: 'link', onclick: () => { ui.giftTab = 'todos'; render(); } }, 'Ver todos')
