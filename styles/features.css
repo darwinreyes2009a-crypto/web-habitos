@@ -134,7 +134,9 @@
 .habit-row { display:flex; align-items:center; gap:12px; margin-bottom:14px }
 .habit-row .r-ic { width:36px; height:36px; border-radius:12px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none }
 .habit-row .hb-mid { flex:1; min-width:0 }
-.habit-row b { font-size:13.5px; font-weight:600; display:block; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+/* Solo el titulo. Antes era `.habit-row b`, que también alcanzaba al <b> del
+   contador y le colgaba su margin-bottom, descuadrando los dos numeros 3px. */
+.habit-row .r-main > b { font-size:var(--fs-body); font-weight:var(--fw-semi); display:block; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
 .habit-row .hb-n { font-size:12px; font-weight:700; color:var(--text-2); flex:none }
 .stat-big { font-size:34px; font-weight:800; letter-spacing:-.03em; color:var(--primary) }
 .sync-badge { display:inline-flex; align-items:center; gap:7px; font-size:var(--fs-label); font-weight:var(--fw-semi); padding:8px var(--sp-3); border-radius:var(--r-pill); background:var(--surface-2); color:var(--text-2) }
@@ -252,8 +254,10 @@ button.hist-row { display:flex }
   border: 1px solid var(--border); border-radius: var(--r-s);
   background: var(--surface); color: var(--text-2);
   font-variant-numeric: tabular-nums;
+  line-height: 1;
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
 }
+.counter-val b { margin: 0; padding: 0; display: inline }
 /* Valor y objetivo son un solo numero: mismo cuerpo y mismo grosor, para que
    "5/8" se lea como una fracción y no como un 5 grande con un 8 pequeno al
    lado. Lo único que los diferencia es el color: el objetivo va atenuado. */
