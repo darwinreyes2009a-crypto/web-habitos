@@ -196,7 +196,7 @@ export function registerTaskRow(app) {
     const row = h('div', { class: 'row habit-row' + (info.skipped ? ' skipped' : '') + (failedAvoid ? ' failed-avoid' : '') + (priority ? ' priority-' + (Number(task.priority) === 2 ? 'urgent' : 'high') : ''), style: done && kindOf(task) !== 'avoid' ? 'opacity:.62' : '' },
       taskControl(task, ymd),
       h('div', {
-        style: 'flex:1;min-width:0;cursor:pointer',
+        class: 'r-main',
         onclick: () => op.onOpen ? op.onOpen(task, ymd) : app.domain.go('taskForm', { id: task.id })
       },
         h('b', { style: done && kindOf(task) !== 'avoid' ? 'color:var(--text-2)' : '' }, task.title),

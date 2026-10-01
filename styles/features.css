@@ -254,14 +254,31 @@ button.hist-row { display:flex }
   font-variant-numeric: tabular-nums;
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
 }
-.counter-val b { font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--text); line-height: 1 }
-.counter-val span { font-size: var(--fs-label); color: var(--text-3) }
+/* Valor y objetivo comparten tamano: la diferencia la marcan el peso y el
+   color, no un cuerpo mas pequeno que hacia que "5/8" pareciese "5 sobre 8". */
+.counter-val b { font-size: var(--fs-lead); font-weight: var(--fw-black); color: var(--text); line-height: 1; letter-spacing: var(--ls-tight) }
+.counter-val span { font-size: var(--fs-lead); font-weight: var(--fw-semi); color: var(--text-3); line-height: 1; letter-spacing: var(--ls-tight) }
 .counter-val.partial { border-color: var(--amber); background: var(--amber-soft); color: var(--amber) }
 .counter-val.partial b { color: var(--amber) }
-.counter-val.partial span { color: var(--amber); opacity: .75 }
+.counter-val.partial span { color: var(--amber); opacity: .7 }
 .counter-val.done { border-color: var(--green); background: var(--green-soft); color: var(--green) }
 .counter-val.done b, .counter-val.done span { color: var(--green) }
+.counter-val.done span { opacity: .7 }
 .counter-val.skipped { opacity: .55 }
+
+/* Bloque de texto de la fila de rutina. Antes era un style:inline, que gana a
+   cualquier regla del CSS; al sacarlo aquí, la fila puede repartirse en dos
+   líneas en móvil. */
+.r-main { flex: 1; min-width: 0; cursor: pointer }
+
+@media (max-width: 460px) {
+  .row:has(> .stepper) { flex-wrap: wrap; row-gap: var(--sp-2); align-items: center }
+  .row:has(> .stepper) > .r-main { order: 1; flex: 1 0 100% }
+  .row:has(> .stepper) > .stepper { order: 2 }
+  .row:has(> .stepper) > span:not(.r-ic):not(.row-check):not(.counter-val) { order: 2 }
+  .row:has(> .stepper) > .r-ic { order: 3 }
+  .row:has(> .stepper) > .mini-btn { order: 4; margin-left: auto }
+}
 
 /* Hoja de valor exacto: la cifra grande y el campo van con los mismos roles. */
 .value-display { display: block; font-size: var(--fs-hero); font-weight: var(--fw-black); letter-spacing: var(--ls-tighter); line-height: var(--lh-tight) }
