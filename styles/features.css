@@ -36,6 +36,10 @@
 .person-card span { font-size:var(--fs-micro); color:var(--text-2); font-weight:var(--fw-medium) }
 .person-card.add { border-style:dashed; border-color:var(--border); color:var(--text-2); justify-content:center; min-height:130px; gap:8px }
 .person-card.add:hover { border-color:var(--primary); color:var(--primary); background:var(--primary-soft) }
+/* Acciones del visor de fotos: mismo patrón que el formulario de regalos. */
+.photo-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center }
+.photo-actions .btn { padding: 9px var(--sp-4); font-size: var(--fs-meta) }
+
 /* Avatar grande de la ficha de persona: es pulsable para ver la foto o ponerla. */
 .person-hero-photo {
   position: relative;

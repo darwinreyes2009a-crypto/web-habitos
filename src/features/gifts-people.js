@@ -554,14 +554,36 @@ export function registerGiftsAndPeople(app) {
       h('button', { class: 'icon-btn', 'aria-label': 'Editar persona', onclick: () => go('personForm', { id: person.id }), html: icon('edit', 18) }),
       h('button', { class: 'icon-btn', 'aria-label': 'Eliminar', onclick: () => deletePerson(person), html: icon('trash', 18) })
     ));
-    // Tocar la foto la abre en grande. Si la persona todavía no tiene, la misma
-// acción ofrece ponerla, para no tener que ir a Editar.
+    function setPersonPhoto(person) {
+      pickImage(data => {
+        person.photo = data;
+        save();
+        render();
+        toast('Foto de ' + person.name + ' guardada');
+      }, 512);
+    }
+
+    // Tocar la foto la abre en grande, y ahí se puede cambiar o eliminar. Si la
+// persona todavía no tiene, el mismo toque ofrece ponerla.
     const photoButton = h('button', {
       class: 'person-hero-photo',
       'aria-label': person.photo ? 'Ver la foto de ' + person.name : 'Añadir foto a ' + person.name,
-      onclick: () => person.photo
-        ? viewImage(person.photo, person.name)
-        : pickImage(data => { person.photo = data; save(); render(); toast('Foto guardada'); }, 512)
+      onclick: () => {
+        if (!person.photo) { setPersonPhoto(person); return; }
+        viewImage(person.photo, person.name, [
+          { label: 'Cambiar foto', onClick: () => setPersonPhoto(person) },
+          {
+            label: 'Eliminar foto',
+            tone: 'btn-danger',
+            onClick: () => {
+              person.photo = '';
+              save();
+              render();
+              toast('Foto de ' + person.name + ' eliminada');
+            }
+          }
+        ]);
+      }
     },
       avatarEl(person.name, person.color, 84, person.photo),
       person.photo ? null : h('span', { class: 'contact-flag', html: icon('plus', 13) })

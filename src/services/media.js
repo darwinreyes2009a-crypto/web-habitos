@@ -6,15 +6,25 @@ export function registerMedia(app) {
     if (button) button.textContent = hasPhoto ? 'Cambiar foto' : 'Añadir foto de la galería';
   }
 
-  function viewImage(src, title) {
+  // `actions` es opcional: lista de { label, tone, onClick }. El visor se
+  // cierra antes de ejecutar cada acción, para que quien la llama pueda abrir
+  // un editor o repintar la pantalla sin pelearse con el overlay.
+  function viewImage(src, title, actions) {
     const overlay = h('div', {
       class: 'overlay',
       style: 'z-index:75;align-items:center;padding:20px',
       onclick: event => { if (event.target === overlay) overlay.remove(); }
     });
+    const list = Array.isArray(actions) ? actions.filter(Boolean) : [];
     const box = h('div', { style: 'max-width:92vw;max-height:88vh;display:flex;flex-direction:column;gap:12px;align-items:center' },
-      h('img', { src, alt: title || 'Foto', style: 'max-width:92vw;max-height:74vh;border-radius:var(--r-xl);box-shadow:var(--sh-l);object-fit:contain;background:#fff' }),
+      h('img', { src, alt: title || 'Foto', style: 'max-width:92vw;max-height:74vh;border-radius:var(--r-xl);box-shadow:var(--sh-l);object-fit:contain;background:var(--bg)' }),
       title ? h('b', { style: 'color:#fff;font-size:14px;text-shadow:0 1px 4px rgba(0,0,0,.4)' }, title) : null,
+      list.length ? h('div', { class: 'photo-actions' },
+        list.map(action => h('button', {
+          class: 'btn ' + (action.tone || 'btn-soft'),
+          onclick: () => { overlay.remove(); action.onClick(); }
+        }, action.label))
+      ) : null,
       h('button', { class: 'btn btn-soft', onclick: () => overlay.remove() }, 'Cerrar')
     );
     overlay.append(box);
