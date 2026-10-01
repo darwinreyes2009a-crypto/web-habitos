@@ -394,3 +394,21 @@ button.hist-row { display:flex }
 .now-jump { display:flex; align-items:center; gap:10px; width:100%; min-height:var(--tap); padding:11px var(--sp-4); margin-bottom:var(--sp-4); background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-l); font-size:var(--fs-body); font-weight:var(--fw-semi); color:var(--text-2); box-shadow:var(--sh-s) }
 .now-jump .ic { color:var(--primary); flex:none }
 .now-jump .chev { margin-left:auto; color:var(--text-3) }
+
+/* ---------- Segmentos de Ajustes → Apariencia ---------- */
+/* Los selectores de tres estados ("Muy grande", "Completas") no caben junto al
+   texto en pantallas estrechas. En vez de recortar las etiquetas o dejar que
+   la fila desborde, el selector baja a su propia línea. */
+.set-seg { display:flex; flex:none; width:300px; max-width:100% }
+/* La columna de contenido se estrecha antes que el viewport: con la barra
+   lateral abierta `.content` ronda 730px aunque el viewport sea de 1000. Por eso
+   el selector baja a su propia línea en cuanto deja de caber a su lado, en vez
+   de esperar al breakpoint de móvil. */
+@media (max-width: 1000px) {
+  .set-card > div:has(> .set-seg) { flex-wrap:wrap; row-gap:var(--sp-3) }
+  /* El bloque de texto no es el primer hijo (le precede el icono), así que se
+     selecciona descartando los dos hermanos conocidos: no es .r-ic ni .set-seg. */
+  .set-card > div:has(> .set-seg) > div:not(.r-ic):not(.set-seg) { flex:1 1 100% }
+  .set-seg { width:100% }
+  .set-seg button { flex:1 1 0; min-width:0 }
+}

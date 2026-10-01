@@ -378,23 +378,7 @@ export function registerSettings(app) {
       const box = h('div');
       box.append(switchRow('Ocultar completadas en Hoy', 'La pantalla Inicio solo mostrará lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }));
       box.append(switchRow('Vibración al marcar', 'Respuesta háptica en dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }));
-      box.append(h('p', { class: 'section-title', style: 'margin-top:18px' }, h('span', null, 'Tamaño del texto')));
-      const scale = h('div', { class: 'seg' });
-      for (const [value, label] of [[1, 'Normal'], [1.1, 'Grande'], [1.2, 'Muy grande']]) {
-        scale.append(h('button', { class: Number(S.settings.fontScale || 1) === value ? 'on' : '', onclick: event => {
-          S.settings.fontScale = value;
-          save();
-          app.state.applyTheme();
-          [...scale.children].forEach(item => item.classList.remove('on'));
-          event.currentTarget.classList.add('on');
-        } }, label));
-      }
-      box.append(scale, switchRow('Alto contraste', 'Refuerza bordes y colores secundarios', !!S.settings.highContrast, value => {
-        S.settings.highContrast = value;
-        save();
-        app.state.applyTheme();
-      }));
-      box.append(h('p', { class: 'field-hint', style: 'text-align:center;margin-top:10px' }, 'Consejo: toca una tarea en cualquier pantalla para marcarla como hecha.'));
+      box.append(h('p', { class: 'field-hint', style: 'text-align:center;margin-top:14px' }, 'Consejo: toca una tarea en cualquier pantalla para marcarla como hecha.'));
       return box;
     });
   }
@@ -623,13 +607,15 @@ export function registerSettings(app) {
         row('pencil', 'Personalizar opciones', optionsSheet)
       )
     );
-    wrap.append(h('p', { class: 'set-label' }, 'Apariencia'),
-      h('div', { class: 'set-card' },
+    const appearanceCard = h('div', { class: 'set-card' });
+    wrap.append(h('p', { class: 'set-label' }, 'Apariencia'), appearanceCard);
+    {
+      appearanceCard.append(
         h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
           h('span', { class: 'r-ic', html: icon('moon', 18) }),
           h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14px;display:block' }, 'Modo oscuro'), h('span', { id: 'themeHint', style: 'font-size:12px;color:var(--text-2)' }, '')),
           (() => {
-            const segment = h('div', { class: 'seg', style: 'display:flex;max-width:210px' });
+            const segment = h('div', { class: 'seg set-seg' });
             const drawHint = () => {
               const hint = document.getElementById('themeHint');
               if (hint) hint.textContent = theme() === 'auto' ? 'Sigue tu sistema' : theme() === 'dark' ? 'Siempre oscuro' : 'Siempre claro';
@@ -651,6 +637,38 @@ export function registerSettings(app) {
             return segment;
           })()
         ),
+        // Tamaño del texto: preferencia de lectura, no de tareas. Comparte fila
+        // con los otros ajustes de apariencia.
+        h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
+          h('span', { class: 'r-ic', html: icon('meds', 18) }),
+          h('div', { style: 'flex:1' },
+            h('b', { style: 'font-size:14px;display:block' }, 'Tamaño del texto'),
+            h('span', { id: 'scaleHint', style: 'font-size:12px;color:var(--text-2)' }, '')
+          ),
+          (() => {
+            const segment = h('div', { class: 'seg set-seg' });
+            const scaleLabel = value => value === 1.2 ? 'Muy grande' : value === 1.1 ? 'Grande' : 'Normal';
+            const drawHint = () => {
+              const hint = document.getElementById('scaleHint');
+              if (hint) hint.textContent = scaleLabel(Number(S.settings.fontScale || 1));
+            };
+            for (const value of [1, 1.1, 1.2]) {
+              segment.append(h('button', {
+                class: Number(S.settings.fontScale || 1) === value ? 'on' : '',
+                onclick: event => {
+                  S.settings.fontScale = value;
+                  save();
+                  applyTheme();
+                  [...segment.children].forEach(item => item.classList.remove('on'));
+                  event.currentTarget.classList.add('on');
+                  drawHint();
+                }
+              }, value === 1.2 ? 'Muy grande' : value === 1.1 ? 'Grande' : 'Normal'));
+            }
+            drawHint();
+            return segment;
+          })()
+        ),
         // Las animaciones son una preferencia de apariencia, igual que el tema,
         // así que viven aquí y no en "Tareas y hábitos".
         h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
@@ -660,7 +678,7 @@ export function registerSettings(app) {
             h('span', { id: 'motionHint', style: 'font-size:12px;color:var(--text-2)' }, '')
           ),
           (() => {
-            const segment = h('div', { class: 'seg', style: 'display:flex;max-width:210px' });
+            const segment = h('div', { class: 'seg set-seg' });
             const motionText = value => value === 'auto'
               ? 'Según tu sistema'
               : value === 'off' ? 'Sin animaciones' : 'Con animaciones';
@@ -685,8 +703,15 @@ export function registerSettings(app) {
             return segment;
           })()
         )
-      )
-    );
+      );
+    }
+    // Alto contraste: también es lectura, no tareas. Se añade al final y sin
+    // padding propio porque la tarjeta ya gestiona el espacio de sus filas.
+    appearanceCard.append(switchRow('Alto contraste', 'Refuerza bordes y colores secundarios', !!S.settings.highContrast, value => {
+      S.settings.highContrast = value;
+      save();
+      applyTheme();
+    }));
     wrap.append(h('p', { class: 'set-label' }, 'Datos'),
       h('div', { class: 'set-card' },
         row('cloud', 'Copia de seguridad', backupSheet),
