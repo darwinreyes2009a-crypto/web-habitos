@@ -173,3 +173,69 @@
     transform: none !important;
   }
 }
+
+/* --- Ajuste de la app: Ajustes → Reducir animaciones -------------------- */
+/* El atributo `data-motion` lo pone applyTheme() según lo que elija el
+   usuario. "Reducir" se apoya en el bloque global de tokens.css, que ya
+   recorta todas las duraciones; aquí solo se reaffirman las animaciones que
+   dependen de `both`, porque con duración ~0 el elemento se quedaría en su
+   estado inicial. */
+[data-motion='reduce'] {
+  animation: none !important;
+  transition-duration: .01ms !important;
+}
+
+[data-motion='reduce'] .content.screen-enter,
+[data-motion='reduce'] .stagger > *,
+[data-motion='reduce'] .toast,
+[data-motion='reduce'] .nav-item.on,
+[data-motion='reduce'] .bn-item.on {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+[data-motion='reduce'] .btn:active,
+[data-motion='reduce'] .icon-btn:active,
+[data-motion='reduce'] .row:active,
+[data-motion='reduce'] .task-card:active,
+[data-motion='reduce'] .person-card:active,
+[data-motion='reduce'] .set-row:active,
+[data-motion='reduce'] .nav-item:active,
+[data-motion='reduce'] .bn-item:active {
+  transform: none !important;
+}
+
+/* "Animaciones activadas" necesita potencia sobre el media query del
+   sistema: si el usuario lo elige aquí, su decisión gana. Por eso se sube la
+   especificidad con :root y se marca !important. */
+:root[data-motion='full'] .content.screen-enter {
+  animation: screenEnter var(--t-slow) var(--ease-out) both !important;
+}
+
+:root[data-motion='full'] .stagger > * {
+  animation: itemEnter var(--t-base) var(--ease-out) both !important;
+  animation-delay: calc(var(--i, 0) * 22ms) !important;
+}
+
+:root[data-motion='full'] .toast {
+  animation: toastEnter var(--t-base) var(--ease-out) both !important;
+}
+
+:root[data-motion='full'] .nav-item.on,
+:root[data-motion='full'] .bn-item.on {
+  animation: navBump var(--t-slow) var(--ease-back) !important;
+}
+
+/* Con el ajuste en 'full' los botones y filas vuelven a responder al toque,
+   aunque el sistema pida reducir movimiento. */
+:root[data-motion='full'] .btn:active,
+:root[data-motion='full'] .icon-btn:active,
+:root[data-motion='full'] .row:active,
+:root[data-motion='full'] .task-card:active,
+:root[data-motion='full'] .person-card:active,
+:root[data-motion='full'] .set-row:active,
+:root[data-motion='full'] .nav-item:active,
+:root[data-motion='full'] .bn-item:active {
+  transform: translateY(1px) scale(.975);
+}

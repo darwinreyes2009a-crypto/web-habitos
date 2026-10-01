@@ -26,6 +26,9 @@ export function registerStore(app) {
         theme: 'auto',
         fontScale: 1,
         highContrast: false,
+        // 'auto' sigue el ajuste del sistema; 'on' fuerza animaciones aunque el
+        // sistema las tenga desactivadas, y 'off' las quita siempre.
+        reduceMotion: 'auto',
         haptics: true,
         categories: [...DEFAULT_CATEGORIES],
         relationships: [...DEFAULT_RELATIONSHIPS],
@@ -377,6 +380,13 @@ export function registerStore(app) {
     const settings = S.settings || {};
     document.documentElement.dataset.contrast = settings.highContrast ? 'high' : 'normal';
     document.documentElement.style.setProperty('--font-scale', String([1, 1.1, 1.2].includes(Number(settings.fontScale)) ? Number(settings.fontScale) : 1));
+
+    // Animaciones: 'auto' respeta el sistema, 'on' las fuerza y 'off' las anula.
+    // El atributo data-motion gana al media query, así que sirve para los tres
+    // casos. Con 'auto' se retira el atributo y decide el media query.
+    const motion = ['on', 'off'].includes(settings.reduceMotion) ? settings.reduceMotion : 'auto';
+    if (motion === 'auto') document.documentElement.removeAttribute('data-motion');
+    else document.documentElement.dataset.motion = motion === 'off' ? 'reduce' : 'full';
   }
 
   replaceState(load());
@@ -387,6 +397,13 @@ export function registerStore(app) {
     try {
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (theme() === 'auto') applyTheme();
+      });
+      // Con el ajuste en 'auto' el media query ya se encarga, pero al volver
+      // de 'full' hay que retirar el atributo para que el sistema vuelva a
+      // mandar. Reaplicar al cambiar la preferencia del sistema también cubre
+      // ese caso.
+      window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => {
+        if ((S.settings || {}).reduceMotion !== 'on') applyTheme();
       });
     } catch (error) {}
   }
