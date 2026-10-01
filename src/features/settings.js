@@ -607,111 +607,91 @@ export function registerSettings(app) {
         row('pencil', 'Personalizar opciones', optionsSheet)
       )
     );
+    // --- Apariencia ---------------------------------------------------------
+    // Las cuatro preferencias comparten una misma anatomía: icono con caja,
+    // título, y el control a la derecha (segmento o interruptor). Antes cada
+    // una iba por su cuenta y quedaban iconos pelados, subtítulos que repetían
+    // la opción ya seleccionada y un alto contraste sin icono, desalineado.
     const appearanceCard = h('div', { class: 'set-card' });
-    wrap.append(h('p', { class: 'set-label' }, 'Apariencia'), appearanceCard);
-    {
-      appearanceCard.append(
-        h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
-          h('span', { class: 'r-ic', html: icon('moon', 18) }),
-          h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14px;display:block' }, 'Modo oscuro'), h('span', { id: 'themeHint', style: 'font-size:12px;color:var(--text-2)' }, '')),
-          (() => {
-            const segment = h('div', { class: 'seg set-seg' });
-            const drawHint = () => {
-              const hint = document.getElementById('themeHint');
-              if (hint) hint.textContent = theme() === 'auto' ? 'Sigue tu sistema' : theme() === 'dark' ? 'Siempre oscuro' : 'Siempre claro';
-            };
-            for (const [value, label] of [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']]) {
-              segment.append(h('button', {
-                class: theme() === value ? 'on' : '',
-                onclick: event => {
-                  S.settings.theme = value;
-                  save();
-                  applyTheme();
-                  [...segment.children].forEach(item => item.classList.remove('on'));
-                  event.currentTarget.classList.add('on');
-                  drawHint();
-                }
-              }, label));
-            }
-            drawHint();
-            return segment;
-          })()
+
+    // `hint` es el texto bajo el título. Para los selectores ya no hace falta:
+    // el botón activo dice la respuesta, y repetirla solo ocupa altura.
+    function prefRow(iconName, label, hint, control) {
+      return h('div', { class: 'pref-row' },
+        h('span', { class: 'r-ic', html: icon(iconName, 18) }),
+        h('div', { class: 'pref-text' },
+          h('b', null, label),
+          hint ? h('span', null, hint) : null
         ),
-        // Tamaño del texto: preferencia de lectura, no de tareas. Comparte fila
-        // con los otros ajustes de apariencia.
-        h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
-          h('span', { class: 'r-ic', html: icon('meds', 18) }),
-          h('div', { style: 'flex:1' },
-            h('b', { style: 'font-size:14px;display:block' }, 'Tamaño del texto'),
-            h('span', { id: 'scaleHint', style: 'font-size:12px;color:var(--text-2)' }, '')
-          ),
-          (() => {
-            const segment = h('div', { class: 'seg set-seg' });
-            const scaleLabel = value => value === 1.2 ? 'Muy grande' : value === 1.1 ? 'Grande' : 'Normal';
-            const drawHint = () => {
-              const hint = document.getElementById('scaleHint');
-              if (hint) hint.textContent = scaleLabel(Number(S.settings.fontScale || 1));
-            };
-            for (const value of [1, 1.1, 1.2]) {
-              segment.append(h('button', {
-                class: Number(S.settings.fontScale || 1) === value ? 'on' : '',
-                onclick: event => {
-                  S.settings.fontScale = value;
-                  save();
-                  applyTheme();
-                  [...segment.children].forEach(item => item.classList.remove('on'));
-                  event.currentTarget.classList.add('on');
-                  drawHint();
-                }
-              }, value === 1.2 ? 'Muy grande' : value === 1.1 ? 'Grande' : 'Normal'));
-            }
-            drawHint();
-            return segment;
-          })()
-        ),
-        // Las animaciones son una preferencia de apariencia, igual que el tema,
-        // así que viven aquí y no en "Tareas y hábitos".
-        h('div', { style: 'display:flex;align-items:center;gap:12px;padding:12px 14px' },
-          h('span', { class: 'r-ic', html: icon('star', 18) }),
-          h('div', { style: 'flex:1' },
-            h('b', { style: 'font-size:14px;display:block' }, 'Animaciones'),
-            h('span', { id: 'motionHint', style: 'font-size:12px;color:var(--text-2)' }, '')
-          ),
-          (() => {
-            const segment = h('div', { class: 'seg set-seg' });
-            const motionText = value => value === 'auto'
-              ? 'Según tu sistema'
-              : value === 'off' ? 'Sin animaciones' : 'Con animaciones';
-            const drawHint = () => {
-              const hint = document.getElementById('motionHint');
-              if (hint) hint.textContent = motionText(S.settings.reduceMotion || 'auto');
-            };
-            for (const [value, label] of [['auto', 'Auto'], ['off', 'Reducidas'], ['on', 'Completas']]) {
-              segment.append(h('button', {
-                class: (S.settings.reduceMotion || 'auto') === value ? 'on' : '',
-                onclick: event => {
-                  S.settings.reduceMotion = value;
-                  save();
-                  applyTheme();
-                  [...segment.children].forEach(item => item.classList.remove('on'));
-                  event.currentTarget.classList.add('on');
-                  drawHint();
-                }
-              }, label));
-            }
-            drawHint();
-            return segment;
-          })()
-        )
+        control
       );
     }
-    // Alto contraste: también es lectura, no tareas. Se añade al final y sin
-    // padding propio porque la tarjeta ya gestiona el espacio de sus filas.
-    appearanceCard.append(switchRow('Alto contraste', 'Refuerza bordes y colores secundarios', !!S.settings.highContrast, value => {
-      S.settings.highContrast = value;
+
+    // Segmento de N opciones. Devuelve el control y expone `select` para que
+    // quien lo pinte pueda reflejar el cambio sin volver a dibujar la pantalla.
+    function prefSegment(options, current, onPick) {
+      const segment = h('div', { class: 'seg set-seg' });
+      for (const [value, label] of options) {
+        segment.append(h('button', {
+          class: current() === value ? 'on' : '',
+          onclick: event => {
+            onPick(value);
+            [...segment.children].forEach(item => item.classList.remove('on'));
+            event.currentTarget.classList.add('on');
+          }
+        }, label));
+      }
+      return segment;
+    }
+
+    wrap.append(h('p', { class: 'set-label' }, 'Apariencia'), appearanceCard);
+
+    appearanceCard.append(
+      prefRow('moon', 'Modo oscuro', 'El tema que usa la app',
+        prefSegment([['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']], () => theme(), value => {
+          S.settings.theme = value;
+          save();
+          applyTheme();
+        })),
+
+      // El subtítulo solo se ve en pantallas anchas (en móvil lo oculta el
+      // CSS), y es donde "Máx." necesita explicarse: en el selector, que es
+      // lo que siempre se ve, no cabe la palabra entera.
+      prefRow('meds', 'Tamaño del texto', 'Normal, grande o máximo',
+        prefSegment([[1, 'Normal'], [1.1, 'Grande'], [1.2, 'Máx.']], () => Number(S.settings.fontScale || 1), value => {
+          S.settings.fontScale = value;
+          save();
+          applyTheme();
+        })),
+
+      prefRow('star', 'Animaciones', 'Movimiento de la pantalla',
+        prefSegment([['auto', 'Auto'], ['off', 'Reducidas'], ['on', 'Completas']], () => S.settings.reduceMotion || 'auto', value => {
+          S.settings.reduceMotion = value;
+          save();
+          applyTheme();
+        }))
+    );
+
+    // El alto contraste es un interruptor, no un selector de N opciones, así que
+    // no pasa por `prefSegment`. Se construye aparte para conservar el
+    // interruptor real, pero con la misma anatomía de fila.
+    const contrastRow = h('div', { class: 'pref-row' },
+      h('span', { class: 'r-ic', html: icon('contrast', 18) }),
+      h('div', { class: 'pref-text' },
+        h('b', null, 'Alto contraste'),
+        h('span', null, 'Bordes y colores más marcados')
+      )
+    );
+    const contrastInput = h('input', { type: 'checkbox' });
+    contrastInput.checked = !!S.settings.highContrast;
+    contrastInput.addEventListener('change', () => {
+      S.settings.highContrast = contrastInput.checked;
       save();
       applyTheme();
-    }));
+    });
+    contrastRow.append(h('span', { class: 'sw' }, contrastInput, h('i')));
+    appearanceCard.append(contrastRow);
+
     wrap.append(h('p', { class: 'set-label' }, 'Datos'),
       h('div', { class: 'set-card' },
         row('cloud', 'Copia de seguridad', backupSheet),

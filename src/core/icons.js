@@ -65,6 +65,8 @@ export function registerIcons(app) {
     inbox: '<path d="M3 12h5l2 3h4l2-3h5"/><path d="M5 5h14l2 7v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5z"/>',
     external: '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 17v-6M13 17V7M18 17v-9"/>',
+    // Mitad rellena y mitad vacía: la convención habitual para "contraste".
+    contrast: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/>',
     archive: '<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
     filter: '<path d="M4 5h16l-6 7v6l-4 2v-8z"/>'
   };

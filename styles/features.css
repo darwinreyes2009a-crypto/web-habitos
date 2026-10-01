@@ -400,15 +400,56 @@ button.hist-row { display:flex }
    texto en pantallas estrechas. En vez de recortar las etiquetas o dejar que
    la fila desborde, el selector baja a su propia línea. */
 .set-seg { display:flex; flex:none; width:300px; max-width:100% }
+
+/* Filas de Apariencia. Comparten anatomía con .set-row (icono con caja, título
+   y texto de apoyo) pero llevan un control segmentado a la derecha, así que
+   necesitan su propia clase en vez de reutilizar .set-row. */
+.pref-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  min-height: var(--tap);
+  padding: var(--sp-2) var(--sp-4);
+}
+.pref-row + .pref-row { border-top: 1px solid var(--border-soft) }
+.pref-row .r-ic {
+  width: 32px; height: 32px; border-radius: var(--r-s); flex: none;
+  background: var(--primary-soft); color: var(--primary-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+.pref-text { flex: 1; min-width: 0 }
+.pref-text b {
+  display: block; font-size: var(--fs-body); font-weight: var(--fw-semi);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pref-row .sw { flex: none }
+/* Los segmentos de Ajustes son más bajos que los de otras pantallas: la fila ya
+   tiene icono y texto, y a 40px el bloque parecía un bloque, no un control. */
+.pref-row .seg { padding: 3px }
+.pref-row .seg button { min-height: 32px; font-size: var(--fs-meta); padding: 0 var(--sp-2) }
 /* La columna de contenido se estrecha antes que el viewport: con la barra
    lateral abierta `.content` ronda 730px aunque el viewport sea de 1000. Por eso
    el selector baja a su propia línea en cuanto deja de caber a su lado, en vez
    de esperar al breakpoint de móvil. */
+/* En pantallas estrechas el segmento roba el ancho al título: medido, un
+   selector de tres opciones con padding cómodo se comía 190-247px y dejaba
+   12-16px al texto ("Tamaño del texto" se quedaba en "T."). Así que el
+   control se compacta y el título conserva su ancho legible. */
 @media (max-width: 1000px) {
-  .set-card > div:has(> .set-seg) { flex-wrap:wrap; row-gap:var(--sp-3) }
-  /* El bloque de texto no es el primer hijo (le precede el icono), así que se
-     selecciona descartando los dos hermanos conocidos: no es .r-ic ni .set-seg. */
-  .set-card > div:has(> .set-seg) > div:not(.r-ic):not(.set-seg) { flex:1 1 100% }
-  .set-seg { width:100% }
-  .set-seg button { flex:1 1 0; min-width:0 }
+  .set-seg { width:auto; max-width:none }
+  .pref-row .seg button { flex:0 1 auto; min-width:0; padding: 0 var(--sp-2) }
+  .pref-row { gap: var(--sp-2) }
+  .pref-text { flex: 1 1 auto }
+}
+@media (max-width: 460px) {
+  /* "Muy grande" y "Completas" son las etiquetas que no caben. Con padding y
+     separaciones más justos el selector cede los ~34px que le faltaban al
+     título, medido, sin tener que recortar las palabras. */
+  .pref-row .seg { padding: 2px; gap: 2px }
+  .pref-row .seg button { font-size: var(--fs-micro); padding: 0 6px; min-height: 30px }
+  .pref-text b { font-size: var(--fs-meta) }
+  .pref-text span { display: none }
+  .pref-row { gap: var(--sp-2); padding-left: var(--sp-3); padding-right: var(--sp-3) }
+  /* "Muy grande" es la etiqueta más larga de las nueve y es la única que aún
+     deja el título truncado. Se le permite encogerse algo más. */
+  .pref-row .seg button { padding: 0 5px }
+  .pref-text b { letter-spacing: -.01em }
 }
