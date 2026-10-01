@@ -4,6 +4,7 @@ export function registerSettings(app) {
     icon,
     avatarEl,
     hashPin,
+    verifyAndUpgradePin,
     todayStr,
     COLORS
   } = app.core;
@@ -48,8 +49,9 @@ export function registerSettings(app) {
         box.append(currentPin, newPin, newPinConfirmation, error,
           h('button', {
             class: 'btn btn-primary btn-block',
-            onclick: () => {
-              if (hashPin(currentPin.value.trim()) !== profile.pin) {
+            onclick: async () => {
+              const current = currentPin.value.trim();
+              if (!(await verifyAndUpgradePin(current, profile, save))) {
                 error.textContent = 'El PIN actual no es correcto.';
                 return;
               }
@@ -61,7 +63,7 @@ export function registerSettings(app) {
                 error.textContent = 'Los PIN nuevos no coinciden.';
                 return;
               }
-              profile.pin = hashPin(newPin.value.trim());
+              profile.pin = await hashPin(newPin.value.trim());
               profile.pinLen = newPin.value.trim().length;
               save();
               closeOverlays();
@@ -96,7 +98,7 @@ export function registerSettings(app) {
           error,
           h('button', {
             class: 'btn btn-primary btn-block',
-            onclick: () => {
+            onclick: async () => {
               if (!/^\d{4,6}$/.test(newPin.value.trim())) {
                 error.textContent = 'Debe tener 4–6 dígitos.';
                 return;
@@ -105,7 +107,7 @@ export function registerSettings(app) {
                 error.textContent = 'No coinciden.';
                 return;
               }
-              profile.pin = hashPin(newPin.value.trim());
+              profile.pin = await hashPin(newPin.value.trim());
               profile.pinLen = newPin.value.trim().length;
               save();
               closeOverlays();
