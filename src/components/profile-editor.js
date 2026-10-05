@@ -25,14 +25,20 @@ export function registerProfileEditor(app) {
       });
       const photoButton = h('button', {
         class: 'btn btn-soft',
-        style: 'padding:8px 14px;font-size:12px;margin-top:10px'
+        // El avatar, el nombre y los colores van centrados; el boton se
+        // quedaba pegado al margen izquierdo por no ser bloque.
+        style: 'display:block;margin:10px auto 0;padding:8px 14px;font-size:12px'
       });
 
       function drawAvatar() {
         avatarPreview.innerHTML = '';
-        avatarPreview.append(avatarEl(nameInput.value || profile.name, newColor, 64, newPhoto));
+        // El botón de quitar foto va anclado a la esquina del avatar. Antes se
+        // posicionaba contra el contenedor centrado entero, así que acababa
+        // pegado al borde de la hoja y casi encima del aspa de cerrar.
+        const frame = h('div', { style: 'position:relative;display:inline-flex' });
+        frame.append(avatarEl(nameInput.value || profile.name, newColor, 64, newPhoto));
         if (newPhoto) {
-          avatarPreview.append(h('button', {
+          frame.append(h('button', {
             class: 'rm-photo',
             'aria-label': 'Quitar foto',
             onclick: () => {
@@ -43,6 +49,7 @@ export function registerProfileEditor(app) {
             html: icon('x', 15)
           }));
         }
+        avatarPreview.append(frame);
         setPhotoEl(photoButton, newPhoto);
       }
 

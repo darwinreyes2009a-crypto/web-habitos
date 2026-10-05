@@ -16,6 +16,7 @@ export function registerSettings(app) {
     theme,
     applyTheme,
     activeAccountUid,
+    accountsIndex,
     SYNC_KEYS,
     rememberPendingDeletes,
     clearPushTimer,
@@ -476,22 +477,39 @@ export function registerSettings(app) {
     const profile = currentProfile();
     const wrap = h('div');
     wrap.append(headBar('Perfil', null, h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: app.components.smartBack('settings'), html: icon('back', 19) })));
-    const preview = h('div', { style: 'display:flex;flex-direction:column;align-items:center;margin-bottom:22px' });
-    const avatarWrap = h('div', { style: 'position:relative;display:inline-flex' });
-    avatarWrap.append(avatarEl(profile.name, profile.color, 84, profile.photo || ''));
-    preview.append(avatarWrap, h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:10px' }, 'Perfil personal'),
-      h('button', { class: 'btn btn-soft', style: 'padding:9px 16px;font-size:13px;margin-top:10px', onclick: () => app.components.profileEditorSheet(profile, { onSaved: () => render() }) },
-        h('span', { class: 'ic', html: icon('pencil', 15) }),
-        'Editar perfil'
+
+    // Esta pantalla es la identidad del perfil, asi que el nombre tiene que
+    // ser el protagonista: antes solo havia un avatar suelto con un "Perfil
+    // personal" generico y el nombre no aparecia por ninguna parte. La tarjeta
+    // entera es la accion de editar, igual que la fila de Ajustes.
+    const email = (accountsIndex().find(account => account.uid === activeAccountUid()) || {}).email || '';
+    wrap.append(h('button', {
+      class: 'profile-identity',
+      'aria-label': 'Editar el perfil ' + profile.name,
+      onclick: () => app.components.profileEditorSheet(profile, { onSaved: () => render() })
+    },
+      avatarEl(profile.name, profile.color, 64, profile.photo || ''),
+      h('div', { class: 'profile-identity-text' },
+        h('b', null, profile.name),
+        h('span', null, email || 'Perfil personal')
+      ),
+      h('span', { class: 'chev', html: icon('chev', 18) })
+    ));
+
+    // Las tres acciones vivian cada una en su propia tarjeta con su propio
+    // titulo de seccion, para una sola fila. Se agrupan como en Ajustes.
+    const row = (iconName, label, action) => h('button', { class: 'set-row', onclick: action },
+      h('span', { class: 'r-ic', html: icon(iconName, 18) }),
+      h('span', null, label),
+      h('span', { class: 'chev', html: icon('chev', 17) })
+    );
+    wrap.append(h('p', { class: 'set-label' }, 'Cuenta y seguridad'),
+      h('div', { class: 'set-card' },
+        row('lock', profile.pin ? 'Cambiar PIN' : 'Activar PIN', securitySheet),
+        row('cloud', 'Cuenta y sincronización', accountSheet),
+        row('logout', 'Cambiar de cuenta', softLogout)
       )
     );
-    wrap.append(preview);
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Seguridad')));
-    wrap.append(h('div', { class: 'set-card' }, h('button', { class: 'set-row', onclick: securitySheet }, h('span', { class: 'r-ic', html: icon('lock', 18) }), h('span', null, profile.pin ? 'Cambiar PIN' : 'Activar PIN'), h('span', { class: 'chev', html: icon('chev', 17) }))));
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Cuenta')));
-    wrap.append(h('div', { class: 'set-card' }, h('button', { class: 'set-row', onclick: accountSheet }, h('span', { class: 'r-ic', html: icon('cloud', 18) }), h('span', null, 'Cuenta y sincronización'), h('span', { class: 'chev', html: icon('chev', 17) }))));
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Sesión')));
-    wrap.append(h('div', { class: 'set-card' }, h('button', { class: 'set-row', onclick: softLogout }, h('span', { class: 'r-ic', html: icon('logout', 18) }), h('span', null, 'Cambiar de cuenta'), h('span', { class: 'chev', html: icon('chev', 17) }))));
     return wrap;
   }
 
