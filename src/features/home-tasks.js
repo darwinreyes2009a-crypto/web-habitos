@@ -211,61 +211,103 @@ export function registerHomeAndTasks(app) {
     );
   }
 
+  function taskActivityCard(task, ymd) {
+    const kind = app.core.kindOf(task);
+    const due = isDueOn(task, ymd);
+    const skipped = app.core.isSkipped(task, ymd);
+    const done = isDoneOn(task, ymd);
+    const avoid = kind === 'avoid';
+    const steps = Array.isArray(task.steps) ? task.steps.filter(step => step && String(step.title || '').trim()) : [];
+    const markedSteps = steps.filter(step => app.features.stepDoneOn(step, ymd)).length;
+    const legacyDone = kind === 'check' && done && steps.length && !steps.some(step => Array.isArray(step.completedOn) && step.completedOn.includes(ymd));
+    const stepCount = legacyDone ? steps.length : markedSteps;
+    const priority = app.features.priorityInfo(task);
+    let card;
+    const control = steps.length && kind === 'check'
+      ? null
+      : app.features.taskControl(task, ymd);
+    const refreshCard = () => {
+      const updated = taskActivityCard(task, ymd);
+      card.replaceWith(updated);
+      card = updated;
+    };
+    const open = () => {
+      if (steps.length) app.features.guidedTaskSheet(task, ymd, refreshCard);
+      else if (kind === 'check' || avoid) {
+        if (control && !control.disabled) control.click();
+      } else app.features.routineSheet(task);
+    };
+    card = h('article', {
+      'data-task-id': task.id,
+      class: 'activity-card' + (done && !avoid ? ' is-done' : '') + (skipped ? ' is-skipped' : '') + (priority ? ' has-priority' : ''),
+      style: 'border-left:3px solid ' + (priority ? priority.color : done && !avoid ? 'var(--green)' : 'var(--primary)')
+    });
+    card.append(h('div', { class: 'activity-card-head' },
+      h('button', { class: 'activity-card-main', type: 'button', onclick: open, 'aria-label': (steps.length ? 'Abrir actividad ' : 'Registrar ') + task.title },
+        h('span', { class: 'activity-icon', html: icon(task.icon || 'star', 22) }),
+        h('span', { class: 'activity-copy' },
+          h('b', null, task.title),
+          h('span', { class: 'activity-subtitle' }, (task.cat || 'Personal') + ' · ' + app.core.freqText(task)),
+          steps.length ? h('span', { class: 'activity-step-summary' }, stepCount + ' de ' + steps.length + ' pasos') : null
+        )
+      ),
+      control
+    ));
+    const goal = app.features.goalBar(task);
+    if (goal) card.append(h('div', { style: 'padding:8px 4px 0' }, goal));
+    const status = skipped ? 'Hoy saltado' : !due ? 'No toca hoy' : done ? (avoid ? 'Día limpio' : 'Completada') : avoid ? 'Registrar fallo' : 'Pendiente';
+    card.append(h('div', { class: 'activity-card-footer' },
+      h('span', { class: 'activity-state' + (done && !avoid ? ' positive' : skipped ? ' muted' : '') },
+        h('span', { class: 'activity-state-dot' }), status
+      ),
+      steps.length ? h('button', {
+        class: 'btn ' + (done ? 'btn-soft' : 'btn-primary'),
+        type: 'button',
+        disabled: !due || skipped,
+        onclick: () => app.features.guidedTaskSheet(task, ymd, refreshCard)
+      }, done ? 'Revisar pasos' : stepCount ? 'Continuar' : 'Empezar') : null,
+      h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) })
+    ));
+    return card;
+  }
+
   function scrTasks() {
     if (ui.tasksView === 'stats') return scrTaskStats();
     if (ui.tasksView !== 'lista') return scrWeek();
     const wrap = h('div');
-    wrap.append(headBar('Tareas', 'Todo lo que haces regularmente', searchBtn(),
-      h('button', { class: 'icon-btn', 'aria-label': 'Nueva tarea', onclick: () => go('taskForm'), html: icon('plus', 20) })
-    ));
     const today = todayStr();
-    const categoryList = categories();
-    const filters = ['todas', 'hoy', ...categoryList.map(category => category.toLowerCase())];
+    const dueToday = tasksDueOn(today);
+    const completedToday = dueToday.filter(task => isDoneOn(task, today)).length;
+    wrap.append(headBar('Actividades', completedToday + ' de ' + dueToday.length + ' completadas hoy', searchBtn(),
+      h('button', { class: 'icon-btn', 'aria-label': 'Ver resumen de actividad', onclick: () => { ui.tasksView = 'stats'; ui.statsOffset = 0; go('tasks'); }, html: icon('chart', 19) }),
+      h('button', { class: 'icon-btn', 'aria-label': 'Nueva actividad', onclick: () => go('taskForm'), html: icon('plus', 20) })
+    ));
+    ui.tasksFilter = ui.tasksFilter === 'todas' ? 'todas' : 'hoy';
     const chips = h('div', { class: 'chips' });
-    for (const filter of filters) {
-      const label = filter === 'todas' ? 'Todas' : filter === 'hoy' ? 'Hoy' : cap(filter);
-      chips.append(h('button', {
-        class: 'chip' + (ui.tasksFilter === filter ? ' on' : ''),
-        onclick: event => {
-          ui.tasksFilter = filter;
-          [...chips.children].forEach(item => item.classList.remove('on'));
-          event.currentTarget.classList.add('on');
-          drawList();
-        }
-      }, label));
-    }
-    wrap.append(taskViewSegment(), chips);
     const listWrap = h('div');
-    wrap.append(listWrap);
-
-    function drawList() {
+    const drawList = () => {
+      chips.innerHTML = '';
+      for (const [filter, label] of [['hoy', 'Para hoy'], ['todas', 'Todas']]) {
+        chips.append(h('button', {
+          class: 'chip' + (ui.tasksFilter === filter ? ' on' : ''),
+          'aria-pressed': ui.tasksFilter === filter ? 'true' : 'false',
+          onclick: () => { ui.tasksFilter = filter; drawList(); }
+        }, label));
+      }
       listWrap.innerHTML = '';
-      let tasks = [...S.tasks];
-      const filter = ui.tasksFilter;
-      if (filter === 'hoy') tasks = tasks.filter(task => isDueOn(task, today));
-      else if (filter !== 'todas') tasks = tasks.filter(task => (task.cat || 'Otros').toLowerCase() === filter);
+      const tasks = (ui.tasksFilter === 'hoy' ? dueToday : [...S.tasks]).slice().sort((first, second) =>
+        (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
+        (first.time || '99:99').localeCompare(second.time || '99:99') ||
+        (first.title || '').localeCompare(second.title || '', 'es'));
       if (!tasks.length) {
-        listWrap.append(emptyState('list', 'Nada por aquí', 'Crea tu primera tarea o hábito y aparecerá aquí cada día.', 'Nueva tarea', () => go('taskForm')));
+        listWrap.append(emptyState('spark', ui.tasksFilter === 'hoy' ? 'Día despejado' : 'Aún no hay actividades',
+          ui.tasksFilter === 'hoy' ? 'No tienes actividades previstas para hoy.' : 'Crea tu primer hábito o actividad guiada y personalízala a tu manera.',
+          'Nueva actividad', () => go('taskForm')));
         return;
       }
-      for (const category of categoryList) {
-        const group = tasks.filter(task => (task.cat || 'Otros') === category).sort((first, second) =>
-          (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
-          (first.dueDate || '9999-99-99').localeCompare(second.dueDate || '9999-99-99') ||
-          first.title.localeCompare(second.title, 'es'));
-        if (!group.length) continue;
-        listWrap.append(h('div', { class: 'section-title' }, h('span', null, category + ' · ' + group.length)));
-        for (const task of group) {
-          listWrap.append(app.features.taskRow(task, today, {
-            onOpen: item => app.features.routineSheet(item),
-            menu: () => h('button', { class: 'mini-btn', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 17) })
-          }));
-          const bar = app.features.goalBar(task);
-          if (bar) listWrap.append(h('div', { style: 'padding:0 4px 10px' }, bar));
-        }
-      }
-    }
-
+      listWrap.append(h('div', { class: 'activity-card-list' }, tasks.map(task => taskActivityCard(task, today))));
+    };
+    wrap.append(chips, listWrap);
     drawList();
     return wrap;
   }

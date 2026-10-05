@@ -151,6 +151,17 @@ export function registerAuth(app) {
     const emailInput = h('input', { class: 'input', type: 'email', placeholder: 'tucorreo@ejemplo.com', autocomplete: 'email' });
     const passwordInput = h('input', { class: 'input', type: 'password', placeholder: 'Mínimo 6 caracteres', autocomplete: 'current-password' });
     const message = h('p', { class: 'field-hint', style: 'min-height:18px;text-align:center' });
+    let showPassword = false;
+    const togglePassword = h('button', {
+      class: 'link',
+      type: 'button',
+      style: 'font-size:12px;margin-top:8px',
+      onclick: () => {
+        showPassword = !showPassword;
+        passwordInput.type = showPassword ? 'text' : 'password';
+        togglePassword.textContent = showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña';
+      }
+    }, 'Mostrar contraseña');
     const button = h('button', { class: 'btn btn-primary btn-block btn-lg' }, 'Entrar');
     let authMode = 'login';
     const modeButton = h('button', { class: 'link', style: 'font-size:13px;margin-top:18px' }, '¿No tienes cuenta? Crear una');
@@ -159,6 +170,7 @@ export function registerAuth(app) {
       button.textContent = authMode === 'login' ? 'Entrar' : 'Crear cuenta';
       modeButton.textContent = authMode === 'login' ? '¿No tienes cuenta? Crear una' : 'Ya tengo cuenta · Entrar';
       message.textContent = '';
+      message.style.color = '';
     });
 
     async function submit() {
@@ -166,6 +178,14 @@ export function registerAuth(app) {
       const password = passwordInput.value;
       if (!email || !password) {
         message.textContent = 'Escribe tu email y contraseña.';
+        return;
+      }
+      if (!/^[\w.+-]+@[\w.-]+\.[\w.-]+$/.test(email)) {
+        message.textContent = 'Escribe un email válido.';
+        return;
+      }
+      if (password.length < 6) {
+        message.textContent = 'La contraseña debe tener al menos 6 caracteres.';
         return;
       }
       button.disabled = true;
@@ -181,6 +201,7 @@ export function registerAuth(app) {
           button.disabled = false;
           authMode = 'login';
           button.textContent = 'Entrar';
+          modeButton.textContent = '¿No tienes cuenta? Crear una';
           return;
         }
         const user = result.data.session.user;
@@ -209,6 +230,7 @@ export function registerAuth(app) {
     box.append(...[
       h('div', { class: 'field', style: 'text-align:left;margin-top:20px' }, h('label', null, 'Email'), emailInput),
       h('div', { class: 'field', style: 'text-align:left' }, h('label', null, 'Contraseña'), passwordInput),
+      togglePassword,
       message,
       button,
       modeButton,

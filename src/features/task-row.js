@@ -23,6 +23,17 @@ export function registerTaskRow(app) {
     const due = isDueOn(task, ymd);
     const base = 'flex:none;display:flex;align-items:center;gap:2px';
 
+    if (Array.isArray(task.steps) && task.steps.some(step => step && String(step.title || '').trim())) {
+      return h('button', {
+        class: 'row-check' + (info.done ? ' done' : '') + (info.skipped ? ' skipped' : ''),
+        'aria-label': 'Abrir actividad guiada: ' + task.title,
+        'aria-pressed': info.done ? 'true' : 'false',
+        disabled: !due,
+        style: base,
+        onclick: () => guidedTaskSheet(task, ymd, options && options.onProgress)
+      });
+    }
+
     if (kind === 'check' || kind === 'avoid') {
       return h('button', {
         class: 'row-check' + (info.done ? ' done' : '') + (kind === 'avoid' && due && !info.done && !info.skipped ? ' failed' : '') + (info.skipped ? ' skipped' : ''),
@@ -180,6 +191,105 @@ export function registerTaskRow(app) {
     });
   }
 
+  function stepDoneOn(step, ymd) {
+    return !!(step && Array.isArray(step.completedOn) && step.completedOn.includes(ymd));
+  }
+
+  function setGuidedStep(task, step, ymd, completed) {
+    if (!task || !isDueOn(task, ymd) || isSkipped(task, ymd)) return false;
+    const activeSteps = (task.steps || []).filter(item => item && String(item.title || '').trim());
+    if (!activeSteps.includes(step)) return false;
+    if (!Array.isArray(step.completedOn)) step.completedOn = [];
+    const index = step.completedOn.indexOf(ymd);
+    if (completed && index < 0) step.completedOn.push(ymd);
+    if (!completed && index >= 0) step.completedOn.splice(index, 1);
+    const allDone = activeSteps.length > 0 && activeSteps.every(item => stepDoneOn(item, ymd));
+    if (kindOf(task) === 'check' && allDone !== isDoneOn(task, ymd)) toggleOn(task, ymd);
+    task.updatedAt = Date.now();
+    save();
+    return allDone;
+  }
+
+  function guidedTaskSheet(task, ymd, onProgress) {
+    const steps = Array.isArray(task.steps) ? task.steps : [];
+    if (!steps.length) return;
+    closeOverlays();
+    const overlay = h('div', { class: 'overlay', style: 'z-index:66', onclick: event => { if (event.target === overlay) close(); } });
+    const close = () => { overlay.remove(); app.domain.render(); };
+    const box = h('div', { class: 'sheet guided-sheet', style: 'max-width:460px;max-height:88vh;overflow:auto', role: 'dialog', 'aria-label': 'Actividad guiada: ' + task.title });
+    const header = h('div', { class: 'sheet-head' },
+      h('div', null, h('h3', { style: 'font-size:18px;font-weight:800' }, task.title), h('span', { class: 'r-sub' }, 'Actividad guiada')),
+      h('button', { class: 'icon-btn', 'aria-label': 'Cerrar', onclick: close, html: icon('x', 18) })
+    );
+    const progress = h('div', { class: 'bar', style: 'margin:14px 0 18px' });
+    const body = h('div');
+    const actions = h('div', { style: 'display:flex;gap:8px;margin-top:16px' });
+    const runnable = isDueOn(task, ymd) && !isSkipped(task, ymd);
+    // Older tasks may already be completed for today without per-step history.
+    // Seed only the new per-day field; never rewrite legacy `step.done` values.
+    if (runnable && kindOf(task) === 'check' && isDoneOn(task, ymd) && !steps.some(step => stepDoneOn(step, ymd))) {
+      for (const step of steps) {
+        if (!Array.isArray(step.completedOn)) step.completedOn = [];
+        step.completedOn.push(ymd);
+      }
+      save();
+    }
+    let activeIndex = Math.max(0, steps.findIndex(step => !stepDoneOn(step, ymd)));
+    if (steps.every(step => stepDoneOn(step, ymd))) activeIndex = steps.length - 1;
+    const draw = () => {
+      const complete = steps.filter(step => stepDoneOn(step, ymd)).length;
+      progress.innerHTML = '';
+      progress.append(h('i', { style: 'width:' + Math.round(complete / steps.length * 100) + '%' }));
+      body.innerHTML = '';
+      const step = steps[activeIndex];
+      const card = h('div', { class: 'activity-step' },
+        h('span', { class: 'field-hint' }, 'Paso ' + (activeIndex + 1) + ' de ' + steps.length),
+        h('h4', { style: 'font-size:20px;margin:5px 0 10px' }, step.title || 'Paso sin título'),
+        step.instruction ? h('p', { style: 'white-space:pre-wrap;line-height:1.55;color:var(--text-2)' }, step.instruction) : null,
+        Number(step.durationMinutes) > 0 ? h('span', { class: 'nav-badge', style: 'display:inline-flex;align-items:center;gap:4px;margin:8px 0' }, h('span', { class: 'ic', html: icon('clock', 13) }), step.durationMinutes + ' min') : null,
+        step.image ? h('button', { class: 'guided-image', type: 'button', onclick: () => app.services.viewImage(step.image, step.title || task.title) }, h('img', { src: step.image, alt: step.title || task.title }), h('span', null, 'Ver imagen')) : null,
+        h('button', {
+          class: 'btn ' + (stepDoneOn(step, ymd) ? 'btn-soft' : 'btn-primary') + ' btn-block',
+          disabled: !runnable,
+          style: 'margin-top:14px',
+          onclick: () => {
+            const completed = !stepDoneOn(step, ymd);
+            const allDone = setGuidedStep(task, step, ymd, completed);
+            if (completed && !allDone) {
+              const next = steps.findIndex((item, index) => index > activeIndex && !stepDoneOn(item, ymd));
+              if (next >= 0) activeIndex = next;
+              else activeIndex = steps.findIndex(item => !stepDoneOn(item, ymd));
+            }
+            draw();
+            if (onProgress) onProgress();
+            if (allDone && kindOf(task) === 'check') toast('Actividad completada');
+          }
+        }, stepDoneOn(step, ymd) ? 'Desmarcar este paso' : 'Completar paso')
+      );
+      if (isSkipped(task, ymd) && due) card.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:12px', onclick: () => {
+        skipOn(task, ymd, false);
+        task.updatedAt = Date.now();
+        save();
+        app.domain.render();
+        close();
+        guidedTaskSheet(task, ymd, onProgress);
+      } }, 'Restaurar hoy y continuar'));
+      else if (!runnable) card.append(h('p', { class: 'field-hint', style: 'margin-top:12px' }, 'Esta actividad no toca hoy.'));
+      body.append(card);
+      actions.innerHTML = '';
+      actions.append(
+        h('button', { class: 'btn btn-soft', style: 'flex:1', disabled: activeIndex <= 0, onclick: () => { activeIndex--; draw(); } }, 'Anterior'),
+        h('button', { class: 'btn btn-soft', style: 'flex:1', disabled: activeIndex >= steps.length - 1, onclick: () => { activeIndex++; draw(); } }, 'Siguiente')
+      );
+    };
+    box.append(header, progress, body, actions,
+      h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:12px', onclick: () => { overlay.remove(); app.domain.go('taskForm', { id: task.id }); } }, 'Editar actividad')
+    );
+    overlay.append(box);
+    document.body.appendChild(overlay);
+    draw();
+  }
+
   function taskRow(task, ymd, options) {
     const op = options || {};
     const done = isDoneOn(task, ymd);
@@ -215,7 +325,7 @@ export function registerTaskRow(app) {
     return row;
   }
 
-  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel, priorityInfo, stepsSheet });
+  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel, priorityInfo, stepsSheet, guidedTaskSheet, stepDoneOn, setGuidedStep });
 
   /* --- Objetivo semanal ---------------------------------------------------- */
 

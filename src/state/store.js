@@ -65,18 +65,12 @@ export function registerStore(app) {
       if (bucket.activeSession === undefined) bucket.activeSession = null;
     }
     const hasData = Object.keys(target.data).some(profileId =>
-      (target.data[profileId].tasks || []).length ||
-      (target.data[profileId].people || []).length ||
-      (target.data[profileId].gifts || []).length ||
-      (target.data[profileId].notes || []).length
+      SYNC_KEYS.some(key => (target.data[profileId][key] || []).length)
     );
-    if (!hasData && ((target.tasks || []).length || (target.people || []).length || (target.gifts || []).length || (target.notes || []).length)) {
+    if (!hasData && SYNC_KEYS.some(key => (target[key] || []).length)) {
       const bucket = (target.activeProfileId && target.data[target.activeProfileId]) || target.data[target.profiles[0] && target.profiles[0].id];
       if (bucket) {
-        bucket.tasks = target.tasks || [];
-        bucket.people = target.people || [];
-        bucket.gifts = target.gifts || [];
-        bucket.notes = target.notes || [];
+        for (const key of SYNC_KEYS) bucket[key] = target[key] || [];
       }
     }
   }

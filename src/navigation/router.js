@@ -22,12 +22,12 @@ export function registerRouter(app) {
   try {
     const query = new URLSearchParams(location.search);
     const requestedRoute = query.get('goto');
-    if (requestedRoute && ['home', 'class', 'tasks', 'gifts', 'settings', 'profile', 'taskForm', 'noteForm'].includes(requestedRoute)) {
+    if (requestedRoute && ['home', 'class', 'tasks', 'gifts', 'settings', 'profile', 'taskForm'].includes(requestedRoute)) {
       route.name = requestedRoute;
       route.params = {};
     }
     const requestedTab = query.get('tab');
-    if (requestedRoute === 'class' && ['hoy', 'semana', 'despues', 'apuntes', 'asignaturas'].includes(requestedTab)) startTab = requestedTab;
+    if (requestedRoute === 'class' && ['hoy', 'semana'].includes(requestedTab)) startTab = requestedTab;
   } catch (error) {}
 
   const ui = {

@@ -4,8 +4,7 @@ export function registerSettings(app) {
     icon,
     avatarEl,
     hashPin,
-    todayStr,
-    COLORS
+    todayStr
   } = app.core;
   const {
     S,
@@ -25,7 +24,6 @@ export function registerSettings(app) {
   } = app.state;
   const { session, route, go, render, currentProfile } = app.domain;
   const { headBar, openSheet, closeOverlays, switchRow, confirmDialog, toast } = app.components;
-  const { pickImage, setPhotoEl } = app.services;
   const { accountSheet, softLogout } = app.auth;
   const {
     notifPermission,
@@ -478,97 +476,11 @@ export function registerSettings(app) {
     const profile = currentProfile();
     const wrap = h('div');
     wrap.append(headBar('Perfil', null, h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: app.components.smartBack('settings'), html: icon('back', 19) })));
-    let photo = profile.photo || '';
     const preview = h('div', { style: 'display:flex;flex-direction:column;align-items:center;margin-bottom:22px' });
-    const avatarPreview = h('div', { style: 'position:relative;display:inline-flex' });
-    function drawAvatar() {
-      avatarPreview.innerHTML = '';
-      avatarPreview.append(avatarEl(profile.name, profile.color, 84, photo));
-      const remove = avatarPreview.querySelector('.rm-photo');
-      if (!remove && photo) avatarPreview.append(h('button', { class: 'rm-photo', 'aria-label': 'Quitar foto', onclick: () => {
-        // Borrar la foto es irreversible, así que confirmamos y dejamos
-        // "Deshacer" en el aviso por si alguien acepta sin querer.
-        confirmDialog({
-          title: '¿Eliminar tu foto de perfil?',
-          message: 'Se quitará de tu perfil. Podrás volver a ponerla, pero esta imagen no se guardará en ningún sitio.',
-          confirmText: 'Eliminar foto',
-          onConfirm: () => {
-            const previous = profile.photo;
-            photo = '';
-            profile.photo = '';
-            save();
-            drawAvatar();
-            setPhotoEl(photoButton, '');
-            toast('Foto eliminada', {
-              label: 'Deshacer',
-              fn: () => { photo = previous; profile.photo = previous; save(); drawAvatar(); setPhotoEl(photoButton, previous); }
-            });
-          }
-        });
-      }, html: icon('x', 15) }));
-    }
-    drawAvatar();
-    const photoButton = h('button', { class: 'btn btn-soft', style: 'padding:9px 16px;font-size:13px;margin-top:12px', onclick: () => pickImage(data => { photo = data; profile.photo = data; save(); drawAvatar(); setPhotoEl(photoButton, data); toast('Foto actualizada'); }, 512) });
-    setPhotoEl(photoButton, photo);
-
-    function editProfileSheet() {
-      openSheet('Editar perfil', () => {
-        let newColor = profile.color;
-        const body = h('div');
-        const avatarPreviewInside = h('div', { style: 'display:flex;justify-content:center;margin-bottom:16px' });
-        const nameInput = h('input', { class: 'input', type: 'text', value: profile.name, maxlength: '24', style: 'text-align:center;font-weight:700;font-size:17px' });
-        function drawProfilePreview() {
-          avatarPreviewInside.innerHTML = '';
-          avatarPreviewInside.append(avatarEl(nameInput.value || profile.name, newColor, 64, profile.photo || ''));
-        }
-        drawProfilePreview();
-        nameInput.addEventListener('input', drawProfilePreview);
-        const swatches = h('div', { class: 'swatches', style: 'justify-content:center;margin:16px 0 22px' });
-        for (const swatchColor of COLORS) {
-          swatches.append(h('button', {
-            class: 'swatch' + (swatchColor === newColor ? ' on' : ''),
-            style: 'background:' + swatchColor,
-            onclick: event => {
-              newColor = swatchColor;
-              [...swatches.children].forEach(item => item.classList.remove('on'));
-              event.currentTarget.classList.add('on');
-              drawProfilePreview();
-            }
-          }));
-        }
-        body.append(avatarPreviewInside,
-          h('div', { class: 'field' }, h('label', null, 'Nombre'), nameInput),
-          swatches,
-          h('button', {
-            class: 'btn btn-primary btn-block btn-lg',
-            onclick: () => {
-              const name = nameInput.value.trim();
-              if (!name) {
-                toast('El nombre no puede estar vacío');
-                nameInput.focus();
-                return;
-              }
-              const apply = () => {
-                profile.name = name;
-                profile.color = newColor;
-                save();
-                closeOverlays();
-                render();
-                toast('Perfil actualizado');
-              };
-              if (name !== profile.name) confirmDialog({ title: '¿Cambiar el nombre?', message: 'Tu perfil pasará a llamarse “' + name + '” en toda la aplicación.', confirmText: 'Cambiar nombre', onConfirm: apply });
-              else apply();
-            }
-          }, 'Guardar cambios')
-        );
-        const submitButton = body.querySelector('.btn-primary');
-        if (submitButton) nameInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); submitButton.click(); } });
-        return body;
-      });
-    }
-
-    preview.append(avatarPreview, h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:10px' }, 'Perfil personal'), photoButton,
-      h('button', { class: 'btn btn-soft', style: 'padding:9px 16px;font-size:13px;margin-top:10px', onclick: editProfileSheet },
+    const avatarWrap = h('div', { style: 'position:relative;display:inline-flex' });
+    avatarWrap.append(avatarEl(profile.name, profile.color, 84, profile.photo || ''));
+    preview.append(avatarWrap, h('p', { style: 'font-size:12px;color:var(--text-2);margin-top:10px' }, 'Perfil personal'),
+      h('button', { class: 'btn btn-soft', style: 'padding:9px 16px;font-size:13px;margin-top:10px', onclick: () => app.components.profileEditorSheet(profile, { onSaved: () => render() }) },
         h('span', { class: 'ic', html: icon('pencil', 15) }),
         'Editar perfil'
       )

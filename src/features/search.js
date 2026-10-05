@@ -53,7 +53,7 @@ export function registerSearch(app) {
       for (const note of S.notes || []) {
         if (note.deletedAt || !norm(note.text + ' ' + (Array.isArray(note.tags) ? note.tags.join(' ') : '')).includes(q)) continue;
         const when = note.date || '';
-        add('Nota', 'pencil', note.text.slice(0, 60) + (note.text.length > 60 ? '…' : ''), when ? app.core.fmtShort(when) : 'Apunte', () => go('noteForm', { id: note.id }));
+        add('Nota rápida', 'pencil', note.text.slice(0, 60) + (note.text.length > 60 ? '…' : ''), when ? app.core.fmtShort(when) : 'Nota de clase', () => { app.domain.ui.classTab = 'hoy'; go('class'); });
       }
     });
     safe(() => {

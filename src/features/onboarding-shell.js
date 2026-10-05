@@ -30,7 +30,7 @@ export function registerOnboarding(app) {
     const box = h('div', { class: 'welcome-box' },
       h('div', { class: 'logo-mark', html: 'D' }),
       h('h2', null, 'DailyHub'),
-      h('p', { class: 'lead' }, 'Tus tareas, hábitos, regalos y apuntes de clase, sincronizados en todos tus dispositivos con tu cuenta.'),
+      h('p', { class: 'lead' }, 'Tus actividades, horario, notas rápidas de clase y regalos, sincronizados en todos tus dispositivos con tu cuenta.'),
       h('div', { style: 'margin-bottom:22px' },
         feature('checksq', 'Tareas y hábitos', 'Marca tu día con un toque'),
         feature('pencil', 'Modo Clase', 'Deberes, material y notas rápidas'),
@@ -185,67 +185,7 @@ export function registerOnboarding(app) {
     }
 
     function editProfileCardSheet(profile) {
-      openSheet('Editar perfil', () => {
-        let newColor = profile.color;
-        let newPhoto = profile.photo || '';
-        const body = h('div');
-        const avatarPreview = h('div', { style: 'display:flex;justify-content:center;margin-bottom:16px;position:relative' });
-        const nameInput = h('input', { class: 'input', type: 'text', value: profile.name, maxlength: '24', style: 'text-align:center;font-weight:700;font-size:17px' });
-        const photoButton = h('button', { class: 'btn btn-soft', style: 'padding:8px 14px;font-size:12px;margin-top:10px' });
-        function drawAvatar() {
-          avatarPreview.innerHTML = '';
-          avatarPreview.append(avatarEl(nameInput.value || profile.name, newColor, 64, newPhoto));
-          if (newPhoto) {
-            avatarPreview.append(h('button', { class: 'rm-photo', 'aria-label': 'Quitar foto', onclick: () => { newPhoto = ''; drawAvatar(); setPhotoEl(photoButton, ''); }, html: icon('x', 15) }));
-          }
-          setPhotoEl(photoButton, newPhoto);
-        }
-        photoButton.onclick = () => pickImage(data => { newPhoto = data; drawAvatar(); }, 512);
-        drawAvatar();
-        nameInput.addEventListener('input', drawAvatar);
-        const swatches = h('div', { class: 'swatches', style: 'justify-content:center;margin:16px 0 22px' });
-        for (const swatchColor of COLORS) {
-          swatches.append(h('button', {
-            class: 'swatch' + (swatchColor === newColor ? ' on' : ''),
-            style: 'background:' + swatchColor,
-            onclick: event => {
-              newColor = swatchColor;
-              [...swatches.children].forEach(item => item.classList.remove('on'));
-              event.currentTarget.classList.add('on');
-              drawAvatar();
-            }
-          }));
-        }
-        body.append(avatarPreview, photoButton,
-          h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Nombre'), nameInput),
-          swatches,
-          h('button', {
-            class: 'btn btn-primary btn-block btn-lg',
-            onclick: () => {
-              const name = nameInput.value.trim();
-              if (!name) {
-                toast('El nombre no puede estar vacío');
-                nameInput.focus();
-                return;
-              }
-              const apply = () => {
-                profile.name = name;
-                profile.color = newColor;
-                profile.photo = newPhoto;
-                save();
-                closeOverlays();
-                render();
-                toast('Perfil actualizado');
-              };
-              if (name !== profile.name) confirmDialog({ title: '¿Cambiar el nombre?', message: '“' + profile.name + '” pasará a llamarse “' + name + '”.', confirmText: 'Cambiar nombre', onConfirm: apply });
-              else apply();
-            }
-          }, 'Guardar cambios')
-        );
-        const submitButton = body.querySelector('.btn-primary');
-        if (submitButton) nameInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); submitButton.click(); } });
-        return body;
-      });
+      app.components.profileEditorSheet(profile, { onSaved: () => render() });
     }
 
     function showProfileActions(profile) {
@@ -397,7 +337,7 @@ export function registerOnboarding(app) {
         const active = route.name === item.id ||
           (item.id === 'home' && route.name === 'now') ||
           (item.id === 'tasks' && (route.name === 'progress' || route.name === 'week')) ||
-          (item.id === 'class' && ['noteForm', 'classSubjects', 'subjectForm', 'classSchedule', 'classGrid', 'classLoad', 'classTemplates', 'nonSchool', 'slotForm', 'subjectView', 'classHistory'].includes(route.name)) ||
+          (item.id === 'class' && ['classSubjects', 'subjectForm', 'classSchedule', 'classGrid', 'classLoad', 'classTemplates', 'nonSchool', 'slotForm', 'subjectView', 'classHistory'].includes(route.name)) ||
           (item.id === 'gifts' && ['person', 'personAbout', 'personForm', 'giftHistory', 'giftAgenda', 'giftStats'].includes(route.name));
         let badge = null;
         if (item.id === 'tasks') {

@@ -8,28 +8,14 @@ export function registerClassAgenda(app) {
     dowIdx,
     fmtShort,
     fmtLong,
-    WEEK_FULL
+    WEEK_FULL,
+    COLORS,
+    ICON_CHOICES
   } = app.core;
   const { S, save } = app.state;
   const { route, ui, go, render } = app.domain;
-  const { headBar, formHead, emptyState, openSheet, closeOverlays, toast } = app.components;
+  const { headBar, formHead, emptyState, openSheet, closeOverlays, confirmDialog, smartBack, toast } = app.components;
 
-  const noteKinds = [
-    { id: 'nota', label: 'Nota', icon: 'pencil' },
-    { id: 'recordatorio', label: 'Recordatorio', icon: 'bell' },
-    { id: 'deberes', label: 'Deberes', icon: 'book' },
-    { id: 'material', label: 'Material', icon: 'folder' },
-    { id: 'importante', label: 'Importante', icon: 'star' }
-  ];
-  const noteKindStyles = {
-    nota: { c: 'var(--primary)', bg: 'var(--primary-soft)', br: 'var(--primary-softer)' },
-    recordatorio: { c: 'var(--amber)', bg: 'var(--amber-soft)', br: 'var(--amber-border)' },
-    deberes: { c: 'var(--violet)', bg: 'var(--violet-soft)', br: 'var(--violet-border)' },
-    material: { c: 'var(--green)', bg: 'var(--green-soft)', br: 'var(--green-border)' },
-    importante: { c: 'var(--danger)', bg: 'var(--danger-soft)', br: 'var(--danger-border)' }
-  };
-  const noteKindStyle = kind => noteKindStyles[kind] || noteKindStyles.nota;
-  const noteTimeStr = note => note.time ? String(note.time).slice(0, 5) : '';
   const subjectIconsQuick = ['book', 'laptop', 'pencil', 'folder', 'music', 'heart', 'plant', 'star'];
   const subjectById = id => (S.subjects || []).find(subject => subject.id === id) || null;
   const slotsOfDay = day => (S.slots || []).filter(slot => slot.day === day).sort((first, second) => (first.start < second.start ? -1 : 1));
@@ -42,15 +28,10 @@ export function registerClassAgenda(app) {
   const slotsOverlap = (first, second) => first.day === second.day && hm(first.start) < hm(second.end) && hm(second.start) < hm(first.end);
   const tintHex = (hex, alpha) => /^#[0-9a-f]{6}$/i.test(hex || '') ? hex + alpha : 'var(--surface-2)';
 
-  ui.classTab = ui.classTab || 'hoy';
-  ui.noteSubject = ui.noteSubject || 'todas';
-  ui.noteState = ui.noteState || 'todas';
+  ui.classTab = ['semana', 'hoy'].includes(ui.classTab) ? ui.classTab : 'hoy';
   const classTabs = [
     { id: 'hoy', label: 'Hoy' },
-    { id: 'semana', label: 'Semana' },
-    { id: 'despues', label: 'Para después' },
-    { id: 'apuntes', label: 'Apuntes' },
-    { id: 'asignaturas', label: 'Asignaturas' }
+    { id: 'semana', label: 'Semana' }
   ];
 
   const nowMin = () => {
@@ -156,7 +137,7 @@ export function registerClassAgenda(app) {
           h('span', { class: 'nw-meta' }, h('span', null, timeTxt(record.start) + ' — ' + timeTxt(record.end)), record.room ? h('span', null, '· ' + record.room) : null)
         )
       ),
-      h('p', { class: 'field-hint', style: 'margin-bottom:10px' }, total ? 'Has apuntado durante esta clase:' : 'No has apuntado nada en esta clase. Todo tranquilo.'),
+      h('p', { class: 'field-hint', style: 'margin-bottom:10px' }, total ? 'Has guardado durante esta clase:' : 'No has guardado notas en esta clase. Todo tranquilo.'),
       total ? h('div', { class: 'set-card', style: 'margin-bottom:18px' },
         counts.inbox ? h('div', { class: 'set-row' }, h('span', { class: 'r-ic', html: icon('pin', 17) }), h('span', null, counts.inbox + ' en Para después')) : null,
         counts.notes ? h('div', { class: 'set-row' }, h('span', { class: 'r-ic', html: icon('pencil', 17) }), h('span', null, counts.notes === 1 ? '1 apunte guardado' : counts.notes + ' apuntes guardados')) : null,
@@ -164,178 +145,9 @@ export function registerClassAgenda(app) {
       ) : null,
       h('div', { style: 'display:flex;gap:10px' },
         h('button', { class: 'btn btn-soft', style: 'flex:1', onclick: () => { closeOverlays(); render(); } }, 'Terminar'),
-        h('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => { closeOverlays(); ui.classTab = counts.inbox ? 'despues' : 'apuntes'; render(); } }, 'Revisar')
+        h('button', { class: 'btn btn-primary', style: 'flex:1', onclick: () => { closeOverlays(); ui.classTab = 'hoy'; render(); } }, 'Volver al horario')
       )
     ));
-  }
-
-  function inboxAdd(text, subjectId) {
-    const current = activeSession();
-    const item = {
-      id: uid('i'),
-      text,
-      date: todayStr(),
-      time: minTxt(nowMin()),
-      subjectId: subjectId || (current ? current.subjectId : null),
-      sessionId: current ? current.id : null,
-      createdAt: new Date().toISOString()
-    };
-    if (!Array.isArray(S.inbox)) S.inbox = [];
-    S.inbox.unshift(item);
-    save();
-    return item;
-  }
-
-  function captureBar(placeholder, onSaved) {
-    const box = h('div', { class: 'qc' });
-    const input = h('input', { class: 'input', type: 'text', autocomplete: 'off', maxlength: '240', placeholder: placeholder || 'Escribe algo y pulsa Enter…' });
-    box.append(h('span', { html: icon('pin', 18) }), input);
-    input.addEventListener('keydown', event => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      const item = inboxAdd(text);
-      input.value = '';
-      const subject = subjectById(item.subjectId);
-      toast('Guardado en Para después' + (subject ? ' · ' + subject.name : ''), { label: 'Organizar', fn: () => { ui.classTab = 'despues'; render(); } });
-      if (onSaved) onSaved(item);
-    });
-    return box;
-  }
-
-  function inboxRow(item, redraw) {
-    const subject = subjectById(item.subjectId);
-    return h('button', { class: 'inbox-row', onclick: () => inboxMenu(item, redraw) },
-      h('span', { class: 'ib-ic', html: icon('pin', 17) }),
-      h('div', { style: 'flex:1;min-width:0' },
-        h('p', null, item.text),
-        h('div', { class: 'ib-meta' },
-          h('span', null, fmtShort(item.date) + (item.time ? ' · ' + item.time : '')),
-          subject ? h('span', { class: 'subj-chip', style: 'color:' + subject.color + ';background:' + tintHex(subject.color, '22') }, subject.name) : h('span', null, 'sin asignatura')
-        )
-      ),
-      h('span', { class: 'chev', html: icon('chev', 16) })
-    );
-  }
-
-  function inboxMenu(item, redraw) {
-    closeOverlays();
-    const overlay = h('div', { class: 'overlay', style: 'z-index:60', onclick: event => { if (event.target === overlay) overlay.remove(); } });
-    const run = callback => () => { overlay.remove(); callback(); };
-    const sheet = h('div', { class: 'sheet', style: 'max-width:360px', role: 'menu' },
-      h('div', { style: 'padding:0 4px 14px' },
-        h('p', { style: 'font-size:15px;font-weight:600;line-height:1.4' }, item.text),
-        h('p', { class: 'field-hint' }, '¿Qué haces con esto?')
-      ),
-      h('button', { class: 'set-row', onclick: run(() => inboxToTask(item, redraw)) }, h('span', { class: 'r-ic', html: icon('checksq', 17) }), h('span', null, 'Convertir en tarea')),
-      h('button', { class: 'set-row', onclick: run(() => pickSubject('¿Deberes de qué asignatura?', subject => inboxToNote(item, redraw, 'deberes', subject))) }, h('span', { class: 'r-ic', style: 'background:var(--violet-soft);color:var(--violet)', html: icon('book', 17) }), h('span', null, 'Deberes de una asignatura')),
-      h('button', { class: 'set-row', onclick: run(() => inboxToNote(item, redraw, 'nota')) }, h('span', { class: 'r-ic', html: icon('pencil', 17) }), h('span', null, 'Convertir en apunte')),
-      h('button', { class: 'set-row', onclick: run(() => inboxToNote(item, redraw, 'recordatorio')) }, h('span', { class: 'r-ic', style: 'background:var(--amber-soft);color:var(--amber)', html: icon('bell', 17) }), h('span', null, 'Convertir en recordatorio')),
-      h('button', { class: 'set-row', onclick: run(() => inboxToNote(item, redraw, 'importante')) }, h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('star', 17) }), h('span', null, 'Marcar como importante')),
-      h('button', { class: 'set-row', onclick: run(() => pickSubject('Asignatura', subject => {
-        item.subjectId = subject ? subject.id : null;
-        save();
-        toast(subject ? 'Asignado a ' + subject.name : 'Sin asignatura');
-        if (redraw) redraw();
-        else render();
-      })) }, h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('folder', 17) }), h('span', null, item.subjectId ? 'Cambiar de asignatura' : 'Asignar asignatura')),
-      h('button', { class: 'set-row', onclick: run(() => inboxEdit(item, redraw)) }, h('span', { class: 'r-ic', style: 'background:var(--surface-2);color:var(--text-2)', html: icon('pencil', 17) }), h('span', null, 'Editar el texto')),
-      h('button', { class: 'set-row', style: 'color:var(--danger)', onclick: run(() => inboxRemove(item, redraw)) }, h('span', { class: 'r-ic', style: 'background:var(--danger-soft);color:var(--danger)', html: icon('trash', 17) }), h('span', null, 'Eliminar'))
-    );
-    overlay.append(sheet);
-    document.body.appendChild(overlay);
-  }
-
-  function inboxEdit(item, redraw) {
-    openSheet('Editar', () => {
-      const input = h('input', { class: 'input', type: 'text', value: item.text, maxlength: '240' });
-      const accept = () => {
-        const value = input.value.trim();
-        if (!value) {
-          input.focus();
-          return;
-        }
-        item.text = value;
-        save();
-        closeOverlays();
-        if (redraw) redraw();
-        else render();
-      };
-      input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          accept();
-        }
-      });
-      setTimeout(() => { input.focus(); input.select(); }, 60);
-      return h('div', null, h('div', { class: 'field' }, input), h('button', { class: 'btn btn-primary btn-block', onclick: accept }, 'Guardar'));
-    });
-  }
-
-  function inboxRemove(item, redraw) {
-    const index = S.inbox.indexOf(item);
-    if (index < 0) return;
-    const [removed] = S.inbox.splice(index, 1);
-    save();
-    if (redraw) redraw();
-    else render();
-    toast('Elemento eliminado', { label: 'Deshacer', fn: () => { S.inbox.splice(Math.min(index, S.inbox.length), 0, removed); save(); render(); } });
-  }
-
-  function dropFromInbox(item) {
-    const index = S.inbox.indexOf(item);
-    if (index < 0) return -1;
-    S.inbox.splice(index, 1);
-    return index;
-  }
-
-  function inboxToTask(item, redraw) {
-    const task = {
-      id: uid('t'),
-      title: item.text,
-      icon: 'checksq',
-      cat: 'Personal',
-      freq: { type: 'once', date: item.date || todayStr() },
-      time: '',
-      completions: [],
-      createdAt: todayStr(),
-      priority: 1,
-      dueDate: item.date || '',
-      updatedAt: Date.now()
-    };
-    S.tasks.push(task);
-    const index = dropFromInbox(item);
-    save();
-    if (redraw) redraw();
-    else render();
-    toast('Convertida en tarea · hoy', { label: 'Deshacer', fn: () => { S.tasks = S.tasks.filter(taskItem => taskItem.id !== task.id); if (index >= 0) S.inbox.splice(Math.min(index, S.inbox.length), 0, item); save(); render(); } });
-  }
-
-  function inboxToNote(item, redraw, kind, subject) {
-    const current = activeSession();
-    const note = {
-      id: uid(),
-      text: item.text,
-      kind: kind || 'nota',
-      date: item.date || todayStr(),
-      time: '',
-      done: false,
-      starred: kind === 'importante',
-      subjectId: subject ? subject.id : (item.subjectId || null),
-      sessionId: (current && current.id === item.sessionId) ? current.id : null,
-      tags: [],
-      deletedAt: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: Date.now()
-    };
-    S.notes.unshift(note);
-    const index = dropFromInbox(item);
-    save();
-    if (redraw) redraw();
-    else render();
-    const message = kind === 'deberes' ? 'Guardado como deberes' + (subject ? ' · ' + subject.name : '') : kind === 'importante' ? 'Marcado como importante' : kind === 'recordatorio' ? 'Guardado como recordatorio' : 'Guardado como apunte';
-    toast(message, { label: 'Deshacer', fn: () => { S.notes = S.notes.filter(noteItem => noteItem.id !== note.id); if (index >= 0) S.inbox.splice(Math.min(index, S.inbox.length), 0, item); save(); render(); } });
   }
 
   function pickSubject(title, callback) {
@@ -543,34 +355,14 @@ export function registerClassAgenda(app) {
     const nowZone = h('div', { id: 'cls-now' });
     drawNowZone(nowZone);
     wrap.append(nowZone);
-    const live = !!activeSession();
-    wrap.append(h('p', { class: 'field-hint', style: 'margin-bottom:8px' }, live ? 'Apunta aquí lo que diga el profe. No hace falta organizarlo ahora.' : 'Escribe y pulsa Enter: se guarda en Para después y lo organizas cuando quieras.'));
-    const preview = h('div');
-    function drawPreview() {
-      preview.innerHTML = '';
-      const items = S.inbox || [];
-      if (!items.length) return;
-      preview.append(h('div', { class: 'section-title' },
-        h('span', null, 'Para después'),
-        h('button', { class: 'link', onclick: () => { ui.classTab = 'despues'; render(); } }, 'Ver los ' + items.length)
-      ));
-      for (const item of items.slice(0, 3)) preview.append(inboxRow(item, drawPreview));
-    }
-    wrap.append(captureBar('Escribe algo y pulsa Enter…', drawPreview));
-    drawPreview();
-    wrap.append(preview);
-    if (!live) {
-      const todayNotes = (S.notes || []).filter(note => !note.deletedAt && note.date === todayStr()).slice(0, 3);
-      if (todayNotes.length) {
-        wrap.append(h('div', { class: 'section-title' },
-          h('span', null, 'Apuntes de hoy'),
-          h('button', { class: 'link', onclick: () => { ui.classTab = 'apuntes'; render(); } }, 'Ver todos')
-        ));
-        for (const note of todayNotes) wrap.append(app.class.noteCard(note));
-      }
-    }
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Concentración')));
-    wrap.append(app.class.pomodoroCard());
+    const quickNotes = h('div');
+    const drawNotes = () => {
+      quickNotes.innerHTML = '';
+      quickNotes.append(app.class.quickNotesPreview());
+    };
+    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Notas rápidas')));
+    wrap.append(app.class.classNotesCapture(drawNotes), quickNotes);
+    drawNotes();
     return wrap;
   }
 
@@ -609,66 +401,173 @@ export function registerClassAgenda(app) {
     return wrap;
   }
 
-  function classInboxBody() {
-    const wrap = h('div');
-    const zone = h('div');
-    function draw() {
-      zone.innerHTML = '';
-      const items = S.inbox || [];
-      if (!items.length) {
-        zone.append(emptyState('pin', 'Nada en Para después', 'Aquí cae todo lo que apuntes en clase. Cuando quieras, conviértelo en tarea, deberes o apunte.'));
-        return;
-      }
-      for (const item of items) zone.append(inboxRow(item, draw));
-      zone.append(h('p', { class: 'field-hint', style: 'text-align:center' }, 'Toca un elemento para convertirlo en tarea, deberes, apunte o recordatorio.'));
-    }
-    draw();
-    wrap.append(captureBar('Escribe algo y pulsa Enter…', draw), zone);
-    return wrap;
-  }
-
   function subjectsGrid() {
     const subjects = S.subjects || [];
     if (!subjects.length) {
-      return emptyState('folder', 'Sin asignaturas todavía', 'Crea una asignatura para agrupar sus clases, sus deberes y sus apuntes.', 'Nueva asignatura', () => go('subjectForm'));
+      return emptyState('folder', 'Sin asignaturas todavía', 'Añade asignaturas al configurar el horario.', 'Configurar horario', () => go('classSchedule'));
     }
     const grid = h('div', { class: 'person-grid stagger' });
     subjects.forEach((subject, index) => {
-      const notes = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
-      const pending = notes.filter(note => !note.done).length;
       const classCount = slotsOfSubject(subject.id).length;
       grid.append(h('button', { class: 'person-card', style: '--i:' + index, onclick: () => go('subjectView', { id: subject.id }) },
         h('span', { class: 'subject-folder', style: 'background:' + tintHex(subject.color, '22') + ';color:' + subject.color, html: icon(subject.icon || 'book', 26) }),
         h('b', null, subject.name),
-        h('span', null, classCount + (classCount === 1 ? ' clase' : ' clases') + ' · ' + notes.length + (notes.length === 1 ? ' apunte' : ' apuntes') + (pending ? ' · ' + pending + ' abiertos' : ''))
+        h('span', null, classCount + (classCount === 1 ? ' clase' : ' clases'))
       ));
     });
     grid.append(h('button', { class: 'person-card add', onclick: () => go('subjectForm') }, h('span', { html: icon('plus', 22) }), h('b', null, 'Añadir asignatura')));
     return grid;
   }
 
+  function scrClassSubjects() {
+    const wrap = h('div');
+    wrap.append(formHead('Asignaturas', smartBack('class'),
+      h('button', { class: 'icon-btn', 'aria-label': 'Nueva asignatura', onclick: () => go('subjectForm'), html: icon('plus', 20) })
+    ));
+    wrap.append(subjectsGrid());
+    return wrap;
+  }
+
+  function scrSubjectForm() {
+    const editing = route.params.id ? subjectById(route.params.id) : null;
+    const back = smartBack('classSubjects');
+    const wrap = h('div');
+    wrap.append(formHead(editing ? 'Editar asignatura' : 'Nueva asignatura', back,
+      editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar asignatura', onclick: () => deleteSubject(editing), html: icon('trash', 18) }) : null
+    ));
+    let color = editing ? (editing.color || COLORS[0]) : COLORS[(S.subjects || []).length % COLORS.length];
+    let iconId = editing ? (editing.icon || 'book') : 'book';
+    const nameInput = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Redes, Sistemas, Ofimática…', value: editing ? editing.name : '', maxlength: '30' });
+    const preview = h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px' });
+    function drawPreview() {
+      preview.innerHTML = '';
+      preview.append(
+        h('span', { class: 'subject-folder', style: 'width:66px;height:66px;border-radius:22px;background:' + tintHex(color, '22') + ';color:' + color, html: icon(iconId, 30) }),
+        h('b', { style: 'font-size:15px;font-weight:700' }, nameInput.value.trim() || 'Sin nombre')
+      );
+    }
+    nameInput.addEventListener('input', drawPreview);
+    drawPreview();
+    wrap.append(preview, h('div', { class: 'field' }, h('label', null, 'Nombre de la asignatura'), nameInput));
+    const swatches = h('div', { class: 'swatches' });
+    for (const swatchColor of COLORS) {
+      swatches.append(h('button', {
+        type: 'button',
+        class: 'swatch' + (swatchColor === color ? ' on' : ''),
+        style: 'background:' + swatchColor,
+        onclick: event => {
+          color = swatchColor;
+          [...swatches.children].forEach(item => item.classList.remove('on'));
+          event.currentTarget.classList.add('on');
+          drawPreview();
+        }
+      }));
+    }
+    wrap.append(h('div', { class: 'field' }, h('label', null, 'Color'), swatches));
+    let showingAll = !subjectIconsQuick.includes(iconId);
+    const iconGrid = h('div', { class: 'icon-grid' });
+    function drawIcons() {
+      iconGrid.innerHTML = '';
+      const choices = showingAll ? ICON_CHOICES : ICON_CHOICES.filter(choice => subjectIconsQuick.includes(choice.id));
+      for (const choice of choices) {
+        iconGrid.append(h('button', {
+          type: 'button',
+          class: 'icon-opt' + (choice.id === iconId ? ' on' : ''),
+          onclick: event => {
+            iconId = choice.id;
+            [...iconGrid.children].forEach(item => item.classList.remove('on'));
+            event.currentTarget.classList.add('on');
+            drawPreview();
+          }
+        }, h('span', { html: icon(choice.id, 22) }), h('span', null, choice.label)));
+      }
+    }
+    drawIcons();
+    const iconToggle = h('button', {
+      class: 'btn btn-soft',
+      style: 'width:100%;margin:-10px 0 18px;font-size:13px',
+      onclick: () => {
+        showingAll = !showingAll;
+        drawIcons();
+        iconToggle.textContent = showingAll ? 'Mostrar menos' : 'Mostrar más iconos';
+      }
+    }, showingAll ? 'Mostrar menos' : 'Mostrar más iconos');
+    wrap.append(h('p', { class: 'big-q' }, 'Icono'), iconGrid, iconToggle);
+    wrap.append(h('button', {
+      class: 'btn btn-primary btn-block btn-lg',
+      onclick: () => {
+        const name = nameInput.value.trim();
+        if (!name) {
+          nameInput.focus();
+          toast('Escribe un nombre');
+          return;
+        }
+        const data = { name, color, icon: iconId };
+        const subjectId = editing ? editing.id : uid('s');
+        if (editing) Object.assign(editing, data);
+        else S.subjects.push({ id: subjectId, createdAt: todayStr(), ...data });
+        save();
+        toast(editing ? 'Asignatura actualizada' : 'Asignatura creada');
+        if (route.params.from === 'slotForm') go('slotForm', { subjectId }, { replace: true });
+        else back();
+      }
+    }, editing ? 'Guardar cambios' : 'Crear asignatura'));
+    const submitButton = wrap.querySelector('.btn-primary');
+    if (submitButton) {
+      wrap.querySelectorAll('input:not([type="file"]):not([type="date"]), select').forEach(input => input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          submitButton.click();
+        }
+      }));
+    }
+    return wrap;
+  }
+
+  function deleteSubject(subject) {
+    const subjectSlots = slotsOfSubject(subject.id);
+    confirmDialog({
+      title: '¿Eliminar «' + subject.name + '»?',
+      message: 'Se quitará esta asignatura' + (subjectSlots.length ? (subjectSlots.length === 1 ? ' y su clase del horario' : ' y sus ' + subjectSlots.length + ' clases del horario') : '') + '. Las notas existentes se conservarán y pasarán a «Sin asignatura». Podrás deshacerlo desde el aviso.',
+      confirmText: 'Eliminar',
+      onConfirm: () => {
+        const index = S.subjects.findIndex(item => item.id === subject.id);
+        if (index < 0) return;
+        const [removed] = S.subjects.splice(index, 1);
+        const touched = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
+        touched.forEach(note => { note.subjectId = null; });
+        const removedSlots = [];
+        for (let slotIndex = (S.slots || []).length - 1; slotIndex >= 0; slotIndex--) {
+          if (S.slots[slotIndex].subjectId === subject.id) removedSlots.push(S.slots.splice(slotIndex, 1)[0]);
+        }
+        save();
+        toast('Asignatura eliminada', { label: 'Deshacer', fn: () => {
+          S.subjects.splice(Math.min(index, S.subjects.length), 0, removed);
+          touched.forEach(note => { note.subjectId = subject.id; });
+          removedSlots.forEach(slot => S.slots.push(slot));
+          save();
+          render();
+        } });
+        go('classSubjects', undefined, { replace: true });
+      }
+    });
+  }
+
   function scrClass() {
     const wrap = h('div');
     const body = {
       hoy: classHoyBody,
-      semana: classWeekBody,
-      despues: classInboxBody,
-      apuntes: () => app.class.classNotesBody(),
-      asignaturas: subjectsGrid
+      semana: classWeekBody
     }[ui.classTab] || classHoyBody;
     wrap.append(headBar('Modo Clase', classSubTxt(),
-      h('button', { class: 'icon-btn', 'aria-label': 'Historial de clases', onclick: () => go('classHistory'), html: icon('clock', 20) }),
-      h('button', { class: 'icon-btn', 'aria-label': 'Horario', onclick: () => go('classSchedule'), html: icon('calendar', 20) }),
-      h('button', { class: 'icon-btn', 'aria-label': 'Nota rápida', onclick: () => app.class.quickNoteSheet(), html: icon('pencil', 18) }),
-      h('button', { class: 'icon-btn', 'aria-label': 'Nueva nota completa', onclick: () => go('noteForm'), html: icon('plus', 20) })
+      h('button', { class: 'icon-btn', 'aria-label': 'Gestionar horario', onclick: () => go('classSchedule'), html: icon('calendar', 20) })
     ));
     const tabs = h('div', { class: 'cls-tabs' });
-    const pending = (S.inbox || []).length;
     for (const tab of classTabs) {
       tabs.append(h('button', {
         class: 'cls-tab' + (ui.classTab === tab.id ? ' on' : ''),
         onclick: () => { ui.classTab = tab.id; render(); }
-      }, tab.label + (tab.id === 'despues' && pending ? ' · ' + pending : '')));
+      }, tab.label));
     }
     wrap.append(tabs, body());
     return wrap;
@@ -681,44 +580,26 @@ export function registerClassAgenda(app) {
         app.domain.goBack();
         return;
       }
-      ui.classTab = 'asignaturas';
+      ui.classTab = 'semana';
       go('class', undefined, { replace: true });
     };
     if (!subject) return emptyState('folder', 'Asignatura no encontrada', 'Puede que la hayas eliminado.', 'Ver asignaturas', back);
     const wrap = h('div');
     wrap.append(formHead(subject.name, back,
-      h('div', { style: 'display:contents' },
-        h('button', { class: 'icon-btn', 'aria-label': 'Nuevo apunte de esta asignatura', onclick: () => go('noteForm', { subjectId: subject.id }), html: icon('plus', 18) }),
-        h('button', { class: 'icon-btn', 'aria-label': 'Editar asignatura', onclick: () => go('subjectForm', { id: subject.id }), html: icon('pencil', 18) })
-      )
+      h('button', { class: 'icon-btn', 'aria-label': 'Editar asignatura', onclick: () => go('subjectForm', { id: subject.id }), html: icon('pencil', 18) })
     ));
-    const notes = (S.notes || []).filter(note => note.subjectId === subject.id && !note.deletedAt);
     const subjectSlots = (S.slots || []).filter(slot => slot.subjectId === subject.id).sort((first, second) => (first.day - second.day) || (first.start < second.start ? -1 : 1));
-    const open = notes.filter(note => !note.done).length;
     wrap.append(h('div', { class: 'card', style: 'display:flex;align-items:center;gap:14px;margin-bottom:8px' },
       h('span', { class: 'subject-folder', style: 'background:' + tintHex(subject.color, '22') + ';color:' + subject.color, html: icon(subject.icon || 'book', 26) }),
       h('div', { style: 'min-width:0' },
         h('b', { style: 'font-size:16px;display:block' }, subject.name),
-        h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, notes.length + (notes.length === 1 ? ' apunte' : ' apuntes') + (open ? ' · ' + open + ' abiertos' : '') + ' · ' + subjectSlots.length + (subjectSlots.length === 1 ? ' clase' : ' clases') + ' a la semana')
+        h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, subjectSlots.length + (subjectSlots.length === 1 ? ' clase' : ' clases') + ' a la semana')
       )
     ));
     if (subjectSlots.length) {
       wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Horario')));
       for (const slot of subjectSlots) wrap.append(slotRowEl(slot));
     }
-    const sections = [['nota', 'Apuntes'], ['deberes', 'Deberes'], ['recordatorio', 'Recordatorios'], ['material', 'Material'], ['importante', 'Importante']];
-    let any = false;
-    for (const [kind, label] of sections) {
-      const matching = notes.filter(note => (note.kind || 'nota') === kind).sort((first, second) => first.date === second.date ? (first.done - second.done) : (first.date < second.date ? 1 : -1));
-      if (!matching.length) continue;
-      any = true;
-      wrap.append(h('div', { class: 'section-title' },
-        h('span', null, label),
-        h('span', { class: 'nav-badge', style: 'background:var(--surface-2);color:var(--text-2)' }, matching.length)
-      ));
-      for (const note of matching) wrap.append(app.class.noteCard(note));
-    }
-    if (!any) wrap.append(emptyState('pencil', 'Sin apuntes todavía', 'Añade el primer apunte, deber o recordatorio de ' + subject.name + '.', 'Nuevo apunte', () => go('noteForm', { subjectId: subject.id })));
     return wrap;
   }
 
@@ -763,9 +644,6 @@ export function registerClassAgenda(app) {
   }
 
   Object.assign(app.class, {
-    noteKinds,
-    noteKindStyle,
-    noteTimeStr,
     subjectIconsQuick,
     subjectById,
     slotsOfDay,
@@ -788,14 +666,6 @@ export function registerClassAgenda(app) {
     startSession,
     finishSession,
     sessionSummarySheet,
-    inboxAdd,
-    captureBar,
-    inboxRow,
-    inboxMenu,
-    inboxEdit,
-    inboxRemove,
-    inboxToTask,
-    inboxToNote,
     pickSubject,
     pickSlotSubject,
     slotRowEl,
@@ -804,9 +674,11 @@ export function registerClassAgenda(app) {
     classHoyBody,
     scheduleSections,
     classWeekBody,
-    classInboxBody,
     subjectsGrid,
     scrClass,
+    scrClassSubjects,
+    scrSubjectForm,
+    deleteSubject,
     scrSubjectView,
     scrClassHistory
   });

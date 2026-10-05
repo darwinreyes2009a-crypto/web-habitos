@@ -106,7 +106,7 @@ export function registerOverlays(app) {
 
   function searchOverlay() {
     openSheet('Buscar', sheet => {
-      const input = h('input', { class: 'input', type: 'text', placeholder: 'Personas, tareas, regalos, apuntes…', autocomplete: 'off' });
+      const input = h('input', { class: 'input', type: 'text', placeholder: 'Personas, tareas, regalos…', autocomplete: 'off' });
       const results = h('div');
 
       function draw() {
@@ -119,29 +119,17 @@ export function registerOverlays(app) {
       const people = S.people.filter(person => person.name.toLowerCase().includes(query));
       const tasks = S.tasks.filter(task => task.title.toLowerCase().includes(query));
       const gifts = S.gifts.filter(gift => gift.title.toLowerCase().includes(query) || (gift.notes || '').toLowerCase().includes(query));
-        const notes = (S.notes || []).filter(note => !note.deletedAt && (note.text || '').toLowerCase().includes(query));
-        const inbox = (S.inbox || []).filter(item => (item.text || '').toLowerCase().includes(query));
-        if (!people.length && !tasks.length && !gifts.length && !notes.length && !inbox.length) {
+      const notes = (S.notes || []).filter(note => !note.deletedAt && (note.text || '').toLowerCase().includes(query));
+      if (!people.length && !tasks.length && !gifts.length && !notes.length) {
           results.append(h('p', { class: 'field-hint', style: 'text-align:center;padding:10px 0' }, 'Sin resultados para "' + input.value.trim() + '"'));
           return;
         }
-        if (inbox.length) {
-          results.append(h('p', { class: 'sr-group' }, 'Para después'));
-          for (const item of inbox.slice(0, 6)) {
-            results.append(h('button', { class: 'sr-item', onclick: () => { closeOverlays(); ui.classTab = 'despues'; go('class'); } },
-              h('span', { class: 'r-ic', style: 'width:34px;height:34px;border-radius:11px;background:var(--amber-soft);color:var(--amber)', html: icon('pin', 16) }),
-              h('div', null, h('b', null, item.text), h('span', null, 'Sin organizar · ' + fmtShort(item.date)))
-            ));
-          }
-        }
         if (notes.length) {
-          results.append(h('p', { class: 'sr-group' }, 'Apuntes de clase'));
+          results.append(h('p', { class: 'sr-group' }, 'Notas rápidas de clase'));
           for (const note of notes.slice(0, 6)) {
-            const kind = (app.class.noteKinds.find(item => item.id === note.kind) || app.class.noteKinds[0]);
-            const subject = app.class.subjectById(note.subjectId);
-            results.append(h('button', { class: 'sr-item', onclick: () => { closeOverlays(); ui.classTab = 'apuntes'; go('class'); } },
-              h('span', { class: 'r-ic', style: 'width:34px;height:34px;border-radius:11px', html: icon(kind.icon, 16) }),
-              h('div', null, h('b', null, note.text), h('span', null, subject ? subject.name : 'Sin asignatura'))
+            results.append(h('button', { class: 'sr-item', onclick: () => { closeOverlays(); ui.classTab = 'hoy'; go('class'); } },
+              h('span', { class: 'r-ic', style: 'width:34px;height:34px;border-radius:11px', html: icon('pencil', 16) }),
+              h('div', null, h('b', null, note.text), h('span', null, fmtShort(note.date)))
             ));
           }
         }

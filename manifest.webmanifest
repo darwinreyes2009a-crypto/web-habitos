@@ -27,16 +27,10 @@
       "description": "Apuntar deberes, material y notas rápidas"
     },
     {
-      "name": "Apuntar en Para después",
-      "short_name": "Para después",
-      "url": "./index.html?goto=class&tab=despues",
-      "description": "Capturar algo de clase sin organizarlo todavía"
-    },
-    {
-      "name": "Nueva nota",
-      "short_name": "Nueva nota",
-      "url": "./index.html?goto=noteForm",
-      "description": "Escribir una nota completa del Modo Clase"
+      "name": "Nota rápida",
+      "short_name": "Nota rápida",
+      "url": "./index.html?goto=class&tab=hoy",
+      "description": "Capturar una nota rápida en el Modo Clase"
     }
   ]
 }

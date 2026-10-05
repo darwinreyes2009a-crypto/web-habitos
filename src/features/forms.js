@@ -103,7 +103,7 @@ export function registerForms(app) {
           const name = templateName.value.trim() || titleInput.value.trim();
           if (!name) { toast('Pon un nombre antes de guardar la plantilla'); templateName.focus(); return; }
           const snapshot = readTaskData();
-          snapshot.steps = snapshot.steps.map(step => ({ id: uid('st'), title: step.title, done: false }));
+          snapshot.steps = snapshot.steps.map(step => ({ ...step, id: uid('st'), done: false, completedOn: [] }));
           if (snapshot.freq.type === 'once') snapshot.freq.date = undefined;
           S.settings.taskTemplates.push({ name: name.slice(0, 30), data: snapshot, updatedAt: Date.now() });
           templateSelect.append(h('option', { value: String(S.settings.taskTemplates.length - 1) }, name.slice(0, 30)));
@@ -122,12 +122,17 @@ export function registerForms(app) {
     let kindId = editing ? app.core.kindOf(editing) : 'check';
     const kindSegment = h('div', { class: 'seg', style: 'flex-wrap:wrap;margin-bottom:10px' });
     const kindZone = h('div', { style: 'margin-bottom:18px' });
+    let stepsSection = null;
     function drawKindSegment() {
       kindSegment.innerHTML = '';
       for (const kind of app.core.KINDS) {
         kindSegment.append(h('button', {
           class: kindId === kind.id ? 'on' : '',
-          onclick: () => { kindId = kind.id; drawKindSegment(); drawKindZone(); }
+          onclick: () => {
+            kindId = kind.id;
+            drawKindSegment();
+            drawKindZone();
+          }
         }, kind.label));
       }
     }
@@ -267,40 +272,91 @@ export function registerForms(app) {
     );
 
     let steps = editing && Array.isArray(editing.steps)
-      ? editing.steps.filter(step => step && typeof step === 'object').map(step => ({ id: step.id || uid('st'), title: String(step.title || ''), done: !!step.done }))
+      ? editing.steps.filter(step => step && typeof step === 'object').map(step => ({
+        ...step,
+        id: step.id || uid('st'),
+        title: String(step.title || ''),
+        instruction: String(step.instruction || ''),
+        durationMinutes: Math.max(0, Number(step.durationMinutes) || 0),
+        image: String(step.image || ''),
+        completedOn: Array.isArray(step.completedOn) ? [...step.completedOn] : [],
+        done: !!step.done
+      }))
       : [];
-    const stepsList = h('div', { style: 'display:flex;flex-direction:column;gap:8px;margin-bottom:10px' });
+    const stepsList = h('div', { class: 'guided-step-editor-list' });
     const stepInput = h('input', { class: 'input', type: 'text', maxlength: '80', placeholder: 'Ej. Preparar material' });
+
+    // Collapsible: starts collapsed for new tasks with no steps,
+    // expanded when editing a task that already has steps.
+    let stepsExpanded = !!editing && steps.length > 0;
+    const stepsChevronIcon = h('span', { html: icon('chev', 16), style: 'transition:transform var(--t-fast) var(--ease)' });
+    if (!stepsExpanded) stepsChevronIcon.style.transform = 'rotate(-90deg)';
+    const stepsBody = h('div', { class: 'collapsible-body' });
+    if (!stepsExpanded) stepsBody.classList.add('collapsed');
+    const stepsHead = h('button', {
+      class: 'guided-step-head',
+      type: 'button',
+      style: 'width:100%;padding:14px 12px;border:none;background:transparent;display:flex;align-items:center;justify-content:space-between;cursor:pointer',
+      onclick: () => {
+        stepsExpanded = !stepsExpanded;
+        stepsBody.classList.toggle('collapsed', !stepsExpanded);
+        stepsChevronIcon.style.transform = stepsExpanded ? 'rotate(0)' : 'rotate(-90deg)';
+      }
+    },
+      h('span', { class: 'big-q', style: 'margin:0' }, 'Pasos guiados'),
+      h('span', { class: 'chev' }, stepsChevronIcon)
+    );
     function drawSteps() {
       stepsList.innerHTML = '';
-      for (const step of steps) {
-        const title = h('input', { class: 'input', type: 'text', maxlength: '80', value: step.title, style: 'flex:1;min-width:0' });
+      steps.forEach((step, index) => {
+        const title = h('input', { class: 'input', type: 'text', maxlength: '80', value: step.title, 'aria-label': 'Nombre del paso ' + (index + 1) });
         title.addEventListener('input', () => { step.title = title.value; });
-        const check = h('input', { type: 'checkbox', checked: step.done, 'aria-label': 'Subtarea completada' });
-        check.addEventListener('change', () => { step.done = check.checked; });
-        stepsList.append(h('div', { style: 'display:flex;align-items:center;gap:8px' },
-          check,
+        const instruction = h('textarea', { class: 'input', rows: '2', maxlength: '500', placeholder: 'Instrucciones (opcional)', 'aria-label': 'Instrucciones del paso ' + (index + 1) });
+        instruction.value = step.instruction;
+        instruction.addEventListener('input', () => { step.instruction = instruction.value; });
+        const duration = h('input', { class: 'input', type: 'number', min: '0', max: '1440', value: step.durationMinutes || '', placeholder: '0', 'aria-label': 'Duración en minutos del paso ' + (index + 1) });
+        duration.addEventListener('input', () => { step.durationMinutes = Math.max(0, Math.min(1440, Math.round(Number(duration.value) || 0))); });
+        const imageButton = h('button', { class: 'btn btn-soft', type: 'button', onclick: () => pickImage(data => { step.image = data; drawSteps(); }) },
+          h('span', { class: 'ic', html: icon('image', 15) }), step.image ? 'Cambiar imagen' : 'Añadir imagen');
+        const imageView = step.image ? h('button', { class: 'guided-edit-image', type: 'button', 'aria-label': 'Ver imagen del paso ' + (index + 1), onclick: () => viewImage(step.image, step.title) }, h('img', { src: step.image, alt: step.title })) : null;
+        const reorder = h('div', { class: 'guided-step-order' },
+          h('button', { class: 'mini-btn', type: 'button', 'aria-label': 'Mover paso arriba', disabled: index === 0, onclick: () => { [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]]; drawSteps(); } }, '↑'),
+          h('button', { class: 'mini-btn', type: 'button', 'aria-label': 'Mover paso abajo', disabled: index === steps.length - 1, onclick: () => { [steps[index + 1], steps[index]] = [steps[index], steps[index + 1]]; drawSteps(); } }, '↓'),
+          h('button', { class: 'mini-btn', type: 'button', 'aria-label': 'Quitar paso', onclick: () => { steps = steps.filter(item => item !== step); drawSteps(); }, html: icon('trash', 15) })
+        );
+        stepsList.append(h('div', { class: 'guided-step-editor' },
+          h('div', { class: 'guided-step-editor-head' }, h('b', null, 'Paso ' + (index + 1)), reorder),
           title,
-          h('button', { class: 'mini-btn', type: 'button', 'aria-label': 'Quitar subtarea', onclick: () => { steps = steps.filter(item => item !== step); drawSteps(); }, html: icon('x', 15) })
+          instruction,
+          h('div', { class: 'guided-step-editor-media' }, duration, h('span', null, 'min'), imageButton, imageView)
         ));
+      });
+      // Auto-expand when steps exist so the user can see and edit them
+      if (steps.length > 0 && !stepsExpanded) {
+        stepsExpanded = true;
+        stepsBody.classList.remove('collapsed');
+        stepsChevronIcon.style.transform = '';
       }
     }
     const addStep = () => {
       const title = stepInput.value.trim();
       if (!title) { stepInput.focus(); return; }
-      steps.push({ id: uid('st'), title, done: false });
+      steps.push({ id: uid('st'), title, instruction: '', durationMinutes: 0, image: '', done: false, completedOn: [] });
       stepInput.value = '';
       drawSteps();
       stepInput.focus();
     };
-    const addStepButton = h('button', { class: 'btn btn-soft', type: 'button', style: 'padding:9px 12px;white-space:nowrap', onclick: addStep }, 'Añadir');
+    const addStepButton = h('button', { class: 'btn btn-soft', type: 'button', style: 'padding:9px 12px;white-space:nowrap', onclick: addStep }, 'Añadir paso');
     stepInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); addStep(); } });
-    drawSteps();
-    wrap.append(h('p', { class: 'big-q' }, 'Subtareas'),
+    stepsBody.append(
       stepsList,
       h('div', { style: 'display:flex;gap:8px;margin-bottom:18px' }, stepInput, addStepButton),
-      h('p', { class: 'field-hint', style: 'margin-top:-12px' }, 'Opcional. Puedes marcar cada paso por separado en el formulario de la tarea.')
+      h('p', { class: 'field-hint', style: 'margin-top:-12px' }, 'Sin pasos, la actividad se completa con un toque. Añade varios para guiar la ejecución; cada uno puede llevar instrucciones, imagen y duración.')
     );
+    drawSteps();
+    stepsSection = h('section', { class: 'guided-step-settings collapsible' }, stepsHead, stepsBody);
+    wrap.append(stepsSection);
+
 
     // Fecha de fin: la rutina deja de aparecer pasado ese día (fin de curso,
     // fin de temporada, hasta que se te pase la mania).
@@ -340,7 +396,16 @@ export function registerForms(app) {
         time: timeInput.value || '',
         priority: Math.max(0, Math.min(2, Number(prioritySelect.value) || 0)),
         dueDate: dueDateInput.value || '',
-        steps: steps.filter(step => step.title.trim()).map(step => ({ id: step.id || uid('st'), title: step.title.trim().slice(0, 80), done: !!step.done }))
+        steps: steps.filter(step => step.title.trim()).map(step => ({
+          ...step,
+          id: step.id || uid('st'),
+          title: step.title.trim().slice(0, 80),
+          instruction: String(step.instruction || '').trim().slice(0, 500),
+          durationMinutes: Math.max(0, Math.min(1440, Math.round(Number(step.durationMinutes) || 0))),
+          image: String(step.image || ''),
+          completedOn: Array.isArray(step.completedOn) ? [...new Set(step.completedOn)] : [],
+          done: !!step.done
+        }))
       };
     }
 
@@ -375,7 +440,16 @@ export function registerForms(app) {
       dueDateInput.value = data.dueDate || '';
       fromAnyInput.value = freq.from || '';
       untilInput.value = freq.until || '';
-      steps = Array.isArray(data.steps) ? data.steps.map(step => ({ id: uid('st'), title: String(step.title || ''), done: false })).filter(step => step.title) : [];
+      steps = Array.isArray(data.steps) ? data.steps.map(step => ({
+        ...step,
+        id: uid('st'),
+        title: String(step.title || ''),
+        instruction: String(step.instruction || ''),
+        durationMinutes: Math.max(0, Number(step.durationMinutes) || 0),
+        image: String(step.image || ''),
+        completedOn: [],
+        done: false
+      })).filter(step => step.title) : [];
       drawSteps();
       templateName.value = template.name || '';
     }

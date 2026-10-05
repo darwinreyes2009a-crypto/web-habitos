@@ -63,7 +63,12 @@ const pasos = [
   { nombre: 'Lógica de calendario (huecos, solapes, carga, .ics)', run: () => execFileSync(process.execPath, ['tools/test-calendar-core.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Importación de horarios CSV/TSV y solapes atómicos', run: () => execFileSync(process.execPath, ['tools/test-schedule-import.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Round-trip de tareas y notas con columnas opcionales', run: () => execFileSync(process.execPath, ['tools/test-sync-enhancements.js'], { cwd: RAIZ, stdio: 'inherit' }) },
-  { nombre: 'Vista previa de notas segura contra HTML', run: () => execFileSync(process.execPath, ['tools/test-notes-preview.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
+  { nombre: 'Vista previa de notas segura contra HTML', run: () => execFileSync(process.execPath, ['tools/test-notes-preview.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Rutas de gestión de asignaturas en Modo Clase', run: () => execFileSync(process.execPath, ['tools/test-class-subject-routes.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Notas rápidas de Modo Clase y compatibilidad con datos antiguos', run: () => execFileSync(process.execPath, ['tools/test-class-quick-notes.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Ejecución guiada y progreso diario de actividades', run: () => execFileSync(process.execPath, ['tools/test-guided-activities.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Configuración guiada y actualización visible en todos los tipos de hábito', run: () => execFileSync(process.execPath, ['tools/test-guided-activity-ui.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Tarjetas personalizadas en Actividades', run: () => execFileSync(process.execPath, ['tools/test-activity-cards.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
 ];
 
 let fallos = 0;

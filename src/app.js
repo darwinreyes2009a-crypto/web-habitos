@@ -1,4 +1,4 @@
-import '../app-sync.js?v=59';
+import '../app-sync.js?v=60';
 import { createAppContext } from './core/context.js';
 import { registerDom } from './core/dom.js';
 import { registerDates } from './core/dates.js';
@@ -29,6 +29,7 @@ import { registerNow } from './features/now.js';
 import { registerPlatform } from './features/platform.js';
 import { registerGiftsAndPeople } from './features/gifts-people.js';
 import { registerForms } from './features/forms.js';
+import { registerProfileEditor } from './components/profile-editor.js';
 import { registerSettings } from './features/settings.js';
 
 const app = createAppContext();
@@ -101,6 +102,7 @@ app.services.supabase = window.sb;
 registerMedia(app);
 registerRecordActions(app);
 registerNotifications(app);
+registerProfileEditor(app); // Must run after media services + overlays
 registerAuth(app);
 registerClassAgenda(app);
 registerClassNotes(app);
@@ -121,7 +123,6 @@ registerSettings(app);
 
 Object.assign(app.features, {
   class: app.class.scrClass,
-  noteForm: app.class.scrNoteForm,
   classSubjects: app.class.scrClassSubjects,
   subjectForm: app.class.scrSubjectForm,
   classSchedule: app.class.scrClassSchedule,
