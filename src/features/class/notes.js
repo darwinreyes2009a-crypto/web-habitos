@@ -59,8 +59,8 @@ export function registerClassNotes(app) {
     for (const note of notes.slice(0, 8)) {
       list.append(h('div', { class: 'quick-note-row' },
         h('span', { class: 'r-ic', html: icon('pencil', 17) }),
-        h('span', { style: 'flex:1;min-width:0;overflow-wrap:anywhere' }, note.text),
-        h('span', { class: 'r-sub', style: 'flex:none' }, note.date === todayStr() ? 'Hoy' : note.date || '')
+        h('span', { class: 'qn-text' }, note.text),
+        h('span', { class: 'r-sub' }, note.date === todayStr() ? 'Hoy' : note.date || '')
       ));
     }
     return list;

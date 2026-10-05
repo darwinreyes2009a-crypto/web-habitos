@@ -122,6 +122,18 @@
 .hist-row .r-ic { width:38px; height:38px; border-radius:13px; display:flex; align-items:center; justify-content:center; flex:none }
 .hist-row b { font-size:14px; font-weight:600; display:block }
 .hist-row .r-sub { font-size:12px; color:var(--text-2); display:block; margin-top:2px }
+/* Notas rápidas de Modo Clase. El campo y el botón van en la misma línea: antes
+   el `div` no tenía regla y el botón caía en una segunda fila pegado al campo. */
+.quick-note-capture { display:flex; align-items:center; gap:8px; margin-bottom:14px }
+.quick-note-capture .input { flex:1; min-width:0 }
+.quick-note-capture .btn { flex:none }
+/* Notas rápidas de Modo Clase. Comparte la anatomía de `.hist-row` —icono con
+   caja, texto que cede el espacio, metadato a la derecha— pero más compacta:
+   aquí solo hay un texto y una fecha, sin título ni bloque de acciones. */
+.quick-note-row { display:flex; align-items:flex-start; gap:11px; padding:10px 12px; margin-bottom:8px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-m); box-shadow:var(--sh-s) }
+.quick-note-row .r-ic { width:30px; height:30px; border-radius:10px; background:var(--primary-soft); color:var(--primary); display:flex; align-items:center; justify-content:center; flex:none }
+.quick-note-row .qn-text { flex:1; min-width:0; font-size:13.5px; line-height:1.45; color:var(--text); overflow-wrap:anywhere }
+.quick-note-row .r-sub { flex:none; font-size:11.5px; font-weight:600; color:var(--text-3); white-space:nowrap; padding-top:2px }
 .cls-today span:first-child { color:var(--primary) }
 .drop-img { border:2px dashed var(--border); border-radius:var(--r-l); padding:26px; display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--text-3); font-size:13px; font-weight:600; background:var(--bg); width:100%; transition:border-color .15s }
 .drop-img:hover { border-color:var(--primary); color:var(--primary) }
