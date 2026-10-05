@@ -478,10 +478,10 @@ export function registerSettings(app) {
     const wrap = h('div');
     wrap.append(headBar('Perfil', null, h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: app.components.smartBack('settings'), html: icon('back', 19) })));
 
-    // Esta pantalla es la identidad del perfil, asi que el nombre tiene que
-    // ser el protagonista: antes solo havia un avatar suelto con un "Perfil
-    // personal" generico y el nombre no aparecia por ninguna parte. La tarjeta
-    // entera es la accion de editar, igual que la fila de Ajustes.
+    // Esta pantalla es la identidad del perfil, así que el nombre tiene que
+    // ser el protagonista: antes solo había un avatar suelto con un "Perfil
+    // personal" genérico y el nombre no aparecía por ninguna parte. La tarjeta
+    // entera es la acción de editar, igual que la fila de Ajustes.
     const email = (accountsIndex().find(account => account.uid === activeAccountUid()) || {}).email || '';
     wrap.append(h('button', {
       class: 'profile-identity',
