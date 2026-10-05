@@ -251,23 +251,29 @@ export function registerHomeAndTasks(app) {
           steps.length ? h('span', { class: 'activity-step-summary' }, stepCount + ' de ' + steps.length + ' pasos') : null
         )
       ),
+      h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) }),
       control
     ));
     const goal = app.features.goalBar(task);
     if (goal) card.append(h('div', { style: 'padding:8px 4px 0' }, goal));
     const status = skipped ? 'Hoy saltado' : !due ? 'No toca hoy' : done ? (avoid ? 'Día limpio' : 'Completada') : avoid ? 'Registrar fallo' : 'Pendiente';
-    card.append(h('div', { class: 'activity-card-footer' },
-      h('span', { class: 'activity-state' + (done && !avoid ? ' positive' : skipped ? ' muted' : '') },
-        h('span', { class: 'activity-state-dot' }), status
-      ),
-      steps.length ? h('button', {
-        class: 'btn ' + (done ? 'btn-soft' : 'btn-primary'),
-        type: 'button',
-        disabled: !due || skipped,
-        onclick: () => app.features.guidedTaskSheet(task, ymd, refreshCard)
-      }, done ? 'Revisar pasos' : stepCount ? 'Continuar' : 'Empezar') : null,
-      h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) })
-    ));
+    // El pie solo aparece si dice algo o si ofrece la acción de pasos: con la
+    // tarjeta simplemente pendiente, el círculo del control ya lo dice todo y
+    // una fila con solo el lápiz quedaba vacía. Editar vive arriba, en la
+    // cabecera, junto al resto de acciones de la tarjeta.
+    if (status !== 'Pendiente' || steps.length) {
+      card.append(h('div', { class: 'activity-card-footer' },
+        status !== 'Pendiente' ? h('span', { class: 'activity-state' + (done && !avoid ? ' positive' : skipped ? ' muted' : '') },
+          h('span', { class: 'activity-state-dot' }), status
+        ) : null,
+        steps.length ? h('button', {
+          class: 'btn ' + (done ? 'btn-soft' : 'btn-primary'),
+          type: 'button',
+          disabled: !due || skipped,
+          onclick: () => app.features.guidedTaskSheet(task, ymd, refreshCard)
+        }, done ? 'Revisar pasos' : stepCount ? 'Continuar' : 'Empezar') : null
+      ));
+    }
     return card;
   }
 

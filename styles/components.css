@@ -179,13 +179,20 @@
 .activity-card-head > .stepper { margin-left:auto }
 .activity-card-head > .counter-val { flex:none }
 .activity-card-footer { display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--border-soft) }
+/* El estado puede no pintarse (cuando la tarjeta está pendiente y el círculo
+   del control ya lo dice). Cuando falta, el primer hijo que quede tiene que
+   irse a la derecha para que editar no se pegue al borde izquierdo. */
+.activity-card-footer > :first-child { margin-left:auto }
 .activity-state { display:flex; align-items:center; gap:7px; flex:1; min-width:0; font-size:var(--fs-label); font-weight:var(--fw-semi); color:var(--text-2) }
 .activity-state.positive { color:var(--green) }
 .activity-state.muted { color:var(--text-3) }
 .activity-state-dot { width:8px; height:8px; flex:none; border:1.5px solid currentColor; border-radius:50% }
 .activity-state.positive .activity-state-dot { background:currentColor }
 .activity-card-footer .btn { min-height:36px; padding:0 13px; font-size:var(--fs-label) }
-.activity-edit { width:36px; height:36px; flex:none; color:var(--text-3) }
+/* Editar va en la cabecera, junto al círculo de marcar. Se deja fantasma para
+   que el círculo siga siendo la acción principal de la tarjeta. */
+.activity-edit { width:34px; height:34px; flex:none; color:var(--text-3); background:transparent }
+.activity-edit:hover { background:var(--surface-2); color:var(--text) }
 .activity-step { padding:16px; background:var(--surface-2); border:1px solid var(--border-soft); border-radius:var(--r-l) }
 .activity-step h4 { overflow-wrap:anywhere }
 .guided-image { display:block; position:relative; width:100%; margin-top:8px; padding:0; border-radius:var(--r-m); overflow:hidden; text-align:left }

@@ -333,7 +333,10 @@ export function registerClassAgenda(app) {
     }
     const descanso = todayBreak();
     if (descanso) return descanso.label + ' · hoy no hay clases';
-    return activeSlotsToday().length ? 'Has terminado las clases de hoy' : 'Tu agenda de clase';
+    // Aquí solo va el dato: la tarjeta de abajo ya dice "Has terminado las
+    // clases de hoy", y repetirlo dejaba el mismo texto dos veces seguidas.
+    const hechas = activeSlotsToday().length;
+    return hechas ? hechas + (hechas === 1 ? ' clase completada' : ' clases completadas') : 'Tu agenda de clase';
   }
 
   function classHoyBody() {

@@ -191,7 +191,14 @@ assert.ok(overlay && overlay.children.includes(sheet), 'the guided confirmation 
 card = find(screen, node => node.tag === 'article' && node.attrs['data-task-id'] === countTask.id);
 const summary = find(card, node => node.attrs.class === 'activity-step-summary');
 assert.equal(textOf(summary), '1 de 1 pasos', 'visible activity card should reflect the final step while the sheet remains open');
-assert.equal(find(card, node => node.attrs.class === 'activity-state').textContent.includes('Pendiente'), true, 'guided progress must not falsely complete a count habit below its target');
+// La tarjeta ya no rotula "Pendiente": el círculo del control lo dice y la
+// etiqueta se omite para no repetirlo. Lo que importa aquí es que un contador
+// por debajo de su objetivo no se presente NUNCA como completado, se rotule o
+// no. Se comprueba el texto entero de la tarjeta para que la aserción siga
+// teniendo fuerza aunque la etiqueta vuelva a aparecer.
+const guidedCardText = textOf(card);
+assert.equal(/Completada|Día limpio/.test(guidedCardText), false, 'guided progress must not falsely complete a count habit below its target');
+assert.equal(/(^|\s)is-done(\s|$)/.test(card.attrs.class || ''), false, 'a count habit below its target must not render as a completed card');
 assert.equal(JSON.stringify({ completions: countTask.completions, log: countTask.log, skips: countTask.skips }), originalCountLog, 'guided steps must leave canonical numeric records intact');
 overlay.remove();
 
