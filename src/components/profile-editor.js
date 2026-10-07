@@ -20,7 +20,7 @@ export function registerProfileEditor(app) {
       // --- Avatar preview -------------------------------------------------
       const avatarPreview = h('div', { style: 'display:flex;justify-content:center;margin-bottom:16px;position:relative' });
       const nameInput = h('input', {
-        class: 'input', type: 'text', value: profile.name,
+        id: 'profile-name', class: 'input', type: 'text', value: profile.name,
         maxlength: '24', style: 'text-align:center;font-weight:700;font-size:17px'
       });
       const photoButton = h('button', {
@@ -76,7 +76,7 @@ export function registerProfileEditor(app) {
       body.append(
         avatarPreview,
         photoButton,
-        h('div', { class: 'field', style: 'margin-top:14px' }, h('label', null, 'Nombre'), nameInput),
+        h('div', { class: 'field', style: 'margin-top:14px' }, h('label', { for: 'profile-name' }, 'Nombre'), nameInput),
         swatches,
         h('button', {
           class: 'btn btn-primary btn-block btn-lg',

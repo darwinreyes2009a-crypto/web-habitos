@@ -27,8 +27,8 @@
   --toast-action: #93C5FD;
 
   --text: #0F172A;           /* texto principal */
-  --text-2: #64748B;         /* texto secundario */
-  --text-3: #94A3B8;         /* metadatos y placeholders */
+  --text-2: #475569;         /* texto secundario */
+  --text-3: #5E6D84;         /* metadatos y placeholders */
 
   --border: #E2E8F0;         /* borde visible */
   --border-soft: #EEF2F7;    /* separadores y bordes discretos */
@@ -36,7 +36,7 @@
   --green: #15803D;  --green-soft: #F0FDF4;  --green-border: #BBF7D0;
   --amber: #B45309;  --amber-soft: #FFFBEB;  --amber-border: #FDE68A;
   --violet: #6D28D9; --violet-soft: #F5F3FF; --violet-border: #DDD6FE;
-  --danger: #DC2626; --danger-soft: #FEF2F2; --danger-border: #FECACA;
+  --danger: #B91C1C; --danger-soft: #FEF2F2; --danger-border: #FECACA;
 
   /* Sombra de la flecha del <select>: se redefine en oscuro porque un SVG
      embebido no puede heredar el color del texto. */
@@ -173,7 +173,7 @@ a { color: var(--primary) }
 
 /* Alto contraste: refuerza bordes y textos secundarios sin cambiar el layout */
 :root[data-contrast="high"] {
-  --text-2: #475569; --text-3: #64748B;
+  --text-2: #475569; --text-3: #5E6D84;
   --border: #94A3B8; --border-soft: #CBD5E1;
 }
 :root[data-theme="dark"][data-contrast="high"] {

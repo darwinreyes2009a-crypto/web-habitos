@@ -23,6 +23,17 @@
 
 .hidden { display: none !important }
 
+/* Accesible por teclado: el primer Tab lo saca de pantalla y aparece con foco. */
+.skip-link {
+  position: fixed; top: 10px; left: 10px; z-index: 100;
+  padding: 10px var(--sp-4); border-radius: var(--r-m);
+  background: var(--primary); color: #fff;
+  font-size: var(--fs-body); font-weight: var(--fw-semi);
+  text-decoration: none;
+  transform: translateY(-250%);
+}
+.skip-link:focus { transform: none }
+
 /* --- Filtros en línea --------------------------------------------------- */
 
 .chips {
@@ -164,6 +175,8 @@
   min-width:0; padding:14px; border:1px solid var(--border-soft); border-radius:var(--r-l);
   background:var(--surface); box-shadow:var(--sh-s); transition:background var(--t-fast),border-color var(--t-fast);
 }
+/* Solo señala click cuando el puntero está sobre la zona accionable. */
+.activity-card:has(.activity-card-main:hover) { border-color: var(--primary-softer) }
 .activity-card.is-done { background:var(--green-soft); border-color:var(--green-border) }
 .activity-card.is-skipped { background:var(--surface-2); border-color:var(--border) }
 .activity-card-head { display:flex; align-items:center; gap:10px; min-width:0 }
@@ -268,7 +281,7 @@
   background: var(--primary-soft); color: var(--primary-ink);
   display: flex; align-items: center; justify-content: center;
 }
-.task-card b { font-size: var(--fs-item); font-weight: var(--fw-semi); line-height: var(--lh-body); color: var(--text) }
+.task-card b { font-size: var(--fs-item); font-weight: var(--fw-semi); line-height: var(--lh-body); color: var(--text); text-wrap: balance; overflow-wrap: anywhere }
 .task-card .t-state {
   display: flex; align-items: center; gap: 6px;
   font-size: var(--fs-label); font-weight: var(--fw-semi); color: var(--text-3);
@@ -450,6 +463,9 @@ textarea.input { resize: vertical; min-height: 88px }
   border-radius: var(--r-xl);
   overflow: hidden; box-shadow: var(--sh-s);
 }
+/* Solo la variante <button> es accionable; las div pasivas no insinúan click. */
+button.set-card { cursor: pointer; transition: border-color var(--t-fast) }
+button.set-card:hover { border-color: var(--primary-softer) }
 .set-row {
   display: flex; align-items: center; gap: 14px;
   width: 100%; min-height: var(--tap);

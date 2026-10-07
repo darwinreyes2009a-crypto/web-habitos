@@ -40,9 +40,18 @@ export function registerSettings(app) {
       const profile = currentProfile();
       const box = h('div');
       if (profile.pin) {
-        const currentPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'PIN actual' });
-        const newPin = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Nuevo PIN (4–6 dígitos)', style: 'margin-top:10px' });
-        const newPinConfirmation = h('input', { class: 'input', inputmode: 'numeric', maxlength: '6', placeholder: 'Repite el nuevo PIN', style: 'margin-top:10px' });
+        const currentPin = h('div', { class: 'field' },
+          h('label', { for: 'pin-current' }, 'PIN actual'),
+          h('input', { id: 'pin-current', class: 'input', inputmode: 'numeric', maxlength: '6' })
+        );
+        const newPin = h('div', { class: 'field' },
+          h('label', { for: 'pin-new' }, 'Nuevo PIN (4–6 dígitos)'),
+          h('input', { id: 'pin-new', class: 'input', inputmode: 'numeric', maxlength: '6' })
+        );
+        const newPinConfirmation = h('div', { class: 'field' },
+          h('label', { for: 'pin-new-confirm' }, 'Repite el nuevo PIN'),
+          h('input', { id: 'pin-new-confirm', class: 'input', inputmode: 'numeric', maxlength: '6' })
+        );
         const error = h('p', { style: 'font-size:12.5px;color:var(--danger);min-height:18px;margin:8px 0' });
         box.append(currentPin, newPin, newPinConfirmation, error,
           h('button', {

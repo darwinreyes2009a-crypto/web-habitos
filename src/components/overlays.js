@@ -45,7 +45,49 @@ export function registerOverlays(app) {
     );
   }
 
+  // Política única de foco para overlays: foco al primer elemento al abrir,
+  // Escape cierra y restaura el foco anterior, Tab queda atrapado dentro.
+  const FOCUSABLE_SEL = 'input,select,textarea,button,a[href],[tabindex]';
+  let prevFocus = null;
+
+  function focusablesIn(root) {
+    // tabIndex >= 0 descarta disabled implícitos y los tabindex="-1"
+    // (incluido el propio contenedor del diálogo).
+    return [...root.querySelectorAll(FOCUSABLE_SEL)]
+      .filter(el => !el.disabled && el.tabIndex >= 0);
+  }
+
+  function restoreFocus(target) {
+    try {
+      if (target && document.contains(target)) target.focus({ preventScroll: true });
+    } catch (e) { /* el elemento puede haber desaparecido: nunca lanzar */ }
+  }
+
+  function trapKeys(overlay, dialog, close) {
+    overlay.addEventListener('keydown', event => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const list = focusablesIn(dialog);
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !dialog.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (active === last || !dialog.contains(active))) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+  }
+
   function openSheet(title, build) {
+    prevFocus = document.activeElement;
     const overlay = h('div', {
       class: 'overlay',
       onclick: event => { if (event.target === overlay) closeOverlays(); }
@@ -61,12 +103,17 @@ export function registerOverlays(app) {
     if (body) sheet.append(body);
     overlay.append(sheet);
     $('#overlays').append(overlay);
-    const focusable = sheet.querySelector('input,select,textarea,button:not(.icon-btn)');
+    trapKeys(overlay, sheet, closeOverlays);
+    const focusable = sheet.querySelector('input,select,textarea,button:not(.icon-btn)') || focusablesIn(sheet)[0];
     if (focusable) focusable.focus({ preventScroll: true });
+    else { sheet.tabIndex = -1; sheet.focus({ preventScroll: true }); }
   }
 
   function closeOverlays() {
+    const target = prevFocus;
+    prevFocus = null;
     $('#overlays').innerHTML = '';
+    restoreFocus(target);
   }
 
   function switchRow(label, hint, checked, onChange) {
@@ -171,23 +218,30 @@ export function registerOverlays(app) {
 
   function confirmDialog({ title, message, confirmText, onConfirm }) {
     const actionLabel = confirmText || 'Eliminar';
+    const origin = document.activeElement;
     const overlay = h('div', {
       class: 'overlay',
       style: 'z-index:70',
-      onclick: event => { if (event.target === overlay) overlay.remove(); }
+      onclick: event => { if (event.target === overlay) close(); }
     });
     const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-label': title },
       h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:8px' }, title),
       h('p', { style: 'font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px' }, message),
       h('div', { style: 'display:flex;gap:10px;justify-content:flex-end' },
-        h('button', { class: 'btn btn-soft', onclick: () => overlay.remove() }, 'Cancelar'),
-        h('button', { class: 'btn btn-danger', onclick: () => { overlay.remove(); if (onConfirm) onConfirm(); } }, actionLabel)
+        h('button', { class: 'btn btn-soft', onclick: () => close() }, 'Cancelar'),
+        h('button', { class: 'btn btn-danger', onclick: () => { close(); if (onConfirm) onConfirm(); } }, actionLabel)
       )
     );
+    function close() {
+      overlay.remove();
+      restoreFocus(origin);
+    }
     overlay.append(sheet);
     document.body.appendChild(overlay);
-    const first = sheet.querySelector('button');
+    trapKeys(overlay, sheet, close);
+    const first = focusablesIn(sheet)[0];
     if (first) first.focus({ preventScroll: true });
+    else { sheet.tabIndex = -1; sheet.focus({ preventScroll: true }); }
   }
 
   function exitDialog() {

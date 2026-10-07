@@ -30,7 +30,7 @@ export function registerTaskRow(app) {
         'aria-pressed': info.done ? 'true' : 'false',
         disabled: !due,
         style: base,
-        onclick: () => guidedTaskSheet(task, ymd, options && options.onProgress)
+        onclick: () => guidedTaskSheet(task, ymd)
       });
     }
 

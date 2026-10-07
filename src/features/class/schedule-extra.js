@@ -158,9 +158,9 @@ export function registerClassScheduleExtra(app) {
     closeOverlays();
     const overlay = h('div', { class: 'overlay', style: 'z-index:65', onclick: event => { if (event.target === overlay) overlay.remove(); } });
     let kind = 'vacaciones';
-    const fromInput = h('input', { class: 'input', type: 'date', value: todayStr() });
-    const toInput = h('input', { class: 'input', type: 'date', value: addDaysYmd(todayStr(), 6) });
-    const labelInput = h('input', { class: 'input', type: 'text', value: '', placeholder: 'Vacaciones de Navidad' });
+    const fromInput = h('input', { class: 'input', type: 'date', id: 'break-from', value: todayStr() });
+    const toInput = h('input', { class: 'input', type: 'date', id: 'break-to', value: addDaysYmd(todayStr(), 6) });
+    const labelInput = h('input', { class: 'input', type: 'text', id: 'break-name', value: '', placeholder: 'Vacaciones de Navidad' });
     const chips = h('div', { class: 'chips', style: 'margin-bottom:16px' });
     const drawChips = () => {
       chips.innerHTML = '';
@@ -181,10 +181,10 @@ export function registerClassScheduleExtra(app) {
       h('div', { class: 'grabber' }),
       h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:12px' }, 'Añadir días no lectivos'),
       chips,
-      h('div', { class: 'field' }, h('label', null, 'Nombre'), labelInput),
+      h('div', { class: 'field' }, h('label', { for: 'break-name' }, 'Nombre'), labelInput),
       h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
-        h('div', { class: 'field' }, h('label', null, 'Desde'), fromInput),
-        h('div', { class: 'field' }, h('label', null, 'Hasta'), toInput)
+        h('div', { class: 'field' }, h('label', { for: 'break-from' }, 'Desde'), fromInput),
+        h('div', { class: 'field' }, h('label', { for: 'break-to' }, 'Hasta'), toInput)
       ),
       quick,
       h('button', {
@@ -262,12 +262,12 @@ export function registerClassScheduleExtra(app) {
     if (!blocks.length) { toast('No hay horario que guardar'); return; }
     closeOverlays();
     const overlay = h('div', { class: 'overlay', style: 'z-index:65', onclick: event => { if (event.target === overlay) overlay.remove(); } });
-    const nameInput = h('input', { class: 'input', type: 'text', value: '', placeholder: '2.º de Bachillerato' });
+    const nameInput = h('input', { class: 'input', type: 'text', id: 'tpl-name', value: '', placeholder: '2.º de Bachillerato' });
     overlay.append(h('div', { class: 'sheet', style: 'max-width:400px' },
       h('div', { class: 'grabber' }),
       h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:6px' }, 'Guardar plantilla'),
       h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, blocks.length + ' bloques guardados.'),
-      h('div', { class: 'field' }, h('label', null, 'Nombre'), nameInput),
+      h('div', { class: 'field' }, h('label', { for: 'tpl-name' }, 'Nombre'), nameInput),
       h('button', {
         class: 'btn btn-primary btn-block btn-lg',
         onclick: () => {

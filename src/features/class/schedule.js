@@ -587,11 +587,11 @@ export function registerClassSchedule(app) {
     if (kind === 'class') {
       let subjectId = editing ? (editing.subjectId || '') : (route.params.subjectId || '');
       if (subjectId && !subjectById(subjectId)) subjectId = '';
-      subjectSelect = h('select', { class: 'input' },
+      subjectSelect = h('select', { class: 'input', id: 'slot-subject' },
         h('option', { value: '', selected: !subjectId }, 'Sin asignatura'),
         subjects.map(subject => h('option', { value: subject.id, selected: subject.id === subjectId }, subject.name))
       );
-      wrap.append(h('div', { class: 'field' }, h('label', null, 'Asignatura'), subjectSelect));
+      wrap.append(h('div', { class: 'field' }, h('label', { for: 'slot-subject' }, 'Asignatura'), subjectSelect));
       if (!subjects.length) wrap.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin:-4px 0 18px', onclick: () => go('subjectForm', { from: 'slotForm' }) }, 'Crear una asignatura'));
     } else {
       wrap.append(h('p', { class: 'field-hint', style: 'margin:-4px 0 18px' }, 'El patio es un descanso entre clases: fija su hora de inicio y de fin.'));
@@ -602,11 +602,12 @@ export function registerClassSchedule(app) {
     const roomInput = h('input', {
       class: 'input',
       type: 'text',
+      id: 'slot-room',
       value: editing ? (editing.room || '') : '',
       placeholder: kind === 'patio' ? 'Patio del centro' : 'Aula 2B · o pega el enlace de lavideollamada'
     });
     wrap.append(h('div', { class: 'field' },
-      h('label', null, kind === 'patio' ? 'Sitio' : 'Aula o enlace'),
+      h('label', { for: 'slot-room' }, kind === 'patio' ? 'Sitio' : 'Aula o enlace'),
       roomInput,
       h('p', { class: 'field-hint' }, 'Si pegas un enlace de Classroom, Meet o Zoom, aparecerá un botón para entrar desde el bloque.')
     ));
@@ -665,12 +666,12 @@ export function registerClassSchedule(app) {
       startValue = lastEnd || '09:00';
       endValue = minTxt(hm(startValue) + (kind === 'patio' ? PATIO_DEFAULT_MIN : CLASS_DEFAULT_MIN));
     }
-    const startInput = h('input', { class: 'input', type: 'time', value: startValue });
-    const endInput = h('input', { class: 'input', type: 'time', value: endValue });
+    const startInput = h('input', { class: 'input', type: 'time', id: 'slot-start', value: startValue });
+    const endInput = h('input', { class: 'input', type: 'time', id: 'slot-end', value: endValue });
     wrap.append(h('p', { class: 'big-q' }, '¿A qué hora?'),
       h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
-        h('div', { class: 'field' }, h('label', null, 'Empieza'), startInput),
-        h('div', { class: 'field' }, h('label', null, 'Termina'), endInput)
+        h('div', { class: 'field' }, h('label', { for: 'slot-start' }, 'Empieza'), startInput),
+        h('div', { class: 'field' }, h('label', { for: 'slot-end' }, 'Termina'), endInput)
       ),
       h('p', { class: 'field-hint', style: 'margin-top:-8px' }, 'La duración se ajusta cambiando la hora de fin.')
     );

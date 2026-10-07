@@ -70,24 +70,24 @@ export function registerForms(app) {
     }, showingAll ? 'Mostrar menos' : 'Mostrar más iconos');
     wrap.append(iconGrid, iconToggle);
 
-    const titleInput = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Sacar al perro', value: editing ? editing.title : '', maxlength: '60' });
-    wrap.append(h('div', { class: 'field' }, h('label', null, 'Nombre de la tarea'), titleInput));
+    const titleInput = h('input', { class: 'input', type: 'text', id: 'form-title', placeholder: 'Ej. Sacar al perro', value: editing ? editing.title : '', maxlength: '60' });
+    wrap.append(h('div', { class: 'field' }, h('label', { for: 'form-title' }, 'Nombre de la tarea'), titleInput));
     const taskCategories = categories();
     if (editing && editing.cat && !taskCategories.includes(editing.cat)) taskCategories.push(editing.cat);
-    const categorySelect = h('select', { class: 'input' }, taskCategories.map(category => h('option', { value: category, selected: editing && editing.cat === category }, category)));
+    const categorySelect = h('select', { class: 'input', id: 'form-category' }, taskCategories.map(category => h('option', { value: category, selected: editing && editing.cat === category }, category)));
     if (!editing) categorySelect.value = 'Hábitos';
-    wrap.append(h('div', { class: 'field' }, h('label', null, 'Categoría'), categorySelect));
+    wrap.append(h('div', { class: 'field' }, h('label', { for: 'form-category' }, 'Categoría'), categorySelect));
 
     // Plantillas personales guardadas en ajustes (y sincronizadas por cuenta).
     if (!Array.isArray(S.settings.taskTemplates)) S.settings.taskTemplates = [];
-    const templateSelect = h('select', { class: 'input' },
+    const templateSelect = h('select', { class: 'input', id: 'form-template' },
       h('option', { value: '' }, 'Elige una plantilla…'),
       S.settings.taskTemplates.map((template, index) => h('option', { value: String(index) }, template.name || 'Plantilla ' + (index + 1)))
     );
     const templateName = h('input', { class: 'input', type: 'text', maxlength: '30', placeholder: 'Nombre para guardar esta plantilla' });
     const templateMessage = h('span', { class: 'field-hint', 'aria-live': 'polite' });
     wrap.append(h('div', { class: 'field' },
-      h('label', null, 'Plantillas'),
+      h('label', { for: 'form-template' }, 'Plantillas'),
       h('div', { style: 'display:flex;gap:8px' },
         templateSelect,
         h('button', { class: 'btn btn-soft', style: 'padding:9px 12px;font-size:12px;white-space:nowrap', onclick: () => {
@@ -144,12 +144,12 @@ export function registerForms(app) {
       const current = app.core.KINDS.find(kind => kind.id === kindId);
       kindZone.append(h('p', { class: 'field-hint', style: 'margin:0 0 10px' }, current.hint));
       if (app.core.isNumeric({ kind: kindId })) {
-        const target = h('input', { class: 'input', type: 'number', min: '0', max: '999', value: editing && editing.target ? editing.target : (kindId === 'count' ? 2 : 10), style: 'max-width:120px' });
+        const target = h('input', { class: 'input', type: 'number', id: 'form-target', min: '0', max: '999', value: editing && editing.target ? editing.target : (kindId === 'count' ? 2 : 10), style: 'max-width:120px' });
         targetInput = target;
         const unit = h('input', { class: 'input', type: 'text', maxlength: '14', value: editing && editing.unit ? editing.unit : '', placeholder: 'vasos, páginas, min' });
         unitInput = unit;
         kindZone.append(h('div', { style: 'display:grid;grid-template-columns:120px 1fr;gap:10px' },
-          h('div', { class: 'field' }, h('label', null, kindId === 'count' ? 'Al día' : 'Objetivo'), target),
+          h('div', { class: 'field' }, h('label', { for: 'form-target' }, kindId === 'count' ? 'Al día' : 'Objetivo'), target),
           h('div', { class: 'field' }, h('label', null, 'Unidad'), unit)
         ));
         kindZone.append(h('p', { class: 'field-hint' }, 'Podrás sumar y restar con los botones, o poner la cifra exacta con un toque.'));

@@ -59,6 +59,9 @@ export function registerClassScheduleGrid(app) {
       startY: event.clientY,
       startX: event.clientX,
       deltaMin: 0,
+      from: origin.start,
+      to: origin.end,
+      kbDelta: 0,
       day: slot.day
     };
     try { surface.setPointerCapture(event.pointerId); } catch (e) {}
@@ -67,14 +70,8 @@ export function registerClassScheduleGrid(app) {
     showPreview();
   }
 
-  function onMove(event) {
-    if (!gesture) return;
-    const dy = event.clientY - gesture.startY;
-    const dx = event.clientX - gesture.startX;
-    if (!gesture.moved && Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
-    gesture.moved = true;
-    const rawMin = dy / PX_PER_MIN;
-    const step = gesture.mode === 'move' ? 5 : 5;
+  function applyGestureDelta(rawMin) {
+    const step = 5;
     let delta = snap(rawMin, step);
     let from = gesture.origin.start;
     let to = gesture.origin.end;
@@ -94,6 +91,15 @@ export function registerClassScheduleGrid(app) {
     gesture.deltaMin = delta;
     gesture.from = from;
     gesture.to = to;
+  }
+
+  function onMove(event) {
+    if (!gesture || gesture.keyboard) return;
+    const dy = event.clientY - gesture.startY;
+    const dx = event.clientX - gesture.startX;
+    if (!gesture.moved && Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
+    gesture.moved = true;
+    applyGestureDelta(dy / PX_PER_MIN);
     // Día destino: la columna que hay bajo el puntero.
     const under = document.elementFromPoint(event.clientX, event.clientY);
     const column = under ? under.closest('.grid-col') : null;
@@ -102,8 +108,48 @@ export function registerClassScheduleGrid(app) {
     showPreview();
   }
 
+  function onGripKey(event, slot, mode) {
+    const arrow = event.key === 'ArrowUp' ? -5 : event.key === 'ArrowDown' ? 5 : 0;
+    if (arrow) {
+      if (!gesture) {
+        startGesture(event, slot, mode);
+        if (!gesture) return;
+        gesture.keyboard = true;
+        gesture.startY = 0;
+        gesture.startX = 0;
+      }
+      if (gesture.slot !== slot || gesture.mode !== mode) return;
+      event.preventDefault();
+      gesture.kbDelta += arrow;
+      applyGestureDelta(gesture.kbDelta);
+      gesture.kbDelta = gesture.deltaMin;
+      gesture.moved = true;
+      showPreview();
+      return;
+    }
+    if (event.repeat) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (!gesture) {
+        startGesture(event, slot, mode);
+        if (!gesture) return;
+        gesture.keyboard = true;
+        gesture.startY = 0;
+        gesture.startX = 0;
+      }
+      if (gesture.slot !== slot || gesture.mode !== mode) return;
+      event.preventDefault();
+      gesture.keyboard = false;
+      onUp();
+      return;
+    }
+    if (event.key === 'Escape' && gesture && gesture.slot === slot && gesture.mode === mode) {
+      event.preventDefault();
+      onCancel();
+    }
+  }
+
   function onUp() {
-    if (!gesture) return;
+    if (!gesture || gesture.keyboard) return;
     const current = gesture;
     gesture = null;
     current.surface.classList.remove('grid-dragging');
@@ -185,12 +231,12 @@ export function registerClassScheduleGrid(app) {
       style: 'top:' + top + 'px;height:' + height + 'px;border-left-color:' + blockColor(slot),
       title: blockNameOf(slot) + ' · ' + timeTxt(slot.start) + '–' + timeTxt(slot.end)
     },
-      h('button', { class: 'grid-grip grid-grip-t', 'aria-label': 'Cambiar la hora de inicio', onpointerdown: event => startGesture(event, slot, 'top') }),
+      h('button', { class: 'grid-grip grid-grip-t', 'aria-label': 'Cambiar la hora de inicio', tabindex: '0', onpointerdown: event => startGesture(event, slot, 'top'), onkeydown: event => onGripKey(event, slot, 'top') }),
       h('div', { class: 'grid-inner', onpointerdown: event => startGesture(event, slot, 'move') },
         h('b', null, patio ? 'Patio' : blockNameOf(slot)),
         height > 42 ? h('span', null, timeTxt(slot.start) + '–' + timeTxt(slot.end)) : null
       ),
-      h('button', { class: 'grid-grip grid-grip-b', 'aria-label': 'Cambiar la hora de fin', onpointerdown: event => startGesture(event, slot, 'bottom') })
+      h('button', { class: 'grid-grip grid-grip-b', 'aria-label': 'Cambiar la hora de fin', tabindex: '0', onpointerdown: event => startGesture(event, slot, 'bottom'), onkeydown: event => onGripKey(event, slot, 'bottom') })
     );
     return el;
   }

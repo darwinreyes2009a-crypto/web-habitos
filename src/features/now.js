@@ -91,7 +91,7 @@ export function registerNow(app) {
         for (const task of pendientes.slice(0, 6)) {
           wrap.append(h('div', { class: 'row' },
             app.features.taskControl(task, today),
-            h('div', { style: 'flex:1;min-width:0;cursor:pointer', onclick: () => app.features.routineSheet(task) },
+            h('button', { style: 'flex:1;min-width:0;text-align:left;padding:0', onclick: () => app.features.routineSheet(task) },
               h('b', null, task.title),
               h('span', { class: 'r-sub' }, app.core.freqText(task))
             ),

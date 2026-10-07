@@ -1,3 +1,19 @@
+export function groupClassSlots(slots, nowMinutes, minutesOf) {
+  const ordered = [...slots].sort((first, second) => minutesOf(first.start) - minutesOf(second.start));
+  const current = ordered.find(slot => minutesOf(slot.start) <= nowMinutes && nowMinutes < minutesOf(slot.end)) || null;
+  const beforeFirst = !!(ordered.length && nowMinutes < minutesOf(ordered[0].start));
+  const remaining = current
+    ? ordered.filter(slot => slot !== current && minutesOf(slot.start) >= minutesOf(current.end))
+    : ordered.filter(slot => minutesOf(slot.start) > nowMinutes);
+  const upcoming = beforeFirst ? null : (remaining[0] || null);
+  return {
+    current,
+    upcoming,
+    later: upcoming ? remaining.filter(slot => slot !== upcoming) : (beforeFirst ? ordered : []),
+    beforeFirst
+  };
+}
+
 export function registerClassAgenda(app) {
   const {
     h,
@@ -249,10 +265,12 @@ export function registerClassAgenda(app) {
 
   function drawNowZone(zone) {
     zone.innerHTML = '';
-    const current = activeSession();
-    const now = classNow();
-    const next = classNext();
+    const session = activeSession();
     const today = activeSlotsToday();
+    const groups = groupClassSlots(today, nowMin(), hm);
+    const now = groups.current;
+    const next = groups.upcoming;
+    const current = session;
     if (current) {
       const subject = subjectById(current.subjectId);
       const color = subject ? subject.color : '#16A34A';
@@ -298,15 +316,33 @@ export function registerClassAgenda(app) {
         ),
         patio ? null : h('button', { class: 'btn btn-soft', style: 'flex:none', onclick: () => startSession(next) }, 'Empezar')
       ));
+    } else if (groups.beforeFirst && today.length) {
+      zone.append(h('div', { class: 'idle-card' }, h('b', null, 'La primera clase empieza ' + inTxt(today[0])), h('p', null, 'Tu horario de hoy está debajo, en «Más tarde».')));
     } else if (today.length) {
       zone.append(h('div', { class: 'idle-card' }, h('b', null, 'Has terminado las clases de hoy'), h('p', null, 'Buen trabajo. Revisa lo que apuntaste y organízalo cuando quieras.')));
     } else {
       zone.append(h('div', { class: 'idle-card' }, h('b', null, 'Hoy no tienes clases'), h('p', null, (S.slots || []).length ? 'Tu horario no tiene ninguna clase para hoy.' : 'Configura tu horario y aquí verás qué clase toca en cada momento.')));
       if (!(S.slots || []).length) zone.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-bottom:12px', onclick: () => go('classSchedule') }, 'Configurar horario'));
     }
-    const rest = today.filter(slot => (now ? hm(slot.start) > hm(now.start) : next ? hm(slot.start) > hm(next.start) : false));
+    if (next && (current || now)) {
+      const patio = next.kind === 'patio' || next.room === 'patio';
+      const subject = patio ? null : subjectById(next.subjectId);
+      const label = patio ? 'Patio' : (subject ? subject.name : 'Clase sin asignatura');
+      const color = patio ? 'var(--amber)' : (subject ? subject.color : 'var(--border)');
+      zone.append(h('div', { class: 'section-title' }, h('span', null, 'Después')));
+      zone.append(h('div', { class: 'now-card', style: 'border-left-color:' + color },
+        h('span', { class: 'nw-ic', style: 'background:' + tintHex(subject ? subject.color : '', '22') + ';color:' + (patio ? 'var(--amber)' : (subject ? subject.color : 'var(--text-2)')), html: icon(patio ? 'coffee' : (subject ? (subject.icon || 'book') : 'book'), 24) }),
+        h('div', { style: 'flex:1;min-width:0' },
+          h('span', { class: 'nw-tag' }, 'Después'),
+          h('b', { class: 'nw-sub' }, label),
+          h('span', { class: 'nw-meta' }, h('span', null, slotLine(next)), h('span', { style: 'color:var(--primary);font-weight:700' }, '· ' + inTxt(next)))
+        ),
+        patio ? null : h('button', { class: 'btn btn-soft', style: 'flex:none', onclick: () => startSession(next) }, 'Empezar')
+      ));
+    }
+    const rest = groups.later;
     if (rest.length) {
-      zone.append(h('div', { class: 'section-title' }, h('span', null, (next && !now && !current) ? 'Más tarde' : 'Después')));
+      zone.append(h('div', { class: 'section-title' }, h('span', null, 'Más tarde')));
       for (const slot of rest) zone.append(slotRowEl(slot));
     }
   }
@@ -361,7 +397,7 @@ export function registerClassAgenda(app) {
     const quickNotes = h('div');
     const drawNotes = () => {
       quickNotes.innerHTML = '';
-      quickNotes.append(app.class.quickNotesPreview());
+      quickNotes.append(app.class.quickNotesPreview(drawNotes));
     };
     wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Notas rápidas')));
     wrap.append(app.class.classNotesCapture(drawNotes), quickNotes);
@@ -440,7 +476,7 @@ export function registerClassAgenda(app) {
     ));
     let color = editing ? (editing.color || COLORS[0]) : COLORS[(S.subjects || []).length % COLORS.length];
     let iconId = editing ? (editing.icon || 'book') : 'book';
-    const nameInput = h('input', { class: 'input', type: 'text', placeholder: 'Ej. Redes, Sistemas, Ofimática…', value: editing ? editing.name : '', maxlength: '30' });
+    const nameInput = h('input', { id: 'agenda-name', class: 'input', type: 'text', placeholder: 'Ej. Redes, Sistemas, Ofimática…', value: editing ? editing.name : '', maxlength: '30' });
     const preview = h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px' });
     function drawPreview() {
       preview.innerHTML = '';
@@ -451,8 +487,8 @@ export function registerClassAgenda(app) {
     }
     nameInput.addEventListener('input', drawPreview);
     drawPreview();
-    wrap.append(preview, h('div', { class: 'field' }, h('label', null, 'Nombre de la asignatura'), nameInput));
-    const swatches = h('div', { class: 'swatches' });
+    wrap.append(preview, h('div', { class: 'field' }, h('label', { for: 'agenda-name' }, 'Nombre de la asignatura'), nameInput));
+    const swatches = h('div', { class: 'swatches', role: 'group', 'aria-labelledby': 'agenda-color-label' });
     for (const swatchColor of COLORS) {
       swatches.append(h('button', {
         type: 'button',
@@ -466,7 +502,7 @@ export function registerClassAgenda(app) {
         }
       }));
     }
-    wrap.append(h('div', { class: 'field' }, h('label', null, 'Color'), swatches));
+    wrap.append(h('div', { class: 'field' }, h('label', { id: 'agenda-color-label' }, 'Color'), swatches));
     let showingAll = !subjectIconsQuick.includes(iconId);
     const iconGrid = h('div', { class: 'icon-grid' });
     function drawIcons() {
@@ -657,6 +693,7 @@ export function registerClassAgenda(app) {
     slotsOverlap,
     tintHex,
     activeSlotsToday,
+    groupClassSlots,
     todayBreak,
     classNow,
     classNext,
