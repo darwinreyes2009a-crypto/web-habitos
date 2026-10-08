@@ -25,6 +25,7 @@ class FakeNode {
     this.attrs = attrs || {};
     this.children = [];
     this.listeners = {};
+    this.dataset = {};
     this.style = Object.fromEntries(String(this.attrs.style || '').split(';').map(part => part.trim()).filter(Boolean).map(part => {
       const [key, ...value] = part.split(':');
       return [key.trim().replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()), value.join(':').trim()];
@@ -52,7 +53,13 @@ class FakeNode {
   }
   appendChild(child) { this.append(child); return child; }
   addEventListener(type, callback) { this.listeners[type] = callback; }
-  focus() {}
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  click() {
+    if (this.disabled) return;
+    if (this.attrs.onclick) this.attrs.onclick({ stopPropagation() {}, preventDefault() {}, currentTarget: this, target: this });
+    else this.listeners.click?.({ stopPropagation() {}, preventDefault() {}, currentTarget: this, target: this });
+  }
+  focus(options) { this.focusCount = (this.focusCount || 0) + 1; this.lastFocusOptions = options || {}; }
   select() {}
   get innerHTML() { return ''; }
   set innerHTML(value) { this.children = []; }
@@ -106,6 +113,8 @@ const S = { tasks, people: [], gifts: [], notes: [], inbox: [], profiles: [], ac
 let saves = 0;
 let renderCount = 0;
 let toastMessage = '';
+let toastAction = null;
+let confirmOptions = null;
 const body = new FakeNode('body');
 function closeOverlays() { body.children.filter(child => child instanceof FakeNode && child.attrs.class === 'overlay').forEach(child => child.remove()); }
 body.append = (...children) => { for (const child of children.flat(Infinity).filter(item => item != null)) { if (child instanceof FakeNode) child.parentNode = body; body.children.push(child); } };
@@ -140,8 +149,8 @@ const app = {
   components: {
     headBar: (...args) => h('header', {}, ...args), formHead: (title, ...args) => h('header', {}, h('h2', {}, title), ...args),
     emptyState: (...args) => h('div', { 'data-empty': args[1] }, ...args), searchBtn: () => null,
-    smartBack: () => () => {}, toast(message) { toastMessage = message; },
-    confirmDialog() {}, openSheet() {}, closeOverlays
+    smartBack: () => () => {},    toast(message, action) { toastMessage = message; toastAction = action; },
+    confirmDialog(options) { confirmOptions = options; }, openSheet() {}, closeOverlays
   },
   actions: { deleteTask() {}, deleteGift() {}, deletePerson() {} },
   services: { pickImage() {}, setPhotoEl() {}, viewImage() {} },
@@ -170,6 +179,7 @@ for (const kind of ['count', 'amount', 'avoid']) {
   const created = tasks.at(-1);
   assert.equal(created.kind, kind, 'editor should preserve selected habit type');
   assert.equal(created.steps.length, 1, 'editor should save the guided step for ' + kind + ' habits');
+  if (kind === 'count') created.steps[0].durationMinutes = 2;
 }
 
 const countTask = tasks.find(task => task.kind === 'count');
@@ -184,10 +194,28 @@ const mainAction = find(card, node => node.attrs['aria-label'] === 'Abrir activi
 mainAction.attrs.onclick();
 let sheet = find(body, node => node.attrs['aria-label'] === 'Actividad guiada: Hábito count');
 assert.ok(sheet, 'activity card should open the guided flow for a count habit');
-const completeStep = find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Completar paso');
+assert.ok(find(sheet, node => node.tag === 'button' && textOf(node).trim().startsWith('Empezar')), 'guided flow should begin with a visual intro screen');
+find(sheet, node => node.tag === 'button' && textOf(node).trim().startsWith('Empezar')).click();
+assert.ok(find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Iniciar temporizador'), 'a timed step should offer an explicit manual timer start');
+assert.ok(find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Hecho →'), 'guided step should have a large, clear completion action');
+const progressBar = find(sheet, node => node.attrs.role === 'progressbar');
+assert.equal(progressBar.attrs['aria-valuenow'], '0', 'guided progress should expose its accessible current value');
+const stepTitle = find(sheet, node => node.attrs.class === 'guided-step-title');
+assert.equal(stepTitle.focusCount, 1, 'entering a guided step should move focus to its heading');
+const timerToggle = find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Iniciar temporizador');
+timerToggle.click();
+const runningTimerToggle = find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Pausar temporizador');
+assert.ok(runningTimerToggle, 'the manual timer should start and expose a pause action');
+assert.equal(stepTitle.focusCount, 1, 'timer ticks must not steal focus from the timer control');
+await new Promise(resolve => setTimeout(resolve, 1100));
+runningTimerToggle.click();
+const pausedTimerToggle = find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Reanudar temporizador');
+assert.ok(pausedTimerToggle, 'the manual timer should pause and offer resume');
+const completeStep = find(sheet, node => node.tag === 'button' && textOf(node).trim() === 'Hecho →');
 completeStep.attrs.onclick();
-const overlay = find(body, node => node.attrs.class === 'overlay');
-assert.ok(overlay && overlay.children.includes(sheet), 'the guided confirmation sheet should remain open after completing the last step');
+const overlay = find(body, node => String(node.attrs.class || '').split(/\s+/).includes('overlay'));
+assert.ok(overlay && overlay.children.includes(sheet), 'the guided runner should remain open after completing the last step');
+assert.ok(find(sheet, node => textOf(node).includes('¡Hecho!')), 'completing the final step should show a distinct success screen');
 card = find(screen, node => node.tag === 'article' && node.attrs['data-task-id'] === countTask.id);
 const summary = find(card, node => node.attrs.class === 'activity-step-summary');
 assert.equal(textOf(summary), '1 de 1 pasos', 'visible activity card should reflect the final step while the sheet remains open');
@@ -209,12 +237,14 @@ for (const kind of ['amount', 'avoid']) {
   find(taskCard, node => node.attrs['aria-label'] === 'Abrir actividad Hábito ' + kind).attrs.onclick();
   const guidedSheet = find(body, node => node.attrs['aria-label'] === 'Actividad guiada: Hábito ' + kind);
   assert.ok(guidedSheet, 'activity card should launch guided steps for ' + kind + ' habits');
-  find(guidedSheet, node => node.tag === 'button' && textOf(node).trim() === 'Completar paso').attrs.onclick();
-  const openOverlay = find(body, node => node.attrs.class === 'overlay');
+  const startGuided = find(guidedSheet, node => node.tag === 'button' && textOf(node).trim().startsWith('Empezar'));
+  if (startGuided) startGuided.click();
+  find(guidedSheet, node => node.tag === 'button' && textOf(node).trim() === 'Hecho →').click();
+  const openOverlay = find(body, node => String(node.attrs.class || '').split(/\s+/).includes('overlay'));
   assert.ok(openOverlay && openOverlay.children.includes(guidedSheet), 'guided runner should remain open for ' + kind);
   const updatedCard = find(screen, node => node.tag === 'article' && node.attrs['data-task-id'] === task.id);
   assert.equal(textOf(find(updatedCard, node => node.attrs.class === 'activity-step-summary')), '1 de 1 pasos', 'activity card should refresh for ' + kind);
   assert.equal(JSON.stringify({ completions: task.completions, log: task.log, skips: task.skips }), before, 'guided steps must not alter canonical ' + kind + ' records');
   openOverlay.remove();
 }
-console.log('Guided steps can be configured and launched for count, amount, and avoid habits; cards refresh without closing the runner or changing canonical records.');
+console.log('Guided steps use an intro, manual timers, clear step actions, and a completion screen while preserving canonical records.');

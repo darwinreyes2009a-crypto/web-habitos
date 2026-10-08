@@ -211,84 +211,221 @@ export function registerTaskRow(app) {
   }
 
   function guidedTaskSheet(task, ymd, onProgress) {
-    const steps = Array.isArray(task.steps) ? task.steps : [];
+    const steps = Array.isArray(task.steps) ? task.steps.filter(step => step && String(step.title || '').trim()) : [];
     if (!steps.length) return;
     closeOverlays();
-    const overlay = h('div', { class: 'overlay', style: 'z-index:66', onclick: event => { if (event.target === overlay) close(); } });
-    const close = () => { overlay.remove(); app.domain.render(); };
-    const box = h('div', { class: 'sheet guided-sheet', style: 'max-width:460px;max-height:88vh;overflow:auto', role: 'dialog', 'aria-label': 'Actividad guiada: ' + task.title });
-    const header = h('div', { class: 'sheet-head' },
-      h('div', null, h('h3', { style: 'font-size:18px;font-weight:800' }, task.title), h('span', { class: 'r-sub' }, 'Actividad guiada')),
-      h('button', { class: 'icon-btn', 'aria-label': 'Cerrar', onclick: close, html: icon('x', 18) })
-    );
-    const progress = h('div', { class: 'bar', style: 'margin:14px 0 18px' });
-    const body = h('div');
-    const actions = h('div', { style: 'display:flex;gap:8px;margin-top:16px' });
-    const runnable = isDueOn(task, ymd) && !isSkipped(task, ymd);
-    // Older tasks may already be completed for today without per-step history.
-    // Seed only the new per-day field; never rewrite legacy `step.done` values.
-    if (runnable && kindOf(task) === 'check' && isDoneOn(task, ymd) && !steps.some(step => stepDoneOn(step, ymd))) {
-      for (const step of steps) {
-        if (!Array.isArray(step.completedOn)) step.completedOn = [];
-        step.completedOn.push(ymd);
-      }
-      save();
-    }
+    const overlay = h('div', { class: 'overlay guided-overlay', style: 'z-index:66', onclick: event => { if (event.target === overlay) close(); } });
+    const box = h('section', { class: 'guided-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Actividad guiada: ' + task.title });
+    const runnable = isDueOn(task, ymd);
+    const completeCount = () => steps.filter(step => stepDoneOn(step, ymd)).length;
     let activeIndex = Math.max(0, steps.findIndex(step => !stepDoneOn(step, ymd)));
-    if (steps.every(step => stepDoneOn(step, ymd))) activeIndex = steps.length - 1;
-    const draw = () => {
-      const complete = steps.filter(step => stepDoneOn(step, ymd)).length;
-      progress.innerHTML = '';
-      progress.append(h('i', { style: 'width:' + Math.round(complete / steps.length * 100) + '%' }));
-      body.innerHTML = '';
-      const step = steps[activeIndex];
-      const card = h('div', { class: 'activity-step' },
-        h('span', { class: 'field-hint' }, 'Paso ' + (activeIndex + 1) + ' de ' + steps.length),
-        h('h4', { style: 'font-size:20px;margin:5px 0 10px' }, step.title || 'Paso sin título'),
-        step.instruction ? h('p', { style: 'white-space:pre-wrap;line-height:1.55;color:var(--text-2)' }, step.instruction) : null,
-        Number(step.durationMinutes) > 0 ? h('span', { class: 'nav-badge', style: 'display:inline-flex;align-items:center;gap:4px;margin:8px 0' }, h('span', { class: 'ic', html: icon('clock', 13) }), step.durationMinutes + ' min') : null,
-        step.image ? h('button', { class: 'guided-image', type: 'button', onclick: () => app.services.viewImage(step.image, step.title || task.title) }, h('img', { src: step.image, alt: step.title || task.title }), h('span', null, 'Ver imagen')) : null,
-        h('button', {
-          class: 'btn ' + (stepDoneOn(step, ymd) ? 'btn-soft' : 'btn-primary') + ' btn-block',
-          disabled: !runnable,
-          style: 'margin-top:14px',
-          onclick: () => {
-            const completed = !stepDoneOn(step, ymd);
-            const allDone = setGuidedStep(task, step, ymd, completed);
-            if (completed && !allDone) {
-              const next = steps.findIndex((item, index) => index > activeIndex && !stepDoneOn(item, ymd));
-              if (next >= 0) activeIndex = next;
-              else activeIndex = steps.findIndex(item => !stepDoneOn(item, ymd));
-            }
-            draw();
-            if (onProgress) onProgress();
-            if (allDone && kindOf(task) === 'check') toast('Actividad completada');
-          }
-        }, stepDoneOn(step, ymd) ? 'Desmarcar este paso' : 'Completar paso')
-      );
-      if (isSkipped(task, ymd) && due) card.append(h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:12px', onclick: () => {
+    if (activeIndex < 0) activeIndex = steps.length - 1;
+    let stage = steps.every(step => stepDoneOn(step, ymd)) ? 'done' : isSkipped(task, ymd) ? 'skipped' : 'intro';
+    let focusedScreen = '';
+    const timers = new Map();
+    let touchStart = null;
+    const clearTimers = () => {
+      for (const timer of timers.values()) if (timer.interval) clearInterval(timer.interval);
+      timers.clear();
+    };
+    const close = () => { clearTimers(); overlay.remove(); app.domain.render(); };
+    const timerFor = step => {
+      if (!timers.has(step.id)) timers.set(step.id, { remaining: Math.max(0, Number(step.durationMinutes) || 0) * 60, interval: null });
+      return timers.get(step.id);
+    };
+    const pad = number => String(number).padStart(2, '0');
+    const formatTime = seconds => pad(Math.floor(seconds / 60)) + ':' + pad(seconds % 60);
+    const startTimer = step => {
+      const timer = timerFor(step);
+      if (timer.interval || timer.remaining <= 0) return;
+      timer.interval = setInterval(() => {
+        timer.remaining = Math.max(0, timer.remaining - 1);
+        if (!timer.remaining) {
+          clearInterval(timer.interval);
+          timer.interval = null;
+          toast('Tiempo terminado · cuando quieras, marca el paso como hecho');
+        }
+        draw();
+      }, 1000);
+      draw();
+    };
+    const pauseTimer = step => {
+      const timer = timerFor(step);
+      if (timer.interval) clearInterval(timer.interval);
+      timer.interval = null;
+      draw();
+    };
+    const restoreSkipped = () => {
+      skipOn(task, ymd, false);
+      task.updatedAt = Date.now();
+      save();
+      stage = 'step';
+      draw();
+      if (onProgress) onProgress();
+    };
+    const skipToday = () => {
+      if (!runnable) return;
+      const previousStage = stage;
+      const previousIndex = activeIndex;
+      clearTimers();
+      skipOn(task, ymd, true);
+      task.updatedAt = Date.now();
+      save();
+      stage = 'skipped';
+      draw();
+      if (onProgress) onProgress();
+      toast('Hábito saltado por hoy', { label: 'Deshacer', fn: () => {
         skipOn(task, ymd, false);
         task.updatedAt = Date.now();
         save();
-        app.domain.render();
-        close();
-        guidedTaskSheet(task, ymd, onProgress);
-      } }, 'Restaurar hoy y continuar'));
-      else if (!runnable) card.append(h('p', { class: 'field-hint', style: 'margin-top:12px' }, 'Esta actividad no toca hoy.'));
-      body.append(card);
-      actions.innerHTML = '';
-      actions.append(
-        h('button', { class: 'btn btn-soft', style: 'flex:1', disabled: activeIndex <= 0, onclick: () => { activeIndex--; draw(); } }, 'Anterior'),
-        h('button', { class: 'btn btn-soft', style: 'flex:1', disabled: activeIndex >= steps.length - 1, onclick: () => { activeIndex++; draw(); } }, 'Siguiente')
-      );
+        stage = previousStage === 'intro' ? 'intro' : 'step';
+        activeIndex = previousIndex;
+        draw();
+        if (onProgress) onProgress();
+      } });
     };
-    box.append(header, progress, body, actions,
-      h('button', { class: 'btn btn-soft btn-block', style: 'margin-top:12px', onclick: () => { overlay.remove(); app.domain.go('taskForm', { id: task.id }); } }, 'Editar actividad')
-    );
+    const completeCurrent = () => {
+      if (!runnable || stage !== 'step') return;
+      const step = steps[activeIndex];
+      if (Number(step.durationMinutes) > 0) pauseTimer(step);
+      if (!stepDoneOn(step, ymd)) setGuidedStep(task, step, ymd, true);
+      const next = steps.findIndex(item => !stepDoneOn(item, ymd));
+      if (next < 0) stage = 'done';
+      else activeIndex = next;
+      draw();
+      if (onProgress) onProgress();
+      if (stage === 'done') toast('Actividad completada');
+    };
+    const undoCurrent = () => {
+      if (!runnable || stage !== 'step') return;
+      setGuidedStep(task, steps[activeIndex], ymd, false);
+      draw();
+      if (onProgress) onProgress();
+    };
+    const stepBack = () => {
+      if (stage === 'done') { stage = 'step'; activeIndex = steps.length - 1; }
+      else if (stage === 'step' && activeIndex > 0) {
+        const previous = steps[activeIndex];
+        if (Number(previous.durationMinutes) > 0) pauseTimer(previous);
+        activeIndex--;
+      } else if (stage === 'step') {
+        const previous = steps[activeIndex];
+        if (Number(previous.durationMinutes) > 0) pauseTimer(previous);
+        stage = 'intro';
+      }
+      else { close(); return; }
+      draw();
+    };
+    const stepForward = () => {
+      if (stage === 'intro') { if (runnable) stage = 'step'; }
+      else if (stage === 'step') completeCurrent();
+      else if (stage === 'done') close();
+      draw();
+    };
+    const progress = h('div', { class: 'guided-progress' });
+    const draw = () => {
+      const completed = completeCount();
+      const header = h('header', { class: 'guided-topbar' },
+        h('button', { class: 'icon-btn guided-back', type: 'button', 'aria-label': 'Volver', onclick: stepBack, html: icon('back', 20) }),
+        stage === 'intro' ? h('span', { class: 'guided-counter' }, steps.length + ' pasos') : h('span', { class: 'guided-counter' }, Math.min(activeIndex + 1, steps.length) + ' de ' + steps.length),
+        h('button', { class: 'icon-btn guided-close', type: 'button', 'aria-label': 'Cerrar actividad', onclick: close, html: icon('x', 19) })
+      );
+      progress.innerHTML = '';
+      for (const [index, step] of steps.entries()) {
+        progress.append(h('span', {
+          class: 'guided-progress-segment' + (stepDoneOn(step, ymd) ? ' complete' : index === activeIndex && stage === 'step' ? ' active' : ''),
+          'aria-hidden': 'true'
+        }));
+      }
+      progress.setAttribute('aria-label', completed + ' de ' + steps.length + ' pasos completados');
+      progress.setAttribute('role', 'progressbar');
+      progress.setAttribute('aria-valuemin', '0');
+      progress.setAttribute('aria-valuemax', String(steps.length));
+      progress.setAttribute('aria-valuenow', String(completed));
+      box.innerHTML = '';
+      box.append(header, progress);
+      if (stage === 'intro') {
+        const firstImage = steps.find(step => step.image);
+        box.append(h('div', { class: 'guided-intro' },
+          firstImage ? h('img', { class: 'guided-hero-image', src: firstImage.image, alt: firstImage.title || task.title }) : h('div', { class: 'guided-hero-icon', html: icon(task.icon || 'star', 44), 'aria-hidden': 'true' }),
+          h('span', { class: 'guided-eyebrow' }, 'TU RUTINA, PASO A PASO'),
+          h('h2', { class: 'guided-intro-title', tabindex: '-1' }, task.title),
+          h('p', { class: 'guided-summary' }, steps.length + ' pasos' + (steps.some(step => Number(step.durationMinutes) > 0) ? ' · ~' + steps.reduce((sum, step) => sum + Math.max(0, Number(step.durationMinutes) || 0), 0) + ' min' : ' · a tu ritmo')),
+          h('div', { class: 'guided-benefits' },
+            h('span', null, h('span', { class: 'ic', html: icon('check', 17) }), 'Instrucciones claras'),
+            h('span', null, h('span', { class: 'ic', html: icon('clock', 17) }), 'Tu ritmo, sin prisas')
+          ),
+          h('button', { class: 'btn btn-primary btn-block btn-lg guided-primary', type: 'button', disabled: !runnable, onclick: () => { stage = 'step'; draw(); } }, 'Empezar →'),
+          !runnable ? h('p', { class: 'field-hint' }, 'Esta actividad no toca hoy.') : null,
+          h('button', { class: 'guided-text-action', type: 'button', onclick: () => app.domain.go('taskForm', { id: task.id }) }, 'Editar actividad')
+        ));
+      } else if (stage === 'step') {
+        const step = steps[activeIndex];
+        const timer = Number(step.durationMinutes) > 0 ? timerFor(step) : null;
+        const seconds = timer ? timer.remaining : 0;
+        const total = Math.max(1, Number(step.durationMinutes) || 1) * 60;
+        const pct = timer ? Math.round((1 - seconds / total) * 100) : 0;
+        const title = h('h2', { class: 'guided-step-title', tabindex: '-1' }, step.title || 'Paso sin título');
+        box.append(h('div', { class: 'guided-step-screen' },
+          h('div', { class: 'guided-step-visual' }, step.image ? h('img', { src: step.image, alt: step.title || task.title }) : h('span', { class: 'guided-step-fallback', html: icon(task.icon || 'star', 46), 'aria-hidden': 'true' })),
+          h('span', { class: 'guided-eyebrow' }, 'PASO ' + (activeIndex + 1)),
+          title,
+          step.instruction ? h('p', { class: 'guided-instruction' }, step.instruction) : h('p', { class: 'guided-instruction' }, 'Cuando termines, toca «Hecho» para seguir.'),
+          timer ? h('div', { class: 'guided-timer-card' },
+            h('div', { class: 'guided-timer-ring', style: '--timer-progress:' + pct + '%' }, h('span', null, formatTime(seconds))),
+            h('div', null, h('b', null, timer.interval ? 'Tiempo en marcha' : seconds === total ? 'Tiempo estimado' : seconds ? 'En pausa' : 'Tiempo completado'), h('span', null, 'Temporizador manual · ' + step.durationMinutes + ' min')),
+            h('button', { class: 'btn btn-soft guided-timer-toggle', type: 'button', onclick: () => timer.interval ? pauseTimer(step) : startTimer(step) }, timer.interval ? 'Pausar temporizador' : seconds === total ? 'Iniciar temporizador' : seconds ? 'Reanudar temporizador' : 'Empezar de nuevo')
+          ) : null,
+          h('button', { class: 'btn btn-primary btn-block btn-lg guided-primary', type: 'button', disabled: !runnable, onclick: completeCurrent }, stepDoneOn(step, ymd) ? 'Listo ✓ · siguiente' : 'Hecho →'),
+          stepDoneOn(step, ymd) ? h('button', { class: 'guided-text-action', type: 'button', onclick: undoCurrent }, 'Desmarcar este paso') : null,
+          h('button', { class: 'guided-text-action guided-skip', type: 'button', disabled: !runnable, onclick: skipToday }, 'Saltar por hoy')
+        ));
+      } else if (stage === 'done') {
+        box.append(h('div', { class: 'guided-success' },
+          h('div', { class: 'guided-success-mark', html: icon('check', 40) }),
+          h('span', { class: 'guided-eyebrow' }, 'RUTINA COMPLETADA'),
+          h('h2', { class: 'guided-success-title', tabindex: '-1' }, '¡Hecho!'),
+          h('p', null, task.title + ' · ' + steps.length + '/' + steps.length + ' pasos'),
+          h('button', { class: 'btn btn-primary btn-block btn-lg guided-primary', type: 'button', onclick: close }, 'Volver al inicio'),
+          h('button', { class: 'btn btn-soft btn-block', type: 'button', onclick: stepBack }, 'Ver detalles')
+        ));
+      } else {
+        box.append(h('div', { class: 'guided-success guided-skipped' },
+          h('div', { class: 'guided-success-mark', html: icon('calendar', 36) }),
+          h('span', { class: 'guided-eyebrow' }, 'PAUSA DE HOY'),
+          h('h2', { class: 'guided-success-title', tabindex: '-1' }, 'Saltado por hoy'),
+          h('p', null, 'Tu racha queda a salvo. Puedes retomarlo cuando quieras.'),
+          h('button', { class: 'btn btn-primary btn-block btn-lg guided-primary', type: 'button', onclick: restoreSkipped }, 'Restaurar y continuar'),
+          h('button', { class: 'btn btn-soft btn-block', type: 'button', onclick: close }, 'Cerrar')
+        ));
+      }
+      const screenKey = stage + ':' + activeIndex;
+      if (screenKey !== focusedScreen) {
+        const focusTarget = box.querySelector('.guided-step-title, .guided-intro-title, .guided-success-title');
+        if (focusTarget && focusTarget.focus) focusTarget.focus({ preventScroll: true });
+        focusedScreen = screenKey;
+      }
+    };
+    box.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+    });
+    box.addEventListener('touchstart', event => {
+      if (event.touches.length !== 1 || event.target.closest('button')) { touchStart = null; return; }
+      touchStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }, { passive: true });
+    box.addEventListener('touchend', event => {
+      if (!touchStart || !event.changedTouches.length) return;
+      const dx = event.changedTouches[0].clientX - touchStart.x;
+      const dy = event.changedTouches[0].clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (dx < 0) stepForward(); else stepBack();
+    }, { passive: true });
     overlay.append(box);
     document.body.appendChild(overlay);
     draw();
   }
+
 
   function taskRow(task, ymd, options) {
     const op = options || {};

@@ -69,13 +69,6 @@ export function registerHomeAndTasks(app) {
       h('button', { 'aria-label': 'Tu perfil', onclick: () => go('profile'), style: 'border-radius:50%' }, avatarEl(profile.name, profile.color, 40, profile.photo))
     ));
 
-    // Atajo a "Ahora": un toque y se ve la clase en curso y lo que falta.
-    wrap.append(h('button', { class: 'now-jump', onclick: () => go('now') },
-      h('span', { class: 'ic', html: icon('clock', 16) }),
-      h('span', null, 'Ver qué toca ahora'),
-      h('span', { class: 'chev', html: icon('chev', 16) })
-    ));
-
     for (const person of birthdaysToday()) {
       wrap.append(h('div', { class: 'banner' },
         h('span', { class: 'b-ic', html: icon('cake', 20) }),
@@ -91,15 +84,19 @@ export function registerHomeAndTasks(app) {
     const done = due.filter(task => isDoneOn(task, todayStr())).length;
     const percentage = due.length ? Math.round(done / due.length * 100) : 0;
     wrap.append(h('button', {
-      class: 'card',
-      style: 'width:100%;text-align:left;margin-bottom:20px;display:block',
+      class: 'home-day-summary',
+      type: 'button',
+      'aria-label': 'Ver progreso: ' + done + ' de ' + due.length + ' actividades completadas hoy',
       onclick: () => go('progress')
     },
-      h('div', { style: 'display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px' },
-        h('div', null, h('b', { style: 'font-size:15px;font-weight:700' }, 'Tu día'), h('span', { style: 'font-size:13px;color:var(--text-2);margin-left:8px' }, done + ' de ' + due.length + ' tareas')),
-        h('span', { style: 'font-size:13px;font-weight:700;color:var(--primary)' }, percentage + '%')
+      h('span', { class: 'home-day-summary-icon', html: icon('check', 18) }),
+      h('span', { class: 'home-day-summary-copy' },
+        h('b', null, due.length ? 'Tienes ' + due.length + ' cosas para hoy' : 'Tu día está despejado'),
+        h('span', null, due.length ? '¡Vamos a por ello!' : 'Disfruta el tiempo libre')
       ),
-      h('div', { class: 'bar' }, h('i', { style: 'width:' + percentage + '%' }))
+      h('span', { class: 'home-day-summary-count', style: '--day-progress:' + percentage + '%' },
+        h('b', null, done + '/' + due.length)
+      )
     ));
 
     const openNotes = (S.notes || []).filter(note => !note.done && !note.deletedAt).length;
@@ -118,57 +115,28 @@ export function registerHomeAndTasks(app) {
             : openNotes
               ? openNotes + ' apunte' + (openNotes > 1 ? 's' : '') + ' sin terminar'
               : 'Apunta algo rápido';
-    wrap.append(h('button', {
-      class: 'card',
-      style: 'width:100%;text-align:left;margin:-8px 0 20px;display:flex;align-items:center;gap:12px',
-      onclick: () => go('class')
-    },
-      h('span', { class: 'r-ic', html: icon('pencil', 19) }),
-      h('div', { style: 'flex:1' }, h('b', { style: 'font-size:14.5px;display:block' }, 'Modo Clase'), h('span', { style: 'font-size:12.5px;color:var(--text-2)' }, classLine)),
-      (inboxCount || openNotes) ? h('span', { class: 'nav-badge' }, inboxCount || openNotes) : h('span', { class: 'chev', html: icon('chev', 16) })
-    ));
-    addSwipe(wrap, () => go('class'));
 
-    wrap.append(h('div', { class: 'section-title' }, h('span', null, 'Hoy')));
+    wrap.append(h('div', { class: 'section-title home-section-title' }, h('span', null, 'Para hoy')));
     let list = due;
     if (S.settings.hideCompleted) list = list.filter(task => !isDoneOn(task, todayStr()));
     if (!due.length) {
       wrap.append(emptyState('check', 'Todo despejado', 'Hoy no tienes tareas programadas. Añade una nueva o descansa.', 'Nueva tarea', () => go('taskForm')));
     } else {
-      const grid = h('div', { class: 'task-grid' });
-      for (const task of list) {
-        const done = isDoneOn(task, todayStr());
-        const avoid = app.core.kindOf(task) === 'avoid';
-        const skipped = app.core.isSkipped(task, todayStr());
-        const taskStateClass = done && !avoid ? ' done' : !done && avoid && !skipped ? ' failed' : skipped ? ' skipped' : '';
-        grid.append(h('button', { class: 'task-card' + taskStateClass, disabled: !isDueOn(task, todayStr()) || (app.core.isSkipped(task, todayStr()) && !skipped), 'aria-label': task.title + ' · ' + (skipped ? 'día saltado' : done ? (avoid ? 'día limpio' : 'completada') : (avoid ? 'registrar fallo' : 'pendiente')), onclick: () => {
-          const toggle = () => {
-            if (!isDueOn(task, todayStr())) return;
-            if (skipped) app.core.skipOn(task, todayStr(), false);
-            else if (app.core.isSkipped(task, todayStr())) return;
-            else toggleOn(task.id, todayStr());
-            task.updatedAt = Date.now();
-            save();
-            app.domain.render();
-          };
-          if (avoid && done && !skipped) {
-            app.components.confirmDialog({
-              title: '¿Marcar como fallado?',
-              message: 'Hoy dejará de contar como un día limpio.',
-              confirmText: 'Marcar fallo',
-              onConfirm: toggle
-            });
-            return;
-          }
-          toggle();
-        } },
-          h('span', { class: 't-ic', html: icon(task.icon || 'star', 20) }),
-          h('b', null, task.title),
-          h('span', { class: 't-state' }, h('span', { class: 't-dot' }), skipped ? 'Día saltado' : done ? (avoid ? 'Día limpio' : 'Completado') : (avoid ? 'Registrar fallo' : 'Pendiente'))
-        ));
-      }
+      const grid = h('div', { class: 'activity-card-list home-habit-list' });
+      for (const task of list) grid.append(taskActivityCard(task, todayStr(), { home: true }));
       wrap.append(grid);
     }
+
+    wrap.append(h('button', {
+      class: 'card home-class-link',
+      type: 'button',
+      onclick: () => go('class')
+    },
+      h('span', { class: 'r-ic', html: icon('pencil', 19) }),
+      h('span', { class: 'home-class-copy' }, h('b', null, 'Modo Clase'), h('span', null, classLine)),
+      (inboxCount || openNotes) ? h('span', { class: 'nav-badge' }, inboxCount || openNotes) : h('span', { class: 'chev', html: icon('chev', 16) })
+    ));
+    addSwipe(wrap, () => go('class'));
 
     const gifts = sortedUpcomingGifts();
     wrap.append(h('div', { class: 'section-title' },
@@ -211,7 +179,85 @@ export function registerHomeAndTasks(app) {
     );
   }
 
-  function taskActivityCard(task, ymd) {
+  function applyTaskGesture(task, ymd, direction, refresh) {
+    if (!isDueOn(task, ymd)) return;
+    const kind = app.core.kindOf(task);
+    const progress = app.core.progressOn(task, ymd);
+    const skipped = app.core.isSkipped(task, ymd);
+    if (skipped) {
+      if (direction < 0) return;
+      app.core.skipOn(task, ymd, false);
+    } else if (kind === 'avoid') {
+      if (direction > 0 && app.core.isDoneOn(task, ymd)) {
+        app.components.confirmDialog({
+          title: '¿Marcar como fallado?',
+          message: 'Hoy dejará de contar como un día limpio.',
+          confirmText: 'Marcar fallo',
+          onConfirm: () => {
+            app.core.toggleOn(task, ymd);
+            task.updatedAt = Date.now();
+            save();
+            if (refresh) refresh(); else app.domain.render();
+          }
+        });
+        return;
+      }
+      if (direction < 0 && !app.core.isDoneOn(task, ymd)) app.core.toggleOn(task, ymd);
+    } else if (kind === 'count' || kind === 'amount') {
+      const step = kind === 'count' ? 1 : (progress.target && progress.target >= 20 ? 5 : 1);
+      app.core.bumpOn(task, ymd, direction > 0 ? step : -step);
+    } else {
+      const done = app.core.isDoneOn(task, ymd);
+      if ((direction > 0 && !done) || (direction < 0 && done)) app.core.toggleOn(task, ymd);
+    }
+    task.updatedAt = Date.now();
+    save();
+    if (refresh) refresh(); else app.domain.render();
+  }
+
+  function attachTaskGestures(card, task, ymd, refresh) {
+    let start = null;
+    let axis = null;
+    const interactive = target => target && target.closest && target.closest('button,a,input,select,textarea,[data-no-card-gesture]');
+    card.addEventListener('touchstart', event => {
+      if (event.touches.length !== 1 || interactive(event.target)) { start = null; return; }
+      start = { x: event.touches[0].clientX, y: event.touches[0].clientY, handled: false };
+      axis = null;
+    }, { passive: true });
+    card.addEventListener('touchmove', event => {
+      if (!start || event.touches.length !== 1) return;
+      const dx = event.touches[0].clientX - start.x;
+      const dy = event.touches[0].clientY - start.y;
+      if (!axis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) axis = Math.abs(dx) > Math.abs(dy) * 1.35 ? 'x' : 'y';
+      if (axis === 'x') {
+        start.handled = true;
+        if (event.cancelable) event.preventDefault();
+        card.classList.add('swiping');
+        card.dataset.swipeDirection = dx < 0 ? 'left' : 'right';
+      }
+    }, { passive: false });
+    const finish = event => {
+      if (!start) return;
+      const dx = (event.changedTouches[0] ? event.changedTouches[0].clientX : start.x) - start.x;
+      const dy = (event.changedTouches[0] ? event.changedTouches[0].clientY : start.y) - start.y;
+      const shouldApply = axis === 'x' && Math.abs(dx) >= 54 && Math.abs(dx) > Math.abs(dy) * 1.35;
+      start = null;
+      card.classList.remove('swiping');
+      card.dataset.swipeDirection = '';
+      if (shouldApply) applyTaskGesture(task, ymd, dx > 0 ? 1 : -1, refresh);
+    };
+    card.addEventListener('touchend', finish, { passive: true });
+    card.addEventListener('touchcancel', finish, { passive: true });
+    card.addEventListener('keydown', event => {
+      if (event.target !== card || event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      event.preventDefault();
+      applyTaskGesture(task, ymd, event.key === 'ArrowRight' ? 1 : -1, refresh);
+    });
+  }
+
+  function taskActivityCard(task, ymd, options) {
+    const cardOptions = options || {};
+    const isHomeCard = !!cardOptions.home;
     const kind = app.core.kindOf(task);
     const due = isDueOn(task, ymd);
     const skipped = app.core.isSkipped(task, ymd);
@@ -227,10 +273,11 @@ export function registerHomeAndTasks(app) {
       ? null
       : app.features.taskControl(task, ymd);
     const refreshCard = () => {
-      const updated = taskActivityCard(task, ymd);
+      const updated = taskActivityCard(task, ymd, cardOptions);
       card.replaceWith(updated);
       card = updated;
     };
+    const status = skipped ? 'Hoy saltado' : !due ? 'No toca hoy' : done ? (avoid ? 'Día limpio' : 'Completada') : avoid ? 'Registrar fallo' : 'Pendiente';
     const open = () => {
       if (steps.length) app.features.guidedTaskSheet(task, ymd, refreshCard);
       else if (kind === 'check' || avoid) {
@@ -239,12 +286,19 @@ export function registerHomeAndTasks(app) {
     };
     card = h('article', {
       'data-task-id': task.id,
-      class: 'activity-card' + (done && !avoid ? ' is-done' : '') + (skipped ? ' is-skipped' : '') + (priority ? ' has-priority' : ''),
+      class: 'activity-card' + (isHomeCard ? ' home-activity-card' : '') + (done && !avoid ? ' is-done' : '') + (skipped ? ' is-skipped' : '') + (priority ? ' has-priority' : ''),
+      tabindex: '0',
+      'aria-label': task.title + ' · ' + status,
       style: 'border-left:3px solid ' + (priority ? priority.color : done && !avoid ? 'var(--green)' : 'var(--primary)')
     });
+    attachTaskGestures(card, task, ymd, refreshCard);
+    const firstImage = steps.find(step => step.image);
     card.append(h('div', { class: 'activity-card-head' },
       h('button', { class: 'activity-card-main', type: 'button', onclick: open, 'aria-label': (steps.length ? 'Abrir actividad ' : 'Registrar ') + task.title },
-        h('span', { class: 'activity-icon', html: icon(task.icon || 'star', 22) }),
+        isHomeCard ? h('span', { class: 'activity-icon home-activity-art' }, firstImage
+          ? h('img', { src: firstImage.image, alt: '' })
+          : h('span', { html: icon(task.icon || 'star', 34), 'aria-hidden': 'true' }))
+          : h('span', { class: 'activity-icon', html: icon(task.icon || 'star', 22) }),
         h('span', { class: 'activity-copy' },
           h('b', null, task.title),
           h('span', { class: 'activity-subtitle' }, (task.cat || 'Personal') + ' · ' + app.core.freqText(task)),
@@ -254,9 +308,15 @@ export function registerHomeAndTasks(app) {
       h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) }),
       control
     ));
+    const directionLabel = skipped ? 'desliza a la derecha para restaurar' : avoid ? 'desliza a la derecha para marcar fallo' : (kind === 'count' || kind === 'amount') ? 'desliza a derecha o izquierda para ajustar' : done ? 'desliza a la izquierda para deshacer' : 'desliza a la derecha para completar';
+    card.append(h('span', { class: 'activity-swipe-hint' }, 'Desliza ' + directionLabel));
+    if (isHomeCard ? due : due && !steps.length && (kind === 'check' || avoid)) {
+      card.append(h('button', { class: 'activity-card-quick-action', type: 'button', onclick: open },
+        isHomeCard ? (steps.length ? (stepCount ? 'Continuar →' : 'Empezar →') : kind === 'check' || avoid ? (done ? (avoid ? 'Día limpio ✓' : 'Hecho ✓') : (avoid ? 'Marcar fallo' : 'Hecho')) : 'Abrir →')
+          : done ? (avoid ? 'Día limpio ✓' : 'Hecho ✓') : (avoid ? 'Marcar fallo' : 'Hecho')));
+    }
     const goal = app.features.goalBar(task);
-    if (goal) card.append(h('div', { style: 'padding:8px 4px 0' }, goal));
-    const status = skipped ? 'Hoy saltado' : !due ? 'No toca hoy' : done ? (avoid ? 'Día limpio' : 'Completada') : avoid ? 'Registrar fallo' : 'Pendiente';
+    if (goal) card.append(h('div', { class: 'activity-card-goal', style: 'padding:8px 4px 0' }, goal));
     // El pie solo aparece si dice algo o si ofrece la acción de pasos: con la
     // tarjeta simplemente pendiente, el círculo del control ya lo dice todo y
     // una fila con solo el lápiz quedaba vacía. Editar vive arriba, en la
