@@ -29,7 +29,7 @@ export function registerOnboarding(app) {
   function welcomeScreen() {
     const box = h('div', { class: 'welcome-box' },
       h('div', { class: 'logo-mark', html: 'D' }),
-      h('h2', null, 'DailyHub'),
+      h('h2', { class: 'hero-title' }, 'DailyHub'),
       h('p', { class: 'lead' }, 'Tus actividades, horario, notas rápidas de clase y regalos, sincronizados en todos tus dispositivos con tu cuenta.'),
       h('div', { style: 'margin-bottom:22px' },
         feature('checksq', 'Tareas y hábitos', 'Marca tu día con un toque'),
@@ -136,7 +136,7 @@ export function registerOnboarding(app) {
     pinConfirmationInput.addEventListener('keydown', event => { if (event.key === 'Enter') submit(); });
     return h('div', { class: 'center-page' }, h('div', { class: 'center-box' },
       first ? h('div', { class: 'logo-mark', style: 'width:52px;height:52px;font-size:24px;margin-bottom:16px', html: 'D' }) : null,
-      h('h2', { style: 'font-size:24px;font-weight:800;letter-spacing:-.03em' }, first ? 'Crea tu perfil' : 'Nuevo perfil'),
+      h('h2', { class: 'hero-title' }, first ? 'Crea tu perfil' : 'Nuevo perfil'),
       h('p', { style: 'font-size:13px;color:var(--text-2);margin:6px 0 24px' }, 'Elige un color y, si quieres, un PIN para protegerlo.'),
       h('div', { style: 'display:flex;flex-direction:column;align-items:center;margin-bottom:20px' }, avatarPreview, photoButton),
       h('div', { class: 'field', style: 'text-align:left' }, h('label', null, 'Tu nombre'), nameInput),
@@ -153,7 +153,7 @@ export function registerOnboarding(app) {
   function profileSelectScreen() {
     const wrap = h('div', { class: 'center-page' }, h('div', { class: 'center-box' },
       h('div', { class: 'logo-mark', style: 'width:52px;height:52px;font-size:24px;margin-bottom:18px', html: 'D' }),
-      h('h2', { style: 'font-size:26px;font-weight:800;letter-spacing:-.03em' }, '¿Quién eres?'),
+      h('h2', { class: 'hero-title' }, '¿Quién eres?'),
       h('p', { style: 'font-size:13.5px;color:var(--text-2);margin-top:6px' }, 'Selecciona tu perfil para continuar.'),
       S.profiles.length > 1 ? h('p', { style: 'font-size:12px;color:var(--text-3);margin-top:4px' }, 'Mantén pulsado un perfil para eliminarlo.') : null
     ));
@@ -296,7 +296,7 @@ export function registerOnboarding(app) {
     })));
     box.append(
       h('div', { style: 'display:flex;justify-content:center' }, avatarEl(profile.name, profile.color, 72, profile.photo)),
-      h('h2', { style: 'font-size:22px;font-weight:800;margin-top:14px;letter-spacing:-.02em' }, profile.name),
+      h('h2', { class: 'hero-title gap-top' }, profile.name),
       h('p', { style: 'font-size:13.5px;color:var(--text-2);margin-top:4px' }, 'Introduce tu PIN'),
       dots,
       keypad,
@@ -344,7 +344,12 @@ export function registerOnboarding(app) {
           const pending = tasksDueOn(todayStr()).filter(task => !isDoneOn(task, todayStr())).length;
           if (pending) badge = pending;
         }
-        return h('button', { class: (vertical ? 'nav-item' : 'bn-item') + (active ? ' on' : ''), onclick: () => go(item.id) },
+        return h('button', {
+          class: (vertical ? 'nav-item' : 'bn-item') + (active ? ' on' : ''),
+          // Lee­r de pantalla anuncia la sección actual (WCAG 2.4.8 / 4.1.2).
+          'aria-current': active ? 'page' : null,
+          onclick: () => go(item.id)
+        },
           vertical
             ? [h('span', { html: icon(item.icon, 20) }), h('span', null, item.label), badge ? h('span', { class: 'nav-badge' }, badge) : null]
             : [h('span', { class: 'bn-ic', html: icon(item.icon, 22) }), h('span', null, item.label)]
@@ -365,11 +370,23 @@ export function registerOnboarding(app) {
     const content = h('div', { class: 'content' });
     const screen = app.features[route.name] || app.features.home;
     content.append(screen());
+    /* La cabecera sube al marco: como barra ocupa todo el ancho del área que se
+       desplaza —sin cortes verticales dentro de la pantalla— y el contenido
+       pasa por debajo, alineado con ella. Una pantalla sin cabecera se queda
+       con el aire de siempre. */
+    const screenHeader = content.querySelector('.scr-head');
+    if (screenHeader) main.append(screenHeader);
     main.append(content);
     root.append(main);
     const rootElement = h('div', { style: 'display:contents' }, root);
     rootElement.append(h('nav', { class: 'bottom-nav' }, navigationElement(false)));
-    rootElement.append(h('button', { class: 'fab', 'aria-label': 'Añadir', onclick: () => app.components.quickAddSheet(), html: icon('plus', 26) }));
+    // El FAB no se pinta en Ajustes: a 390 px su zona fija (56×56 junto a la
+    // navegación) caía justo sobre el segmento "Oscuro" y el toque abría el
+    // sheet de añadir en vez de cambiar el tema. Tampoco en Perfil, que usa
+    // las mismas filas .set-row y quedaría tapada por el mismo motivo.
+    if (route.name !== 'settings' && route.name !== 'profile') {
+      rootElement.append(h('button', { class: 'fab', 'aria-label': 'Añadir', onclick: () => app.components.quickAddSheet(), html: icon('plus', 26) }));
+    }
     return rootElement;
   }
 

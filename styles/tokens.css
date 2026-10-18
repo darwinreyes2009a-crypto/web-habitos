@@ -3,6 +3,11 @@
    Fuente única de la identidad visual. Aquí viven color, superficies,
    tipografía, espaciado, radios, profundidad, movimiento y foco.
    Si necesitas un valor nuevo, añádelo aquí antes de escribirlo suelto.
+
+   Tipografía y espaciado son escalas FLUIDAS: cada token interpola entre el
+   tamaño de móvil (400px) y el de escritorio (1200px), que es exactamente el
+   valor que antes estaba fijado. En escritorio nada cambia y en móvil todo se
+   compacta sin bajar del mínimo legible. No escribas un px suelto: usa el rol.
    ========================================================================== */
 
 :root {
@@ -19,6 +24,20 @@
   --primary-ink: #1D4ED8;    /* primario legible sobre superficie clara */
   --primary-soft: #EFF6FF;   /* relleno tenue */
   --primary-softer: #DBEAFE; /* relleno más marcado y bordes de énfasis */
+
+  /* Relleno sólido con texto claro encima. En oscuro `--primary` se aclara
+     para poder usarse como texto sobre superficies oscuras, así que deja de
+     servir como fondo de botones: este par (relleno + `--on-primary`) es el
+     que garantiza ≥4.5:1 con texto. Lo comprueba tools/test-contrast.mjs. */
+  --primary-solid: #2563EB;
+  --primary-solid-hover: #1D4ED8;
+
+  /* Texto sobre rellenos saturados: cada tema define el suyo porque el mismo
+     relleno no admite siempre el mismo tinta (en oscuro --danger es claro). */
+  --on-primary: #FFFFFF;   /* sobre --primary-solid */
+  --on-danger: #FFFFFF;    /* sobre --danger */
+  --on-muted: #FFFFFF;     /* sobre --text-3 (badges sólidos) */
+  --on-green: #FFFFFF;     /* marca de "hecho" sobre --green */
 
   /* Avisos flotantes: en claro son oscuros y en oscuro se invierten, para que
      siempre haya contraste alto sin recurrir a un negro o un blanco fijos. */
@@ -42,17 +61,19 @@
      embebido no puede heredar el color del texto. */
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
-  /* --- Tipografía: seis roles y nada más ------------------------------- */
-  --fs-hero: 34px;   /* cifras de resumen */
-  --fs-title: 26px;  /* títulos de bienvenida y auth */
-  --fs-screen: 22px; /* título de pantalla */
-  --fs-sub: 17px;    /* título de hoja */
-  --fs-lead: 16px;   /* texto destacado */
-  --fs-body: 15px;   /* cuerpo de lectura y campos */
-  --fs-item: 14px;   /* título de fila / de opción */
-  --fs-meta: 12.5px; /* metadatos y descripciones de fila */
-  --fs-label: 12px;  /* etiquetas de formulario y contadores */
-  --fs-micro: 11px;  /* badges, contadores y pies */
+  /* --- Tipografía: diez roles y nada más --------------------------------
+     Cada rol fluye de 400px a 1200px. El tope es el valor histórico, así que
+     en escritorio se ve igual que antes y en móvil se compacta solo. ------ */
+  --fs-hero: clamp(1.875rem, 1.75rem + .5vw, 2.125rem);      /* 30 → 34px */
+  --fs-title: clamp(1.4375rem, 1.3438rem + .375vw, 1.625rem); /* 23 → 26px */
+  --fs-screen: clamp(1.25rem, 1.1875rem + .25vw, 1.375rem);  /* 20 → 22px */
+  --fs-sub: clamp(.9688rem, .9219rem + .1875vw, 1.0625rem);  /* 15.5 → 17px */
+  --fs-lead: clamp(.9063rem, .8594rem + .1875vw, 1rem);      /* 14.5 → 16px */
+  --fs-body: clamp(.875rem, .8438rem + .125vw, .9375rem);    /* 14 → 15px */
+  --fs-item: clamp(.8125rem, .7813rem + .125vw, .875rem);    /* 13 → 14px */
+  --fs-meta: clamp(.7188rem, .6875rem + .125vw, .7813rem);   /* 11.5 → 12.5px */
+  --fs-label: clamp(.6875rem, .6563rem + .125vw, .75rem);    /* 11 → 12px */
+  --fs-micro: clamp(.6563rem, .6406rem + .0625vw, .6875rem); /* 10.5 → 11px */
 
   --fw-normal: 400;
   --fw-medium: 500;
@@ -66,16 +87,18 @@
   --ls-tight: -.02em;   /* títulos: tracking más cerrado */
   --ls-tighter: -.03em;
 
-  /* --- Espaciado: escala de 4px con los saltos que realmente se usan ---- */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 20px;
-  --sp-6: 24px;
-  --sp-7: 32px;
-  --sp-8: 40px;
-  --sp-9: 48px;
+  /* --- Espaciado: escala de 4px, fluida como la tipografía --------------
+     --sp-1 e  --sp-9 son los extremos de la retícula; los saltos intermedios
+     son los que la app usa de verdad. ----------------------------------- */
+  --sp-1: clamp(.25rem, .25rem + 0vw, .25rem);          /*  4px */
+  --sp-2: clamp(.4375rem, .4063rem + .125vw, .5rem);    /*  7 →  8px */
+  --sp-3: clamp(.625rem, .5625rem + .25vw, .75rem);     /* 10 → 12px */
+  --sp-4: clamp(.875rem, .8125rem + .25vw, 1rem);       /* 14 → 16px */
+  --sp-5: clamp(1.0625rem, .9688rem + .375vw, 1.25rem); /* 17 → 20px */
+  --sp-6: clamp(1.25rem, 1.125rem + .5vw, 1.5rem);      /* 20 → 24px */
+  --sp-7: clamp(1.6875rem, 1.5313rem + .625vw, 2rem);   /* 27 → 32px */
+  --sp-8: clamp(2.125rem, 1.9375rem + .75vw, 2.5rem);   /* 34 → 40px */
+  --sp-9: clamp(2.5rem, 2.25rem + 1vw, 3rem);           /* 40 → 48px */
 
   /* --- Radios ----------------------------------------------------------- */
   --r-xs: 8px;
@@ -85,11 +108,50 @@
   --r-xl: 24px;
   --r-pill: 999px;
 
+  /* --- Sistema: una receta por familia de control -----------------------
+     Antes cada tarjeta, botón y campo repetía su radio, su relleno y su
+     transición a mano, y se desviaban entre pantallas. Estas recetas son el
+     único punto de ajuste; las pantallas solo las consumen. ------------- */
+  --card-radius: var(--r-xl);
+  --card-padding: var(--sp-4);
+  --card-padding-sm: var(--sp-3);
+  --card-bg: var(--surface);
+  --card-border: 1px solid var(--border-soft);
+  --card-shadow: var(--sh-s);
+  --card-shadow-hover: var(--sh-m);
+  --card-hover-lift: translateY(-1px);
+  --card-transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+
+  --btn-radius: var(--r-m);
+  --btn-radius-sm: var(--r-s);
+  --btn-padding: 12px var(--sp-4);
+  --btn-padding-sm: 8px var(--sp-3);
+  --disabled-opacity: .45;   /* un solo estado apagado para toda la app */
+
+  --field-radius: var(--r-m);
+  --field-border: 1.5px solid var(--border);
+  /* 16px es el mínimo con el que iOS no hace auto-zoom al enfocar un campo.
+     Va multiplicado por --font-scale: con la opción "Máx." el campo crece con
+     el texto en vez de quedarse más pequeño que lo que el usuario escribe. */
+  --field-size: calc(16px * var(--font-scale));
+
+  --section-gap: var(--sp-4);
+  --section-gap-lg: var(--sp-6);
+  /* Tracking de las etiquetas de sección ("PARA HOY", "CUENTA"): antes
+     .06em, .07em y .07em repartidos por tres reglas distintas. */
+  --label-tracking: .07em;
+
+  /* Velo de las superficies modales. En oscuro sigue siendo oscuro: oscurecer
+     el fondo es lo que separa la hoja del contenido en los dos temas. */
+  --scrim: rgba(15, 23, 42, .4);
+  --scrim-strong: rgba(15, 23, 42, .72);
+
   /* --- Profundidad: tres niveles, sin más ------------------------------ */
   --sh-s: 0 1px 2px rgba(15, 23, 42, .05);            /* reposo */
   --sh-m: 0 6px 20px rgba(15, 23, 42, .06);           /* elevado: sheets */
   --sh-l: 0 12px 40px rgba(15, 23, 42, .12);          /* flotante: toast */
   --sh-fab: 0 8px 22px rgba(37, 99, 235, .32);
+  --sh-acento: 0 4px 14px rgba(37, 99, 235, .22);     /* relleno primario */
 
   /* --- Movimiento: breve y con propósito ------------------------------- */
   --t-fast: .12s;
@@ -105,6 +167,7 @@
   --nav-h: 62px;
   --tap: 44px;          /* zona táctil mínima (WCAG 2.2 AA) */
   --focus-ring: 3px solid var(--primary);
+  --focus-ring-shadow: 0 0 0 3px var(--primary-softer);
   --focus-offset: 3px;
   --vvh: 100dvh;
   --font-scale: 1;
@@ -122,11 +185,25 @@
   --surface-3: #1E2B47;
   --nav-bg: rgba(17, 26, 44, .94);
 
-  --primary: #3B82F6;
+  /* #3B82F6 se quedaba en 4,35:1 sobre --surface-2 (enlaces y foco en zonas
+     hundidas); un punto más claro devuelve 5,2:1 sin perder la marca. */
+  --primary: #4D93F8;
   --primary-2: #60A5FA;
   --primary-ink: #93C5FD;
-  --primary-soft: rgba(59, 130, 246, .14);
-  --primary-softer: rgba(59, 130, 246, .24);
+  --primary-soft: rgba(77, 147, 248, .14);
+  --primary-softer: rgba(77, 147, 248, .24);
+
+  /* Relleno con texto claro: blanco sobre #3B82F6 solo da 3,68:1, así que el
+     fondo sólido usa el azul de marca (5,12:1) y el hover se oscurece. */
+  --primary-solid: #2563EB;
+  --primary-solid-hover: #1D4ED8;
+
+  /* En oscuro los acentos se aclaran, así que la tinta sobre ellos va al
+     revés: negra sobre --danger/--green/--text-3 claros. */
+  --on-primary: #FFFFFF;
+  --on-danger: #0B1220;
+  --on-muted: #0B1220;
+  --on-green: #0B1220;
 
   --toast-bg: #F1F5F9;
   --toast-fg: #0B1220;
@@ -171,6 +248,26 @@ a { color: var(--primary) }
 :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: var(--r-xs) }
 ::selection { background: var(--primary-softer) }
 
+/* --- Títulos: el rol se decide una sola vez, aquí ----------------------
+   Antes casi cada pantalla escribía su font-size (16 de ellos inline) y los
+   <h*> sin estilo caían en el tamaño por defecto del navegador, que además
+   escala con --font-scale: un h3 acababa en 22,5px sin que nadie lo hubiera
+   decidido. Con esta capa, cualquier título nuevo nace dentro de la escala y
+   ningún componente vuelve a declarar peso ni tracking. Los componentes solo
+   añaden lo suyo (márgenes, tamaño de excepción). ---------------------- */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+}
+h1, h2, h3 { font-weight: var(--fw-black) }
+h1 { font-size: var(--fs-title) }
+h2 { font-size: var(--fs-screen) }
+h3 { font-size: var(--fs-sub) }
+h4 { font-size: var(--fs-lead) }
+h5, h6 { font-size: var(--fs-item) }
+
 /* Alto contraste: refuerza bordes y textos secundarios sin cambiar el layout */
 :root[data-contrast="high"] {
   --text-2: #475569; --text-3: #5E6D84;
@@ -179,6 +276,29 @@ a { color: var(--primary) }
 :root[data-theme="dark"][data-contrast="high"] {
   --text-2: #CBD5E1; --text-3: #A8B6CC;
   --border: #64748B; --border-soft: #475569;
+}
+
+/* El sistema operativo también puede pedir más contraste. Se sirven los MISMOS
+   valores que el interruptor de Ajustes —no unos nuevos— para que el tema que
+   ya valida tools/test-contrast.mjs sea el que se aplica, y para que encender
+   el ajuste a mano no cambie nada si el sistema ya lo pedía. El selector exige
+   data-contrast="normal", que es lo que store.js escribe cuando el ajuste está
+   apagado: la elección explícita del usuario nunca se pisa. */
+@media (prefers-contrast: more) {
+  :root[data-contrast="normal"] {
+    --text-2: #475569; --text-3: #5E6D84;
+    --border: #94A3B8; --border-soft: #CBD5E1;
+  }
+  :root[data-theme="dark"][data-contrast="normal"] {
+    --text-2: #CBD5E1; --text-3: #A8B6CC;
+    --border: #64748B; --border-soft: #475569;
+  }
+}
+
+/* Ahorro de datos: fuera el desenfoque, que es lo más caro de pintar. */
+@media (prefers-reduced-data: reduce) {
+  :root { --nav-bg: var(--surface) }
+  .bottom-nav { -webkit-backdrop-filter: none; backdrop-filter: none }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -200,14 +320,23 @@ a { color: var(--primary) }
 #app { height: 100dvh; display: flex; flex-direction: column }
 .shell { flex: 1; display: flex; min-height: 0 }
 .main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain }
-.content {
-  max-width: 880px; margin: 0 auto;
-  padding: var(--sp-5) var(--sp-4) calc(var(--nav-h) + var(--sp-9) + env(safe-area-inset-bottom));
-}
-@media (min-width: 768px) { .content { padding: var(--sp-7) var(--sp-7) var(--sp-8) } }
+/* Ancho de la columna de contenido y su padding. Viven aquí porque la cabecera
+   de pantalla es una barra del área de la app —no un bloque dentro de la
+   columna— y necesita el mismo ancho y el mismo margen lateral para que su
+   título y sus acciones queden alineados con las tarjetas de debajo. */
+:root { --content-max: 880px; --content-pad-x: var(--sp-4); --content-pad-y: var(--sp-5) }
+@media (min-width: 768px) { :root { --content-pad-x: var(--sp-7); --content-pad-y: var(--sp-7) } }
 /* En móviles estrechos se recorta el margen lateral para que las celdas del
    calendario y las rejillas alcancen los 44px de zona táctil. */
-@media (max-width: 400px) { .content { padding-inline: 12px } }
+@media (max-width: 400px) { :root { --content-pad-x: 12px } }
+
+.content {
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--content-pad-y) var(--content-pad-x) calc(var(--nav-h) + var(--sp-9) + var(--tap) + env(safe-area-inset-bottom));
+  /* Un tap más de fondo: el FAB vive entre el final del contenido y la
+     navegación, y sin este espacio su zona fija podía tapar el último control. */
+}
+@media (min-width: 768px) { .content { padding-bottom: var(--sp-8) } }
 
 .sidebar { display: none }
 @media (min-width: 768px) {
@@ -220,7 +349,7 @@ a { color: var(--primary) }
   .brand { display: flex; align-items: center; gap: var(--sp-3); padding: 6px 10px var(--sp-6) }
   .brand-mark {
     width: 40px; height: 40px; border-radius: var(--r-m);
-    background: var(--primary); color: #fff;
+    background: var(--primary-solid); color: var(--on-primary);
     display: flex; align-items: center; justify-content: center;
     font-weight: var(--fw-black); font-size: 19px; box-shadow: var(--sh-m);
   }
@@ -252,7 +381,7 @@ a { color: var(--primary) }
   margin-left: auto;
   min-width: 20px; height: 20px; padding: 0 6px;
   border-radius: var(--r-pill);
-  background: var(--primary); color: #fff;
+  background: var(--primary-solid); color: var(--on-primary);
   font-size: var(--fs-micro); font-weight: var(--fw-bold);
   display: inline-flex; align-items: center; justify-content: center;
 }
@@ -290,23 +419,40 @@ a { color: var(--primary) }
   position: fixed; right: var(--sp-4);
   bottom: calc(var(--nav-h) + var(--sp-4) + env(safe-area-inset-bottom));
   z-index: 45;
-  width: 56px; height: 56px; border-radius: var(--r-pill);
-  background: var(--primary); color: #fff;
+  width: 56px; height: 56px;  border-radius: var(--r-pill);
+  background: var(--primary-solid); color: var(--on-primary);
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--sh-fab);
   transition: transform var(--t-fast), background var(--t-fast);
 }
-.fab:hover { background: var(--primary-2) }
+.fab:hover { background: var(--primary-solid-hover) }
 .fab:active { transform: scale(.93) }
 @media (min-width: 768px) { .fab { display: none } }
 
 /* ==========================================================================
    Cabecera de pantalla: un único patrón para toda la app
+   --------------------------------------------------------------------------
+   La cabecera pertenece al MARCO de la app, no a la columna de contenido: es
+   una barra pegada al borde superior, del ancho justo de la columna, con el
+   relleno lateral de la columna para que el título y las acciones queden
+   alineados con las tarjetas de debajo. Se distingue del cuerpo por el
+   material de superficie (el mismo que la barra lateral y la navegación) y por
+   el filete suave de las tarjetas, y cierra con las esquinas de abajo
+   redondeadas: así no queda ningún ángulo recto suelto dentro de la pantalla.
+   La barra no lleva margen inferior a propósito: el aire bajo el filete es el
+   padding superior de `.content`. shell() la sube fuera de `.content`; aquí
+   vive solo su aspecto.
    ========================================================================== */
 
 .scr-head {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: var(--sp-3); margin-bottom: var(--sp-5);
+  gap: var(--sp-3);
+  max-width: var(--content-max); margin: 0 auto;
+  padding: var(--content-pad-y) var(--content-pad-x) var(--sp-3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  box-shadow: var(--sh-s);
 }
 .scr-head h2 {
   font-size: var(--fs-screen); font-weight: var(--fw-black);
@@ -363,7 +509,7 @@ a { color: var(--primary) }
   transition: background var(--t-fast), color var(--t-fast);
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text) }
-.icon-btn:disabled { opacity: .4; cursor: default }
+.icon-btn:disabled { opacity: var(--disabled-opacity); cursor: default }
 
 .mini-btn {
   width: 34px; height: 34px; border-radius: var(--r-s);
@@ -372,20 +518,23 @@ a { color: var(--primary) }
   transition: background var(--t-fast), color var(--t-fast);
 }
 .mini-btn:hover { background: var(--surface-2); color: var(--text) }
-.mini-btn:disabled { opacity: .35; cursor: default }
+.mini-btn:disabled { opacity: var(--disabled-opacity); cursor: default }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
   font-weight: var(--fw-semi); font-size: var(--fs-item);
-  border-radius: var(--r-m);
-  padding: 12px var(--sp-4);
+  border-radius: var(--btn-radius);
+  padding: var(--btn-padding);
+  /* Objetivo táctil de 44 px (token --tap): el padding sigue mandando en el
+     tamaño visual, pero ningún .btn queda por debajo del mínimo del proyecto. */
+  min-height: var(--tap);
   transition: transform var(--t-fast), background var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast), color var(--t-fast);
   user-select: none;
 }
 .btn:active { transform: scale(.98) }
-.btn:disabled { opacity: .45; cursor: default }
-.btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(37, 99, 235, .22) }
-.btn-primary:hover { background: var(--primary-2) }
+.btn:disabled { opacity: var(--disabled-opacity); cursor: default }
+.btn-primary { background: var(--primary-solid); color: var(--on-primary); box-shadow: var(--sh-acento) }
+.btn-primary:hover { background: var(--primary-solid-hover) }
 .btn-secondary { background: var(--surface); color: var(--primary-ink); border: 1.5px solid var(--primary) }
 .btn-secondary:hover { background: var(--primary-soft) }
 .btn-soft { background: var(--surface-2); color: var(--text) }

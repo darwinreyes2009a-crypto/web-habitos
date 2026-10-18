@@ -3,7 +3,7 @@
 
 export function registerPlatform(app) {
   const { h, icon, todayStr, cap, uid } = app.core;
-  const { S, save } = app.state;
+  const { S, save, switchProfileData } = app.state;
   const { toast, confirmDialog, openSheet } = app.components;
 
   /* --- Aviso de versión nueva --------------------------------------------- */
@@ -13,6 +13,16 @@ export function registerPlatform(app) {
   // recargar solo y perder lo que el usuario estaba haciendo.
   function watchUpdates() {
     if (!('serviceWorker' in navigator)) return;
+
+    // Si el precache de la versión nueva falla, el worker se descarta y la
+    // anterior sigue activa; aquí se hace visible en la app, no solo en la
+    // consola del service worker (P2.17).
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      const data = event && event.data;
+      if (!data || data.type !== 'sw-install-failed') return;
+      console.error('DailyHub: no se pudo precachear ' + data.cache, data.error);
+      toast('No se pudo preparar la versión nueva para uso sin conexión. Sigue funcionando la versión actual.');
+    });
 
     // Un aviso sin worker al que activarse es peor que no tener aviso: se queda
     // en pantalla para siempre. Cada ruta de salida pasa por aquí, y si no hay
@@ -401,7 +411,7 @@ export function registerPlatform(app) {
           const r = mergeBackup(backup);
           const total = Object.values(r.created).reduce((a, b) => a + b, 0);
           save();
-          app.domain.switchProfileData();
+          switchProfileData();
           app.render();
           if (r.skippedDuplicates) toast('Ya tenías esa copia: no se ha duplicado nada');
           else toast('Fusionada · ' + total + ' elementos nuevos' + (r.updated ? ' · ' + r.updated + ' ya estaban' : ''));

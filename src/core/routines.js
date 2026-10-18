@@ -373,7 +373,7 @@ export function registerRoutines(app) {
     else if (freq.type === 'every') text = 'Cada ' + (Number(freq.every) || 1) + (Number(freq.every) === 1 ? ' día' : ' días');
     else if (freq.type === 'weekly') text = 'Cada semana · ' + (WEEK[(freq.days || [])[0]] || 'lunes');
     else if (freq.type === 'monthly') text = 'Día ' + (freq.dom || 1) + ' de cada mes';
-    else if (freq.type === 'once') text = freq.date || 'Una vez';
+    else if (freq.type === 'once') text = freq.date ? app.core.fmtShort(freq.date) : 'Una vez';
     else text = 'Todos los días';
     if (freq.until) text += ' · hasta el ' + (app.core.fmtShort(freq.until));
     else if (freq.from && freq.from > todayStr()) text += ' · desde el ' + app.core.fmtShort(freq.from);

@@ -28,7 +28,9 @@ export function registerAuth(app) {
   function authCheck() {
     if (!sync) return true;
     if (sync.status.state === 'loading' || sync.status.state === 'online') return true;
-    return sync.status.state === 'offline' && offlineAccountAccess && !!activeAccountUid();
+    // 'offline' (sin red) y 'error' (la nube rechazó) dejan entrar con la copia
+    // local: en los dos casos los cambios se siguen guardando en el dispositivo.
+    return (sync.status.state === 'offline' || sync.status.state === 'error') && offlineAccountAccess && !!activeAccountUid();
   }
 
   function softLogout() {
@@ -116,8 +118,19 @@ export function registerAuth(app) {
     const box = wrap.firstChild;
     box.append(
       h('div', { class: 'auth-logo', html: 'D' }),
-      h('h2', { style: 'font-size:24px;font-weight:800;letter-spacing:-.03em' }, 'Bienvenido a DailyHub')
+      h('h2', { class: 'hero-title' }, 'Bienvenido a DailyHub')
     );
+
+    if (status === 'error') {
+      const reason = sync.status.kind === 'account'
+        ? 'La sesión no corresponde a la cuenta activa de este dispositivo.'
+        : 'El servidor ha rechazado la sincronización' + (sync.status.http ? ' (HTTP ' + sync.status.http + ')' : '') + '.';
+      box.append(
+        h('p', { style: 'font-size:13.5px;color:var(--text-2);margin:8px 0 20px;line-height:1.6' }, reason + ' No es un problema de tu conexión: puedes seguir usando la app y los cambios se guardan localmente.'),
+        h('button', { class: 'btn btn-primary btn-block btn-lg', onclick: () => { sync.status.state = 'loading'; render(); sync.boot(); } }, 'Reintentar')
+      );
+      return wrap;
+    }
 
     if (status === 'offline') {
       box.append(
@@ -148,9 +161,10 @@ export function registerAuth(app) {
       return wrap;
     }
 
-    const emailInput = h('input', { class: 'input', type: 'email', placeholder: 'tucorreo@ejemplo.com', autocomplete: 'email' });
-    const passwordInput = h('input', { class: 'input', type: 'password', placeholder: 'Mínimo 6 caracteres', autocomplete: 'current-password' });
-    const message = h('p', { class: 'field-hint', style: 'min-height:18px;text-align:center' });
+    const emailInput = h('input', { class: 'input', type: 'email', id: 'auth-email', placeholder: 'tucorreo@ejemplo.com', autocomplete: 'email' });
+    const passwordInput = h('input', { class: 'input', type: 'password', id: 'auth-password', placeholder: 'Mínimo 6 caracteres', autocomplete: 'current-password' });
+    // aria-live para que el lector anuncie los errores y el estado del envío.
+    const message = h('p', { class: 'field-hint', 'aria-live': 'polite', style: 'min-height:18px;text-align:center' });
     let showPassword = false;
     const togglePassword = h('button', {
       class: 'link',
@@ -228,8 +242,8 @@ export function registerAuth(app) {
     passwordInput.addEventListener('keydown', event => { if (event.key === 'Enter') submit(); });
     emailInput.addEventListener('keydown', event => { if (event.key === 'Enter') passwordInput.focus(); });
     box.append(...[
-      h('div', { class: 'field', style: 'text-align:left;margin-top:20px' }, h('label', null, 'Email'), emailInput),
-      h('div', { class: 'field', style: 'text-align:left' }, h('label', null, 'Contraseña'), passwordInput),
+      h('div', { class: 'field', style: 'text-align:left;margin-top:20px' }, h('label', { for: 'auth-email' }, 'Email'), emailInput),
+      h('div', { class: 'field', style: 'text-align:left' }, h('label', { for: 'auth-password' }, 'Contraseña'), passwordInput),
       togglePassword,
       message,
       button,
@@ -252,8 +266,9 @@ export function registerAuth(app) {
           const stateLabel = status.state === 'online' ? 'Conectado'
             : status.state === 'loading' ? 'Sincronizando…'
               : status.state === 'offline' ? 'Sin conexión · los cambios siguen guardándose localmente'
-                : 'Sesión no iniciada';
-          const statusNote = h('p', { style: 'font-size:12px;color:' + (status.state === 'offline' ? 'var(--danger)' : 'var(--text-2)') + ';margin-top:4px', 'aria-live': 'polite' }, stateLabel);
+                : status.state === 'error' ? (sync.errorLabel ? sync.errorLabel() : 'La nube rechaza la sincronización · cambios locales')
+                  : 'Sesión no iniciada';
+          const statusNote = h('p', { style: 'font-size:12px;color:' + (status.state === 'offline' || status.state === 'error' ? 'var(--danger)' : 'var(--text-2)') + ';margin-top:4px', 'aria-live': 'polite' }, stateLabel);
           const syncButton = h('button', { class: 'btn btn-soft btn-block', disabled: status.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false), onclick: async () => {
             toast('Sincronizando…');
             const ok = await sync.pull();

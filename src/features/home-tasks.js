@@ -63,11 +63,15 @@ export function registerHomeAndTasks(app) {
     const hour = new Date().getHours();
     const greeting = hour >= 5 && hour < 16 ? 'Buenos días' : hour >= 16 && hour < 20 ? 'Buenas tardes' : 'Buenas noches';
     const wrap = h('div');
-    wrap.append(headBar(greeting + ', ' + profile.name, cap(fmtLong(todayStr())),
+    /* El saludo lleva su propia clase: es la identidad de la pantalla, así que
+       se desmarca del contenido en vez de parecer un título de sección más. */
+    const head = headBar(greeting + ', ' + profile.name, cap(fmtLong(todayStr())),
       searchBtn(),
       h('button', { class: 'icon-btn', 'aria-label': 'Qué toca ahora', onclick: () => go('now'), html: icon('clock', 20) }),
       h('button', { 'aria-label': 'Tu perfil', onclick: () => go('profile'), style: 'border-radius:50%' }, avatarEl(profile.name, profile.color, 40, profile.photo))
-    ));
+    );
+    head.classList.add('home-head');
+    wrap.append(head);
 
     for (const person of birthdaysToday()) {
       wrap.append(h('div', { class: 'banner' },
@@ -255,6 +259,22 @@ export function registerHomeAndTasks(app) {
     });
   }
 
+  // Un único patrón de etiqueta para la acción principal de la tarjeta: el
+  // mismo texto en Inicio y en la lista para el mismo estado (verbo en
+  // pendiente, verbo con ✓ al terminar, → sólo para abrir la actividad).
+  function quickActionLabel(state) {
+    if (state.steps) return state.stepCount ? 'Continuar →' : 'Empezar →';
+    if (state.avoid) return state.done ? 'Día limpio ✓' : 'Marcar fallo';
+    if (state.kind === 'check') return state.done ? 'Hecho ✓' : 'Hecho';
+    return 'Abrir →';
+  }
+
+  // Una sola pista de gesto por vista —discreta y al pie de la lista— en vez
+  // de repetirla en cada tarjeta.
+  function swipeHintLine() {
+    return h('div', { class: 'activity-swipe-hint' }, 'Desliza las tarjetas para completar o deshacer.');
+  }
+
   function taskActivityCard(task, ymd, options) {
     const cardOptions = options || {};
     const isHomeCard = !!cardOptions.home;
@@ -272,6 +292,15 @@ export function registerHomeAndTasks(app) {
     const control = steps.length && kind === 'check'
       ? null
       : app.features.taskControl(task, ymd);
+    /* El pie de la tarjeta ya ofrece la acción (Hecho, Empezar, Deshacer) y,
+       cuando la actividad se marca de un toque, es el mismo botón que el
+       control de la cabecera: pintarlo también arriba duplicaba la acción y en
+       las tarjetas estrechas el círculo se montaba encima del lápiz de editar.
+       El control sigue creándose —sin llegar al documento— porque es quien
+       sabe alternar el registro: la tarjeta lo pulsa desde open(). */
+    const actionAtFoot = isHomeCard ? due : due && !steps.length && (kind === 'check' || avoid);
+    const controlEsBotonDeMarca = !!steps.length || kind === 'check' || avoid;
+    const headControl = actionAtFoot && controlEsBotonDeMarca ? null : control;
     const refreshCard = () => {
       const updated = taskActivityCard(task, ymd, cardOptions);
       card.replaceWith(updated);
@@ -289,7 +318,10 @@ export function registerHomeAndTasks(app) {
       class: 'activity-card' + (isHomeCard ? ' home-activity-card' : '') + (done && !avoid ? ' is-done' : '') + (skipped ? ' is-skipped' : '') + (priority ? ' has-priority' : ''),
       tabindex: '0',
       'aria-label': task.title + ' · ' + status,
-      style: 'border-left:3px solid ' + (priority ? priority.color : done && !avoid ? 'var(--green)' : 'var(--primary)')
+      // En Inicio no hay contorno: la columna de color solo se reserva para la
+      // lista de Actividades, donde la tarjeta es de una sola columna. En la
+      // cuadrícula de hábitos el estado ya lo dicen el fondo y la acción.
+      style: isHomeCard ? null : 'border-left:3px solid ' + (priority ? priority.color : done && !avoid ? 'var(--green)' : 'var(--primary)')
     });
     attachTaskGestures(card, task, ymd, refreshCard);
     const firstImage = steps.find(step => step.image);
@@ -305,22 +337,22 @@ export function registerHomeAndTasks(app) {
           steps.length ? h('span', { class: 'activity-step-summary' }, stepCount + ' de ' + steps.length + ' pasos') : null
         )
       ),
-      h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) }),
-      control
+      // Editar se pinta solo en Actividades. En Inicio la cuadrícula de hábitos
+      // es compacta (icono grande + acción al pie): el lápiz tapaba la imagen y
+      // ofrecía un atajo que la propia lista de Actividades y el buscador ya cubren.
+      isHomeCard ? null : h('button', { class: 'icon-btn activity-edit', type: 'button', 'aria-label': 'Editar ' + task.title, onclick: () => go('taskForm', { id: task.id }), html: icon('edit', 16) }),
+      headControl
     ));
-    const directionLabel = skipped ? 'desliza a la derecha para restaurar' : avoid ? 'desliza a la derecha para marcar fallo' : (kind === 'count' || kind === 'amount') ? 'desliza a derecha o izquierda para ajustar' : done ? 'desliza a la izquierda para deshacer' : 'desliza a la derecha para completar';
-    card.append(h('span', { class: 'activity-swipe-hint' }, 'Desliza ' + directionLabel));
-    if (isHomeCard ? due : due && !steps.length && (kind === 'check' || avoid)) {
+    if (actionAtFoot) {
       card.append(h('button', { class: 'activity-card-quick-action', type: 'button', onclick: open },
-        isHomeCard ? (steps.length ? (stepCount ? 'Continuar →' : 'Empezar →') : kind === 'check' || avoid ? (done ? (avoid ? 'Día limpio ✓' : 'Hecho ✓') : (avoid ? 'Marcar fallo' : 'Hecho')) : 'Abrir →')
-          : done ? (avoid ? 'Día limpio ✓' : 'Hecho ✓') : (avoid ? 'Marcar fallo' : 'Hecho')));
+        quickActionLabel({ kind, done, avoid, steps: steps.length, stepCount })));
     }
     const goal = app.features.goalBar(task);
     if (goal) card.append(h('div', { class: 'activity-card-goal', style: 'padding:8px 4px 0' }, goal));
     // El pie solo aparece si dice algo o si ofrece la acción de pasos: con la
     // tarjeta simplemente pendiente, el círculo del control ya lo dice todo y
-    // una fila con solo el lápiz quedaba vacía. Editar vive arriba, en la
-    // cabecera, junto al resto de acciones de la tarjeta.
+    // una fila con solo el lápiz quedaba vacía. En Actividades, Editar vive
+    // arriba, en la cabecera; en Inicio no se pinta.
     if (status !== 'Pendiente' || steps.length) {
       card.append(h('div', { class: 'activity-card-footer' },
         status !== 'Pendiente' ? h('span', { class: 'activity-state' + (done && !avoid ? ' positive' : skipped ? ' muted' : '') },
@@ -351,6 +383,7 @@ export function registerHomeAndTasks(app) {
     ui.tasksFilter = ui.tasksFilter === 'todas' ? 'todas' : 'hoy';
     const chips = h('div', { class: 'chips' });
     const listWrap = h('div');
+    const hint = swipeHintLine();
     const drawList = () => {
       chips.innerHTML = '';
       for (const [filter, label] of [['hoy', 'Para hoy'], ['todas', 'Todas']]) {
@@ -363,8 +396,8 @@ export function registerHomeAndTasks(app) {
       listWrap.innerHTML = '';
       const tasks = (ui.tasksFilter === 'hoy' ? dueToday : [...S.tasks]).slice().sort((first, second) =>
         (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
-        (first.time || '99:99').localeCompare(second.time || '99:99') ||
-        (first.title || '').localeCompare(second.title || '', 'es'));
+        (first.time || '99:99').localeCompare(second.time || '99:99') ||          (first.title || '').localeCompare(second.title || '', 'es'));
+      hint.style.display = tasks.length ? '' : 'none';
       if (!tasks.length) {
         listWrap.append(emptyState('spark', ui.tasksFilter === 'hoy' ? 'Día despejado' : 'Aún no hay actividades',
           ui.tasksFilter === 'hoy' ? 'No tienes actividades previstas para hoy.' : 'Crea tu primer hábito o actividad guiada y personalízala a tu manera.',
@@ -373,7 +406,7 @@ export function registerHomeAndTasks(app) {
       }
       listWrap.append(h('div', { class: 'activity-card-list' }, tasks.map(task => taskActivityCard(task, today))));
     };
-    wrap.append(chips, listWrap);
+    wrap.append(chips, listWrap, hint);
     drawList();
     return wrap;
   }

@@ -236,7 +236,7 @@ export function registerScheduleImport(app) {
     text.addEventListener('input', drawPreview);
     const sheet = h('div', { class: 'sheet', style: 'max-width:520px', role: 'dialog', 'aria-label': 'Importar horario desde tabla' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:8px' }, 'Importar horario'),
+      h('h3', { class: 'sec-title' }, 'Importar horario'),
       h('p', { class: 'field-hint', style: 'margin-bottom:12px' }, 'Pega una hoja de cálculo. También puedes usar filas sin encabezado: día, inicio, fin, asignatura, aula.'),
       text,
       hint,

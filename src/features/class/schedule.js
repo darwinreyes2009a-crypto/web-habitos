@@ -123,7 +123,7 @@ export function registerClassSchedule(app) {
     const overlay = h('div', { class: 'overlay', style: 'z-index:65', onclick: event => { if (event.target === overlay) overlay.remove(); } });
     const sheet = h('div', { class: 'sheet', style: 'max-width:380px', role: 'menu' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:2px' }, action === 'copy' ? 'Duplicar en otro día' : 'Mover a otro día'),
+      h('h3', { class: 'sec-title' }, action === 'copy' ? 'Duplicar en otro día' : 'Mover a otro día'),
       h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, blockName(slot) + ' · ' + timeTxt(slot.start) + '–' + timeTxt(slot.end))
     );
     const free = DAY_ORDER.filter(day => day !== slot.day && !fitsInDay(slot, day, slot.id));
@@ -340,7 +340,7 @@ export function registerClassSchedule(app) {
     closeOverlays();
     const overlay = h('div', { class: 'overlay', style: 'z-index:60', onclick: event => { if (event.target === overlay) overlay.remove(); } });
     const sheet = h('div', { class: 'sheet', style: 'max-width:380px', role: 'menu' },
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:4px' }, '¿Qué día quieres añadir?'),
+      h('h3', { class: 'sec-title' }, '¿Qué día quieres añadir?'),
       h('p', { class: 'field-hint', style: 'margin-bottom:12px' }, 'Después añades dentro sus clases y el patio.')
     );
     for (const day of free) {
@@ -360,7 +360,7 @@ export function registerClassSchedule(app) {
     const run = callback => () => { overlay.remove(); callback(); };
     const sheet = h('div', { class: 'sheet', style: 'max-width:400px', role: 'menu' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:10px' }, 'Horario')
+      h('h3', { class: 'sec-title' }, 'Horario')
     );
     const load = app.class.weekLoad();
     sheet.append(

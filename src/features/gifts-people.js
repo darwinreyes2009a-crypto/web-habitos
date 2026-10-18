@@ -600,7 +600,7 @@ export function registerGiftsAndPeople(app) {
     );
     wrap.append(h('div', { style: 'display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px' },
       photoButton,
-      h('h2', { style: 'font-size:22px;font-weight:800;margin-top:12px;letter-spacing:-.02em' }, person.name),
+      h('h2', { class: 'hero-title gap-top' }, person.name),
       h('p', { style: 'font-size:13px;color:var(--text-2);margin-top:4px' }, giftsOf(person.id).length + (giftsOf(person.id).length === 1 ? ' regalo' : ' regalos') + (person.birthday ? bdayTxt(person.birthday) : ''))
     ));
     const tags = personAboutTags(person);

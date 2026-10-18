@@ -21,7 +21,7 @@ export function registerOverlays(app) {
     return h('div', { class: 'scr-head' },
       h('div', { style: 'display:flex;align-items:center;gap:10px' },
         h('button', { class: 'icon-btn', 'aria-label': 'Volver', onclick: onBack, html: icon('back', 19) }),
-        h('h2', { style: 'font-size:20px' }, title)
+        h('h2', null, title)
       ),
       h('div', { class: 'head-actions' }, ...extra)
     );
@@ -117,7 +117,9 @@ export function registerOverlays(app) {
   }
 
   function switchRow(label, hint, checked, onChange) {
-    const input = h('input', { type: 'checkbox' });
+    // role="switch" sobre el checkbox nativo: se anuncia encendido/apagado y
+    // el texto de la etiqueta sigue fijo (WAI-ARIA APG · Switch Pattern).
+    const input = h('input', { type: 'checkbox', role: 'switch' });
     input.checked = !!checked;
     input.addEventListener('change', () => onChange(input.checked));
     return h('label', { class: 'set-row', style: 'cursor:pointer' },
@@ -225,7 +227,7 @@ export function registerOverlays(app) {
       onclick: event => { if (event.target === overlay) close(); }
     });
     const sheet = h('div', { class: 'sheet', style: 'max-width:420px', role: 'alertdialog', 'aria-label': title },
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:8px' }, title),
+      h('h3', { class: 'sec-title' }, title),
       h('p', { style: 'font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px' }, message),
       h('div', { style: 'display:flex;gap:10px;justify-content:flex-end' },
         h('button', { class: 'btn btn-soft', onclick: () => close() }, 'Cancelar'),

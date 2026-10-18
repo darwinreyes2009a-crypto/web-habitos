@@ -541,7 +541,7 @@ export function registerTaskRow(app) {
     const sheet = h('div', { class: 'sheet', style: 'max-width:420px;max-height:86vh;overflow:auto', role: 'dialog' },
       h('div', { class: 'grabber' }),
       h('div', { class: 'sheet-head' },
-        h('h3', { style: 'font-size:17px;font-weight:800' }, task.title),
+        h('h3', null, task.title),
         h('span', { class: 'r-sub' }, kindLabel(kindOf(task)) + ' · ' + app.core.freqText(task))
       )
     );

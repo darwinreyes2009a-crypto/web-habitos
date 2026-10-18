@@ -8,7 +8,70 @@
 
 const SUPABASE_URL = 'https://clarchsmxdrqvbatfgkp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_PEiFsRJrzlSx81AWS4VaGA_Bkkf5Gz7';
-const SYNC_STATUS = { state: 'loading', error: null, lastSyncAt: null, retryAt: null };  // loading | online | offline | loggedout
+/* `state` dice cómo va la sincronización; `kind` dice POR QUÉ falló, para no
+   pintar «Sin conexión» cuando la nube es la que rechaza (ni al revés):
+     loading   — arrancando o reintento en curso
+     online    — sesión y nube al día
+     offline   — no hay red            (kind 'network')
+     error     — hay red y la operación fue rechazada (kind 'server' | 'account')
+     loggedout — sin sesión */
+const SYNC_STATUS = { state: 'loading', error: null, kind: null, http: null, lastSyncAt: null, retryAt: null };
+
+/* ---------- errores: «no hay red» y «la nube rechaza» no son lo mismo ---------- */
+const NETWORK_ERROR_RE = /(failed to fetch|networkerror|network request failed|fetch failed|load failed|failed to load|err_internet|err_network|err_connection|offline|timed ?out|timeout|socket hang up|aborterror)/i;
+
+function errorHttpStatus(error) {
+  if (!error) return null;
+  if (typeof error.status === 'number') return error.status;
+  if (typeof error.statusCode === 'number') return error.statusCode;
+  const match = String(error.message || '').match(/\b(?:status|http)\s*:?\s*(\d{3})\b/i);
+  return match ? Number(match[1]) : null;
+}
+
+function classifySyncError(error) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return 'network';
+  const message = String((error && (error.message || error.error_description)) || error || '');
+  return NETWORK_ERROR_RE.test(message) ? 'network' : 'server';
+}
+
+/* Registra el fallo y deja en SYNC_STATUS el estado honesto que verá la UI. */
+function noteSyncFailure(error, kind) {
+  const detected = kind || classifySyncError(error);
+  SYNC_STATUS.kind = detected;
+  SYNC_STATUS.http = detected === 'account' ? null : errorHttpStatus(error);
+  SYNC_STATUS.error = (error && (error.message || String(error))) ||
+    (detected === 'account' ? 'La sesión no corresponde a la cuenta activa' : 'Error desconocido');
+  if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = detected === 'network' ? 'offline' : 'error';
+  return detected;
+}
+function clearSyncFailure() {
+  SYNC_STATUS.error = null;
+  SYNC_STATUS.kind = null;
+  SYNC_STATUS.http = null;
+}
+function stateAfterFailure() {
+  return !SYNC_STATUS.kind || SYNC_STATUS.kind === 'network' ? 'offline' : 'error';
+}
+
+/* ---------- ids que Postgres puede aceptar ----------
+   Las columnas id/profile_id son uuid: un id local que no lo sea (p. ej. un
+   perfil de pruebas con id 'test-uid') tira TODA la petición con un 400 —
+   también la de los ids válidos que viajan en la misma lista — y su upsert
+   devuelve otro 400. Esas filas se quedan en local, intactas, y se avisa. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isUuid(id) { return typeof id === 'string' && UUID_RE.test(id); }
+function uuidOnly(ids) { return (ids || []).filter(isUuid); }
+
+/* Guarda de aislamiento (P2.18): la sesión autenticada y la cuenta activa del
+   dispositivo tienen que ser la misma. Si no, fusionar o subir mezclaría los
+   datos de dos personas en el mismo buzón. Devuelve null si todo cuadra o el
+   motivo si hay que cancelar. */
+function syncAccountGuard(uid) {
+  const state = window.DailyHub && window.DailyHub.state;
+  const active = state && typeof state.activeAccountUid === 'function' ? state.activeAccountUid() : null;
+  if (!active || active === uid) return null;   // primer arranque: aún sin cuenta reclamada
+  return 'la sesión (' + uid + ') no corresponde a la cuenta activa (' + active + ')';
+}
 
 const authBlobKey = (uid) => 'dailyhub_v2:auth:' + uid;          // blob de sesión guardado por cuenta
 
@@ -23,7 +86,9 @@ async function syncGetUser() {
       // Una lectura local de la sesión puede funcionar sin red. No declares
       // una sincronización online si el navegador ya sabe que no hay conexión,
       // ni revivas una sesión que el usuario cerró mientras había una llamada.
-      if (SYNC_STATUS.state !== 'loggedout') {
+      // Tampoco borres un 'error' real: leer la sesión no demuestra que la
+      // nube deje de rechazar; eso solo lo prueba un sync exitoso.
+      if (SYNC_STATUS.state !== 'loggedout' && SYNC_STATUS.state !== 'error') {
         SYNC_STATUS.state = typeof navigator === 'undefined' || navigator.onLine !== false ? 'online' : 'offline';
       }
     } else {
@@ -32,8 +97,7 @@ async function syncGetUser() {
     return user;
   } catch (e) {
     if (SYNC_STATUS.state !== 'loggedout') {
-      SYNC_STATUS.state = 'offline';
-      SYNC_STATUS.error = e && (e.message || String(e));
+      noteSyncFailure(e);
       scheduleSyncRetry();
     }
     return null;
@@ -41,7 +105,11 @@ async function syncGetUser() {
 }
 
 function syncIsOnline() {
-  return !!(window.sb && SYNC_STATUS.state === 'online' && (typeof navigator === 'undefined' || navigator.onLine !== false));
+  // 'error' sigue estando CONECTADO (la nube rechazó, pero hay red y sesión):
+  // sin admitirlo aquí, el botón «Sincronizar ahora» y los reintentos no
+  // podrían volver a intentarlo jamás.
+  const conectado = SYNC_STATUS.state === 'online' || SYNC_STATUS.state === 'error';
+  return !!(window.sb && conectado && (typeof navigator === 'undefined' || navigator.onLine !== false));
 }
 async function syncSessionStill(uid) {
   if (!window.sb || SYNC_STATUS.state === 'loggedout') return false;
@@ -77,8 +145,7 @@ async function restoreSession(userId) {
     if (!user || user.id !== userId) { SYNC_STATUS.state = 'loggedout'; return null; }
     return user;
   } catch (e) {
-    SYNC_STATUS.state = 'offline';
-    SYNC_STATUS.error = e && (e.message || String(e));
+    noteSyncFailure(e);
     return null;
   }
 }
@@ -517,23 +584,47 @@ function syncQueue(fn) {
 
 let __syncRetryTimer = null;
 let __syncRetryAttempt = 0;
+let __serverErrorStreak = 0;   // rechazos seguidos del servidor (o de cuenta)
 let __retryingSync = false;
 function clearSyncRetry() {
   clearTimeout(__syncRetryTimer);
   __syncRetryTimer = null;
   SYNC_STATUS.retryAt = null;
   __syncRetryAttempt = 0;
+  __serverErrorStreak = 0;
 }
 let __syncRetryGeneration = 0;
 function cancelSyncRetry() {
   __syncRetryGeneration++;
   clearSyncRetry();
 }
+const RETRY_SERVER_DELAY = 5 * 60000;   // un rechazo del servidor no se arregla en segundos
+const RETRY_SERVER_MAX = 3;             // y si insiste, se deja de martillear
+
+/* Política de reintentos (cubierta por tools/test-sync-errors.mjs): la red
+   vuelve con backoff acotado; un rechazo de la nube se reintenta lento y, si
+   se repite, se detiene hasta que algo cambie (usuario, red o recarga). */
+function nextRetryDelay(kind, attempt) {
+  if (kind === 'server' || kind === 'account') return RETRY_SERVER_DELAY;
+  return Math.min(60000, 1000 * (2 ** (Math.min(attempt, 8) - 1)));
+}
+function shouldRetry(kind, streak) {
+  return !(kind === 'server' || kind === 'account') || streak < RETRY_SERVER_MAX;
+}
+
 function scheduleSyncRetry(delayOverride) {
   if (__syncRetryTimer || SYNC_STATUS.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
+  const kind = SYNC_STATUS.kind || 'network';
+  if (kind !== 'network') {
+    __serverErrorStreak += 1;
+    // Sin reintentos en bucle: el estado queda en 'error' con el motivo a la
+    // vista y la sincronización se reanuda al volver la red, al recargar o
+    // cuando el usuario pulsa «Reintentar».
+    if (!shouldRetry(kind, __serverErrorStreak)) return;
+  }
   const generation = __syncRetryGeneration;
   __syncRetryAttempt = Math.min(__syncRetryAttempt + 1, 8);
-  const delay = delayOverride == null ? Math.min(60000, 1000 * (2 ** (__syncRetryAttempt - 1))) : Math.max(0, delayOverride);
+  const delay = delayOverride == null ? nextRetryDelay(kind, __syncRetryAttempt) : Math.max(0, delayOverride);
   SYNC_STATUS.retryAt = Date.now() + delay;
   __syncRetryTimer = setTimeout(() => {
     __syncRetryTimer = null;
@@ -547,22 +638,25 @@ function scheduleSyncRetry(delayOverride) {
       __retryingSync = false;
       if (generation !== __syncRetryGeneration || SYNC_STATUS.state === 'loggedout') return;
       if (!ok) {
-        if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
+        if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = stateAfterFailure();
         scheduleSyncRetry();
         if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
         return;
       }
       SYNC_STATUS.state = 'online';
-      SYNC_STATUS.error = null;
+      clearSyncFailure();
       SYNC_STATUS.lastSyncAt = Date.now();
       clearSyncRetry();
       realtimeStart();
+      // Al recuperarse, además de bajar, se sube lo que se quedó local mientras
+      // el servidor rechazaba: si no, las filas editadas durante el corte no
+      // llegarían hasta el siguiente guardado.
+      syncQueue(syncPushAll).catch(() => {});
       if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
     }).catch(error => {
       __retryingSync = false;
       if (generation !== __syncRetryGeneration || SYNC_STATUS.state === 'loggedout') return;
-      SYNC_STATUS.error = error && (error.message || String(error));
-      SYNC_STATUS.state = 'offline';
+      noteSyncFailure(error);
       scheduleSyncRetry();
       if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
     });
@@ -574,12 +668,19 @@ function registerSyncNetworkEvents() {
   window.addEventListener('offline', () => {
     __syncRetryGeneration++;
     clearSyncRetry();
-    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
+    if (SYNC_STATUS.state !== 'loggedout') {
+      SYNC_STATUS.kind = 'network';
+      SYNC_STATUS.http = null;
+      SYNC_STATUS.error = 'Sin conexión a internet';
+      SYNC_STATUS.state = 'offline';
+    }
     if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
   });
   window.addEventListener('online', () => {
     if (SYNC_STATUS.state === 'loggedout') return;
     __syncRetryAttempt = 0;
+    __serverErrorStreak = 0;   // la red cambió: merece un intento limpio
+    clearSyncFailure();
     SYNC_STATUS.state = 'loading';
     scheduleSyncRetry(0);
     if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
@@ -596,6 +697,13 @@ async function syncPushAll() {
   const user = await syncGetUser();
   if (!user) return false;
   const uid = user.id;
+  const mismatch = syncAccountGuard(uid);
+  if (mismatch) {
+    noteSyncFailure(null, 'account');
+    console.error('DailyHub: push cancelado — ' + mismatch + '. No se sube nada para no mezclar cuentas.');
+    scheduleRealtimeResume();
+    return false;
+  }
   if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
   if (__lastPushedAccount !== uid) {
     __lastPushedAccount = uid;
@@ -606,7 +714,19 @@ async function syncPushAll() {
   try {
     await ensureSchemaFeatures(uid);
     for (const table of activeTables()) {
-      const entries = localEntries(table);
+      const allEntries = localEntries(table);
+      const entries = [];
+      const skippedEntries = [];
+      for (const entry of allEntries) {
+        const idOk = isUuid(entry.row && entry.row.id);
+        const pidOk = !entry.pid || isUuid(entry.pid);
+        (idOk && pidOk ? entries : skippedEntries).push(entry);
+      }
+      if (skippedEntries.length) {
+        console.warn('DailyHub: ' + table + ': ' + skippedEntries.length +
+          ' fila(s) con id o perfil que no es UUID; se quedan en local sin sincronizar',
+          skippedEntries.slice(0, 3).map(entry => entry.row.id));
+      }
       const ids = entries.map(e => e.row.id).filter(Boolean);
       const [sRes, tRes] = await Promise.allSettled([
         ids.length ? window.sb.from(table).select('id,updated_at').in('id', ids) : Promise.resolve({ data: [] }),
@@ -654,7 +774,7 @@ async function syncPushAll() {
         // El tombstone se conserva para que un dispositivo desactualizado
         // no resucite la fila con su copia local.
         try {
-          const dropIds = toDrop.map(entry => entry.row.id).filter(Boolean);
+          const dropIds = toDrop.map(entry => entry.row.id).filter(isUuid);
           for (let j = 0; j < dropIds.length; j += 50) {
             if (!(await syncSessionStill(uid))) { scheduleRealtimeResume(); return false; }
             const { error } = await window.sb.from(table).delete().in('id', dropIds.slice(j, j + 50));
@@ -679,7 +799,9 @@ async function syncPushAll() {
         if (error) throw error;
       }
       // borrados pendientes de este dispositivo → tombstone + DELETE físico en la nube
-      const pendDel = pendingDeleteIds(table);
+      // Un id que no es UUID nunca estuvo en la nube: no lleva tombstone, y
+      // clearPendingDeleteIds lo retira de la cola al terminar.
+      const pendDel = pendingDeleteIds(table).filter(isUuid);
       if (pendDel.length) {
         const now = new Date().toISOString();
         try {
@@ -725,14 +847,16 @@ async function syncPushAll() {
       __lastPushedMetaJson = metaJson;
     }
     scheduleRealtimeResume();
-    SYNC_STATUS.error = null;
+    // El servidor ha aceptado el push: si veníamos de 'error', la nube ya no
+    // rechaza y el estado vuelve a ser honesto.
+    SYNC_STATUS.state = 'online';
+    clearSyncFailure();
     SYNC_STATUS.lastSyncAt = Date.now();
     clearSyncRetry();
     return true;
   } catch (e) {
-    SYNC_STATUS.error = e && (e.message || String(e));
-    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
-    console.error('syncPushAll', e);
+    noteSyncFailure(e);
+    console.error('syncPushAll', '[' + (SYNC_STATUS.kind || 'network') + (SYNC_STATUS.http ? ' HTTP ' + SYNC_STATUS.http : '') + ']', e);
     scheduleRealtimeResume();
     if (!__retryingSync) scheduleSyncRetry();
     return false;
@@ -751,6 +875,17 @@ async function syncPullAll() {
   let needPush = false;
   try {
     await ensureSchemaFeatures(uid);
+    // Guarda de aislamiento: nunca fusionar la nube de una sesión sobre los
+    // datos locales de otra cuenta (P2.18). Se cancela con el motivo a la vista.
+    // Va DESPUÉS de marcar el esquema: si el pull no corre porque las cuentas
+    // no coinciden, no hay por qué perder el trabajo pendiente que ya estaba
+    // en cola (p. ej. un borrado hecho bajo la cuenta correcta).
+    const mismatch = syncAccountGuard(uid);
+    if (mismatch) {
+      noteSyncFailure(null, 'account');
+      console.error('DailyHub: pull cancelado — ' + mismatch + '. No se fusiona nada para no mezclar cuentas.');
+      return false;
+    }
     const tables = activeTables();
     const totals = Promise.all([
       window.sb.from('tombstones').select('id,key,updated_at').eq('user_id', uid),
@@ -1009,14 +1144,13 @@ async function syncPullAll() {
       if (!__retryingSync) scheduleSyncRetry();
       return false;   // primer login, filas nuevas o borrados pendientes
     }
-    SYNC_STATUS.error = null;
+    clearSyncFailure();
     SYNC_STATUS.lastSyncAt = Date.now();
     clearSyncRetry();
     return true;
   } catch (e) {
-    SYNC_STATUS.error = e && (e.message || String(e));
-    if (SYNC_STATUS.state !== 'loggedout') SYNC_STATUS.state = 'offline';
-    console.error('syncPullAll', e);
+    noteSyncFailure(e);
+    console.error('syncPullAll', '[' + (SYNC_STATUS.kind || 'network') + (SYNC_STATUS.http ? ' HTTP ' + SYNC_STATUS.http : '') + ']', e);
     if (!__retryingSync) scheduleSyncRetry();
     return false;
   }
@@ -1074,7 +1208,7 @@ async function syncBoot() {
     if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
     return;
   }
-  SYNC_STATUS.state = ok ? 'online' : 'offline';
+  SYNC_STATUS.state = ok ? 'online' : stateAfterFailure();
   if (ok) {
     clearSyncRetry();
     realtimeStart();
@@ -1085,11 +1219,20 @@ async function syncBoot() {
 }
 
 /* ---------- UI de estado de sincronización ---------- */
+/* Texto honesto para el estado 'error': no es «Sin conexión», es que la nube
+   —o la cuenta activa— rechazó la operación. */
+function syncErrorLabel() {
+  if (SYNC_STATUS.kind === 'network') return 'Sin conexión · cambios locales';
+  if (SYNC_STATUS.kind === 'account') return 'Cuenta activa distinta de la sesión · cambios locales';
+  const http = SYNC_STATUS.http ? ' (HTTP ' + SYNC_STATUS.http + ')' : '';
+  return 'La nube rechaza la sincronización' + http + ' · cambios locales';
+}
 function syncBadge() {
   const map = {
     loading: { cls: 'sync-badge loading', label: 'Sincronizando…', dot: '…' },
     online:  { cls: 'sync-badge online',  label: 'Cuenta conectada', dot: '✓' },
     offline: { cls: 'sync-badge offline', label: 'Sin conexión · cambios locales', dot: '!' },
+    error:   { cls: 'sync-badge offline', label: syncErrorLabel(), dot: '!' },
     loggedout: { cls: 'sync-badge out', label: 'Sin sesión', dot: '·' }
   };
   const m = map[SYNC_STATUS.state] || map.offline;
@@ -1103,5 +1246,9 @@ window.DailySync = {
   boot: syncBoot, push: queuedSyncPush, pull: queuedSyncPull, status: SYNC_STATUS, badge: syncBadge,
   getUser: syncGetUser, realtime: { start: realtimeStart, stop: realtimeStop },
   restoreSession, removeAuthBlob, authBlobKey, cancelRetry: cancelSyncRetry,
-  config: { url: SUPABASE_URL, key: SUPABASE_KEY }
+  config: { url: SUPABASE_URL, key: SUPABASE_KEY },
+  /* Superficie mínima para tools/test-sync-errors.mjs */
+  classify: classifySyncError, errorStatus: errorHttpStatus, errorLabel: syncErrorLabel,
+  retryPolicy: { nextDelay: nextRetryDelay, shouldRetry, serverDelay: RETRY_SERVER_DELAY, serverMax: RETRY_SERVER_MAX },
+  ids: { isUuid, uuidOnly }, accountGuard: syncAccountGuard
 };

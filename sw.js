@@ -1,5 +1,5 @@
 /* DailyHub service worker — offline + actualizaciones inmediatas */
-const CACHE = 'dailyhub-v63';
+const CACHE = 'dailyhub-v71';
 const ASSETS = [
   './',
   './index.html',
@@ -51,13 +51,36 @@ self.addEventListener('install', (event) => {
   // queda en `waiting`; la app muestra el aviso "Hay una versión nueva" y solo
   // se activa cuando el usuario pulsa "Actualizar" (mensaje `skip-waiting`).
   //
-  // Antes se llamaba skipWaiting() en install, lo que activaba el worker
-  // nuevo de inmediato y vaciaba `registration.waiting`. El aviso se quedaba
-  // en pantalla sin ningún worker al que activarse, así que "Actualizar" no
-  // hacía nada y el mensaje no se iba nunca. Para que una actualización crítica
-  // se aplique sin pulsar nada, el aviso ofrece un temporizador que llama a
-  // skipWaiting solo.
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS).catch(() => {})));
+  // Un `catch(() => {})` aquí dejaba instalar una versión con ficheros
+  // ausentes: caché incompleta y modo offline roto sin aviso. Ahora el fallo se
+  // registra, se elimina la caché a medias y la instalación RECHAZA, de modo que
+  // la versión anterior sigue siendo la que controla (P2.17).
+  //
+  // Cada fichero se baja con `cache: 'no-cache'`: `cache.addAll` usa la caché
+  // HTTP del navegador, y la caché heurística (Last-Modified) pudo responder
+  // con bytes viejos, instalando una versión nueva con módulos de la anterior
+  // (la fila "Cambiar de perfil" no llegaba a la caché precacheada).
+  event.waitUntil(caches.open(CACHE).then(async cache => {
+    try {
+      const responses = await Promise.all(ASSETS.map(url => fetch(url, { cache: 'no-cache' }).then(response => {
+        if (!response || !response.ok) throw new Error('HTTP ' + (response ? response.status : 'sin respuesta') + ' al precachear ' + url);
+        return response;
+      })));
+      await Promise.all(ASSETS.map((url, index) => cache.put(url, responses[index])));
+    } catch (error) {
+      console.error('DailyHub: no se pudo precachear ' + CACHE + '; se descarta la instalación', error);
+      await caches.delete(CACHE);
+      if (self.clients && self.clients.matchAll) {
+        try {
+          const list = await self.clients.matchAll({ type: 'window' });
+          for (const client of list) {
+            client.postMessage({ type: 'sw-install-failed', cache: CACHE, error: String((error && error.message) || error) });
+          }
+        } catch (ignore) {}
+      }
+      throw error;
+    }
+  }));
 });
 
 self.addEventListener('activate', (event) => {
@@ -95,7 +118,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE).then(async cache => {
         const cached = await cache.match(event.request, { ignoreSearch: true });
-        const network = fetch(event.request)
+        // `no-cache` también aquí: la revalidación de fondo sin él podía
+        // responder desde la caché HTTP del navegador y pisar la entrada
+        // fresca del precache con bytes de una versión anterior.
+        const network = fetch(event.request, { cache: 'no-cache' })
           .then(response => { if (response && response.ok) cache.put(event.request, response.clone()); return response; })
           .catch(() => cached);
         return cached || network;
@@ -105,7 +131,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(CACHE).then(async cache => {
         const cached = await cache.match(event.request);
-        const network = fetch(event.request)
+        const network = fetch(event.request, { cache: 'no-cache' })
           .then(response => { if (response && response.ok) cache.put(event.request, response.clone()); return response; })
           .catch(() => cached);
         return cached || network;

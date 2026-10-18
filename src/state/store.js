@@ -319,7 +319,48 @@ export function registerStore(app) {
     pushTimer = null;
   }
 
+  /* Fallo de escritura: la cuota agotada y cualquier otro error no son lo
+     mismo y el aviso anterior lo llamaba "almacenamiento lleno" siempre
+     (P2.16). Aquí se clasifica, se registra y se ofrece salida. */
+  let saveIssue = null;   // { kind: 'quota' | 'error', at, kb?, message }
+
+  function isQuotaError(error) {
+    if (!error) return false;
+    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') return true;
+    return error.code === 22 || error.code === 1014;
+  }
+
+  function storageKb() {
+    let bytes = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        bytes += (key || '').length + (localStorage.getItem(key) || '').length;
+      }
+    } catch (error) {}
+    return Math.round(bytes / 1024);
+  }
+
+  function reportSaveError(error) {
+    console.error('DailyHub: no se pudo guardar el estado', error);
+    const toast = app.components && app.components.toast;
+    if (isQuotaError(error)) {
+      const kb = storageKb();
+      saveIssue = { kind: 'quota', at: Date.now(), kb, message: 'Almacenamiento lleno' };
+      // El guardado se perdió: aviso con el uso real y salida hacia una copia.
+      if (toast) toast('Almacenamiento lleno (' + kb + ' KB usados): no se pudo guardar este cambio.', {
+        label: 'Exportar copia',
+        fn: () => { if (app.features && typeof app.features.backupSheet === 'function') app.features.backupSheet(); }
+      });
+      return;
+    }
+    const message = (error && (error.message || String(error))) || 'error desconocido';
+    saveIssue = { kind: 'error', at: Date.now(), message };
+    if (toast) toast('No se pudo guardar: ' + message, { label: 'Reintentar', fn: () => save() });
+  }
+
   function save() {
+    let ok = true;
     try {
       const bucket = (S.activeProfileId && S.data && S.data[S.activeProfileId]) || null;
       if (bucket) {
@@ -345,11 +386,14 @@ export function registerStore(app) {
         localStorage.setItem(ACC_PREFIX + uid, serializeState());
         const known = accountsIndex().find(account => account.uid === uid);
         if (known) updateAccountIndex(uid, known.email);
+        saveIssue = null;   // escrito: el aviso anterior queda retirado
       }
     } catch (error) {
-      if (app.components.toast) app.components.toast('No se pudo guardar: almacenamiento lleno');
-      else console.error(error);
+      reportSaveError(error);
+      ok = false;
     }
+    // Aunque falle el disco, si hay nube se sube lo que hay en memoria: es
+    // otra vía para que el cambio no se pierda del todo.
     const sync = app.services.sync;
     if (sync && sync.status.state === 'online') {
       clearPushTimer();
@@ -357,6 +401,7 @@ export function registerStore(app) {
         if (sync.status.state === 'online') sync.push();
       }, 1200);
     }
+    return ok;
   }
 
   function theme() {
@@ -421,6 +466,8 @@ export function registerStore(app) {
     rebuildPrevCaches,
     clearPushTimer,
     save,
+    saveIssue: () => saveIssue,
+    isQuotaError,
     theme,
     applyTheme,
     SYNC_KEYS,

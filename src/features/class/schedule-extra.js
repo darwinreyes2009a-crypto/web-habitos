@@ -179,7 +179,7 @@ export function registerClassScheduleExtra(app) {
     );
     overlay.append(h('div', { class: 'sheet', style: 'max-width:420px' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:12px' }, 'Añadir días no lectivos'),
+      h('h3', { class: 'sec-title' }, 'Añadir días no lectivos'),
       chips,
       h('div', { class: 'field' }, h('label', { for: 'break-name' }, 'Nombre'), labelInput),
       h('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:12px' },
@@ -265,7 +265,7 @@ export function registerClassScheduleExtra(app) {
     const nameInput = h('input', { class: 'input', type: 'text', id: 'tpl-name', value: '', placeholder: '2.º de Bachillerato' });
     overlay.append(h('div', { class: 'sheet', style: 'max-width:400px' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:6px' }, 'Guardar plantilla'),
+      h('h3', { class: 'sec-title' }, 'Guardar plantilla'),
       h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, blocks.length + ' bloques guardados.'),
       h('div', { class: 'field' }, h('label', { for: 'tpl-name' }, 'Nombre'), nameInput),
       h('button', {

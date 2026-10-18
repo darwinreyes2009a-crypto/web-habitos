@@ -172,7 +172,7 @@ export function registerClassAgenda(app) {
     const subjects = S.subjects || [];
     const sheet = h('div', { class: 'sheet', style: 'max-width:360px', role: 'menu' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:14px' }, title)
+      h('h3', { class: 'sec-title' }, title)
     );
     if (!subjects.length) {
       sheet.append(
@@ -200,7 +200,7 @@ export function registerClassAgenda(app) {
     const subjects = S.subjects || [];
     const sheet = h('div', { class: 'sheet', style: 'max-width:390px', role: 'menu' },
       h('div', { class: 'grabber' }),
-      h('h3', { style: 'font-size:17px;font-weight:800;margin-bottom:4px' }, timeTxt(slot.start) + ' — ' + timeTxt(slot.end)),
+      h('h3', { class: 'sec-title' }, timeTxt(slot.start) + ' — ' + timeTxt(slot.end)),
       h('p', { class: 'field-hint', style: 'margin-bottom:14px' }, WEEK_FULL[slot.day] + ' · toca una asignatura para ponerla en este hueco.')
     );
     if (!subjects.length) {

@@ -151,6 +151,8 @@ export function registerSettings(app) {
       }
 
       drawPermission();
+      // La hoja se lee de arriba abajo: permiso → recordatorios → push → silencio.
+      box.append(h('p', { class: 'section-title', style: 'margin-top:0' }, h('span', null, 'Permiso')));
       box.append(permissionNote);
       box.append(h('button', {
         class: 'btn btn-soft btn-block',
@@ -167,6 +169,10 @@ export function registerSettings(app) {
         }
       }, 'Enviar notificación de prueba'));
 
+      // El bloque «con la app cerrada» se construye aquí pero se añade al final,
+      // después de los recordatorios: es la opción más experimental y no debe
+      // encabezar la hoja por delante de lo que la gente usa a diario.
+      const pushBlock = h('div');
       const pushVapidPublicKey = 'BPIgPzRS-3X97keys1Jse8EfqMjep-Rn_4JizpjLA6V7aEZ56OGPt361haUQop-7TF22ynnhgL2KlGIp-UMsBu8';
       const urlBase64 = value => {
         const padding = '='.repeat((4 - value.length % 4) % 4);
@@ -234,9 +240,9 @@ export function registerSettings(app) {
         }
       });
 
-      box.append(h('p', { class: 'section-title', style: 'margin-top:20px' }, h('span', null, 'Con la app cerrada')));
-      box.append(pushStatus, pushButton);
-      box.append(h('button', {
+      pushBlock.append(h('p', { class: 'section-title', style: 'margin-top:20px' }, h('span', null, 'Con la app cerrada')));
+      pushBlock.append(pushStatus, pushButton);
+      pushBlock.append(h('button', {
         class: 'btn btn-soft btn-block',
         style: 'margin-top:10px',
         onclick: async () => {
@@ -259,6 +265,7 @@ export function registerSettings(app) {
         }
       }, 'Probar push (requiere cuenta + avisos activados)'));
       drawPush();
+      box.append(h('p', { class: 'section-title', style: 'margin-top:20px' }, h('span', null, 'Recordatorios')));
       box.append(switchRow('Recordatorios de tareas', 'Aviso diario con tus tareas pendientes', notificationSettings.reminders, value => {
         notificationSettings.reminders = value;
         save();
@@ -292,6 +299,7 @@ export function registerSettings(app) {
         drawLeads();
         box.append(leadRow);
       }
+      box.append(pushBlock);
       const quietFrom = h('input', { class: 'input', type: 'time', value: notificationSettings.quietFrom, style: 'padding:9px 10px;font-size:13px' });
       const quietTo = h('input', { class: 'input', type: 'time', value: notificationSettings.quietTo, style: 'padding:9px 10px;font-size:13px' });
       quietFrom.addEventListener('change', () => { notificationSettings.quietFrom = quietFrom.value; save(); });
@@ -387,6 +395,120 @@ export function registerSettings(app) {
       box.append(switchRow('Ocultar completadas en Hoy', 'La pantalla Inicio solo mostrará lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }));
       box.append(switchRow('Vibración al marcar', 'Respuesta háptica en dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }));
       box.append(h('p', { class: 'field-hint', style: 'text-align:center;margin-top:14px' }, 'Consejo: toca una tarea en cualquier pantalla para marcarla como hecha.'));
+      return box;
+    });
+  }
+
+  // Fila con interruptor real. El <label> envolvente asocia el texto al
+  // control y el role="switch" anuncia encendido/apagado sin cambiar el texto
+  // (WAI-ARIA APG · Switch Pattern). La usan Apariencia y Aplicación.
+  function switchPrefRow(iconName, label, hint, checked, onChange) {
+    const input = h('input', { type: 'checkbox', role: 'switch' });
+    input.checked = !!checked;
+    input.addEventListener('change', () => onChange(input.checked));
+    return h('label', { class: 'pref-row' },
+      h('span', { class: 'r-ic', html: icon(iconName, 18) }),
+      h('div', { class: 'pref-text' },
+        h('b', null, label),
+        hint ? h('span', null, hint) : null
+      ),
+      h('span', { class: 'sw' }, input, h('i'))
+    );
+  }
+
+  // Hoja de Apariencia: tema, tamaño de texto, animaciones y alto contraste.
+  function appearanceSheet() {
+    openSheet('Apariencia', () => {
+      const box = h('div');
+
+      // `hint` es el texto bajo el título. Para los selectores ya no hace falta:
+      // el botón activo dice la respuesta, y repetirla solo ocupa altura.
+      function prefRow(iconName, label, hint, control) {
+        return h('div', { class: 'pref-row' },
+          h('span', { class: 'r-ic', html: icon(iconName, 18) }),
+          h('div', { class: 'pref-text' },
+            h('b', null, label),
+            hint ? h('span', null, hint) : null
+          ),
+          control
+        );
+      }
+
+      // Segmento de N opciones con la semántica de radio group (WAI-ARIA APG):
+      // una sola parada de tabulación, flechas dentro del grupo y estado en
+      // aria-checked, para que el valor se anuncie sin depender solo del color.
+      function prefSegment(legend, options, current, onPick) {
+        const segment = h('div', { class: 'seg set-seg', role: 'radiogroup', 'aria-label': legend });
+        const buttons = options.map(([value, text], index) => {
+          const button = h('button', {
+            type: 'button',
+            role: 'radio',
+            'aria-label': legend + ': ' + text,
+            onclick: () => { onPick(value); sync(index); }
+          }, text);
+          segment.append(button);
+          return button;
+        });
+        const activeIndex = () => options.findIndex(([value]) => current() === value);
+        function sync(focusIndex) {
+          const active = activeIndex();
+          buttons.forEach((button, index) => {
+            button.classList.toggle('on', index === active);
+            button.setAttribute('aria-checked', String(index === active));
+            button.tabIndex = index === (active < 0 ? 0 : active) ? 0 : -1;
+          });
+          if (focusIndex != null) buttons[focusIndex].focus({ preventScroll: true });
+        }
+        segment.addEventListener('keydown', event => {
+          const delta = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+          const from = Math.max(activeIndex(), 0);
+          let next = null;
+          if (delta != null) next = (from + delta + options.length) % options.length;
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = options.length - 1;
+          if (next == null) return;
+          event.preventDefault();
+          onPick(options[next][0]);
+          sync(next);
+        });
+        sync();
+        return segment;
+      }
+
+      box.append(
+        prefRow('moon', 'Modo oscuro', 'El tema que usa la app',
+          prefSegment('Modo oscuro', [['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']], () => theme(), value => {
+            S.settings.theme = value;
+            save();
+            applyTheme();
+          })),
+
+        // El subtítulo solo se ve en pantallas anchas (en móvil lo oculta el
+        // CSS), y es donde "Máx." necesita explicarse: en el selector, que es
+        // lo que siempre se ve, no cabe la palabra entera.
+        prefRow('meds', 'Tamaño del texto', 'Normal, grande o máximo',
+          prefSegment('Tamaño del texto', [[1, 'Normal'], [1.1, 'Grande'], [1.2, 'Máx.']], () => Number(S.settings.fontScale || 1), value => {
+            S.settings.fontScale = value;
+            save();
+            applyTheme();
+          })),
+
+        prefRow('star', 'Animaciones', 'Movimiento de la pantalla',
+          prefSegment('Animaciones', [['auto', 'Auto'], ['off', 'Reducidas'], ['on', 'Completas']], () => S.settings.reduceMotion || 'auto', value => {
+            S.settings.reduceMotion = value;
+            save();
+            applyTheme();
+          })),
+
+        // El alto contraste es un interruptor por definición: su fila es un
+        // <label> con el control dentro, así que el texto visible es su
+        // nombre accesible.
+        switchPrefRow('contrast', 'Alto contraste', 'Bordes y colores más marcados', !!S.settings.highContrast, value => {
+          S.settings.highContrast = value;
+          save();
+          applyTheme();
+        })
+      );
       return box;
     });
   }
@@ -514,6 +636,10 @@ export function registerSettings(app) {
     );
     wrap.append(h('p', { class: 'set-label' }, 'Cuenta y seguridad'),
       h('div', { class: 'set-card' },
+        // Con más de un perfil no existía ninguna vuelta al selector: solo se
+        // veía en el primer arranque. La fila muestra el selector sin
+        // persistir el cambio; la elección se guarda al tocar una tarjeta.
+        S.profiles.length > 1 ? row('user', 'Cambiar de perfil', () => { S.activeProfileId = null; session.unlocked = false; render(); }) : null,
         row('lock', profile.pin ? 'Cambiar PIN' : 'Activar PIN', securitySheet),
         row('cloud', 'Cuenta y sincronización', accountSheet),
         row('logout', 'Cambiar de cuenta', softLogout)
@@ -526,124 +652,94 @@ export function registerSettings(app) {
     const profile = currentProfile();
     const wrap = h('div');
     wrap.append(headBar('Ajustes', 'Personaliza DailyHub'));
-    wrap.append(h('button', { class: 'set-card', style: 'width:100%;display:flex;align-items:center;gap:14px;padding:16px 18px;text-align:left', onclick: () => go('profile') },
-      avatarEl(profile.name, profile.color, 48, profile.photo),
-      h('div', { style: 'flex:1' }, h('b', { style: 'font-size:15px' }, profile.name), h('span', { style: 'display:block;font-size:12px;color:var(--text-2)' }, 'Perfil personal · toca para editar')),
-      h('span', { class: 'chev', html: icon('chev', 18) })
-    ));
-    const row = (iconName, label, action) => h('button', { class: 'set-row', onclick: action }, h('span', { class: 'r-ic', html: icon(iconName, 18) }), h('span', null, label), h('span', { class: 'chev', html: icon('chev', 17) }));
-    wrap.append(h('p', { class: 'set-label' }, 'Cuenta'),
-      h('div', { class: 'set-card' },
-        row('cloud', 'Cuenta y sincronización', accountSheet),
-        row('user', 'Perfil', () => go('profile')),
-        row('lock', 'Seguridad y PIN', securitySheet)
-      )
-    );
-    wrap.append(h('p', { class: 'set-label' }, 'Aplicación'),
-      h('div', { class: 'set-card' },
-        row('bell', 'Notificaciones', notifSheet),
-        row('list', 'Tareas y hábitos', tasksPrefsSheet),
-        row('pencil', 'Personalizar opciones', optionsSheet)
-      )
-    );
-    // --- Apariencia ---------------------------------------------------------
-    // Las cuatro preferencias comparten una misma anatomía: icono con caja,
-    // título, y el control a la derecha (segmento o interruptor). Antes cada
-    // una iba por su cuenta y quedaban iconos pelados, subtítulos que repetían
-    // la opción ya seleccionada y un alto contraste sin icono, desalineado.
-    const appearanceCard = h('div', { class: 'set-card' });
+    // Cada bloque declara su nombre accesible: la tarjeta se expone como grupo
+    // etiquetado por su título en vez de ser un puñado de filas sueltas.
+    let groupSeq = 0;
+    const group = (labelText, card, danger = false) => {
+      const id = 'set-group-' + (++groupSeq);
+      card.setAttribute('role', 'group');
+      card.setAttribute('aria-labelledby', id);
+      wrap.append(h('p', { class: 'set-label' + (danger ? ' is-danger' : ''), id }, labelText), card);
+    };
 
-    // `hint` es el texto bajo el título. Para los selectores ya no hace falta:
-    // el botón activo dice la respuesta, y repetirla solo ocupa altura.
-    function prefRow(iconName, label, hint, control) {
-      return h('div', { class: 'pref-row' },
-        h('span', { class: 'r-ic', html: icon(iconName, 18) }),
-        h('div', { class: 'pref-text' },
-          h('b', null, label),
-          hint ? h('span', null, hint) : null
+    // Fila navegable: título a la izquierda, `value` (estado actual) antes del
+    // chevron, para leer el ajuste sin abrir su hoja.
+    const row = (iconName, label, action, value, extraClass) => h('button', {
+      class: 'set-row' + (extraClass ? ' ' + extraClass : ''),
+      onclick: action
+    },
+      h('span', { class: 'r-ic', html: icon(iconName, 18) }),
+      h('span', { class: 'set-text' }, label),
+      value ? h('span', { class: 'set-value' }, value) : null,
+      h('span', { class: 'chev', html: icon('chev', 17) }));
+
+    const email = (accountsIndex().find(account => account.uid === activeAccountUid()) || {}).email || '';
+
+    // La identidad del perfil baja a una fila dentro de su propia sección: la
+    // tarjeta suelta arriba y la fila «Perfil» de abajo decían lo mismo dos veces.
+    group('Cuenta', h('div', { class: 'set-card' },
+      h('button', { class: 'set-row set-identity', 'aria-label': 'Editar el perfil ' + profile.name, onclick: () => go('profile') },
+        avatarEl(profile.name, profile.color, 38, profile.photo),
+        h('div', { class: 'set-identity-text' },
+          h('b', null, profile.name),
+          h('span', null, email || 'Perfil personal')
         ),
-        control
-      );
-    }
+        h('span', { class: 'chev', html: icon('chev', 17) })
+      ),
+      // El correo completo ya vive en la fila de identidad de arriba; aquí solo
+      // interesa si la cuenta está conectada, y así el valor no recorta el título.
+      row('cloud', 'Cuenta y sincronización', accountSheet, email ? 'Conectada' : 'Sin conectar'),
+      row('lock', 'Seguridad y PIN', securitySheet, profile.pin ? 'Activado' : 'Sin PIN'),
+      // Único acceso a cambiar de cuenta: antes se repetía como botón rojo al
+      // final de esta pantalla y otra vez dentro de Perfil → Cuenta y seguridad.
+      row('logout', 'Cambiar de cuenta', softLogout)
+    ));
+    // --- Apariencia ---------------------------------------------------------
+    // Los cuatro controles viven dentro de su propia hoja, al igual que el resto
+    // de secciones: en la pantalla solo queda la fila que la abre, con el tema
+    // activo como estado actual. Así Ajustes mantiene un ritmo uniforme de
+    // «tarjeta que abre una sección» en vez de mezclar filas y controles inline.
+    const THEME_LABELS = { auto: 'Auto', light: 'Claro', dark: 'Oscuro' };
+    group('Apariencia', h('div', { class: 'set-card' },
+      row('moon', 'Apariencia', appearanceSheet, THEME_LABELS[theme()] || 'Auto')
+    ));
 
-    // Segmento de N opciones. Devuelve el control y expone `select` para que
-    // quien lo pinte pueda reflejar el cambio sin volver a dibujar la pantalla.
-    function prefSegment(options, current, onPick) {
-      const segment = h('div', { class: 'seg set-seg' });
-      for (const [value, label] of options) {
-        segment.append(h('button', {
-          class: current() === value ? 'on' : '',
-          onclick: event => {
-            onPick(value);
-            [...segment.children].forEach(item => item.classList.remove('on'));
-            event.currentTarget.classList.add('on');
-          }
-        }, label));
-      }
-      return segment;
-    }
+    // Resumen del permiso del navegador: el estado se lee en la fila, sin abrir la hoja.
+    const notifStatus = {
+      unsupported: 'No soportado',
+      denied: 'Bloqueadas',
+      default: 'Sin permiso',
+      granted: 'Activadas'
+    }[notifPermission()] || 'Sin revisar';
+    group('Notificaciones', h('div', { class: 'set-card' },
+      row('bell', 'Notificaciones', notifSheet, notifStatus)
+    ));
 
-    wrap.append(h('p', { class: 'set-label' }, 'Apariencia'), appearanceCard);
+    // Los dos interruptores vivían dentro de la hoja «Tareas y hábitos», que
+    // solo los contenía a ellos dos: al ser preferencias siempre activas pasan a
+    // su fila directa. `tasksPrefsSheet` se mantiene exportada por compatibilidad.
+    group('Aplicación', h('div', { class: 'set-card' },
+      switchPrefRow('checksq', 'Ocultar completadas en Hoy', 'La pantalla Inicio solo mostrará lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }),
+      switchPrefRow('phone', 'Vibración al marcar', 'Respuesta háptica en dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }),
+      row('pencil', 'Personalizar opciones', optionsSheet)
+    ));
 
-    appearanceCard.append(
-      prefRow('moon', 'Modo oscuro', 'El tema que usa la app',
-        prefSegment([['auto', 'Auto'], ['light', 'Claro'], ['dark', 'Oscuro']], () => theme(), value => {
-          S.settings.theme = value;
-          save();
-          applyTheme();
-        })),
+    group('Datos', h('div', { class: 'set-card' },
+      row('cloud', 'Copia de seguridad', backupSheet)
+    ));
 
-      // El subtítulo solo se ve en pantallas anchas (en móvil lo oculta el
-      // CSS), y es donde "Máx." necesita explicarse: en el selector, que es
-      // lo que siempre se ve, no cabe la palabra entera.
-      prefRow('meds', 'Tamaño del texto', 'Normal, grande o máximo',
-        prefSegment([[1, 'Normal'], [1.1, 'Grande'], [1.2, 'Máx.']], () => Number(S.settings.fontScale || 1), value => {
-          S.settings.fontScale = value;
-          save();
-          applyTheme();
-        })),
+    // Única zona roja de la pantalla: lo irreversible, con nombre explícito y
+    // al final. Así el color no lo comparte ningún ajuste cotidiano.
+    group('Zona de peligro', h('div', { class: 'set-card' },
+      row('trash', 'Eliminar datos', deleteDataSheet, null, 'is-danger')
+    ), true);
 
-      prefRow('star', 'Animaciones', 'Movimiento de la pantalla',
-        prefSegment([['auto', 'Auto'], ['off', 'Reducidas'], ['on', 'Completas']], () => S.settings.reduceMotion || 'auto', value => {
-          S.settings.reduceMotion = value;
-          save();
-          applyTheme();
-        }))
-    );
-
-    // El alto contraste es un interruptor, no un selector de N opciones, así que
-    // no pasa por `prefSegment`. Se construye aparte para conservar el
-    // interruptor real, pero con la misma anatomía de fila.
-    const contrastRow = h('div', { class: 'pref-row' },
-      h('span', { class: 'r-ic', html: icon('contrast', 18) }),
-      h('div', { class: 'pref-text' },
-        h('b', null, 'Alto contraste'),
-        h('span', null, 'Bordes y colores más marcados')
-      )
-    );
-    const contrastInput = h('input', { type: 'checkbox' });
-    contrastInput.checked = !!S.settings.highContrast;
-    contrastInput.addEventListener('change', () => {
-      S.settings.highContrast = contrastInput.checked;
-      save();
-      applyTheme();
-    });
-    contrastRow.append(h('span', { class: 'sw' }, contrastInput, h('i')));
-    appearanceCard.append(contrastRow);
-
-    wrap.append(h('p', { class: 'set-label' }, 'Datos'),
-      h('div', { class: 'set-card' },
-        row('cloud', 'Copia de seguridad', backupSheet),
-        row('trash', 'Eliminar datos', deleteDataSheet)
-      )
-    );
-    wrap.append(h('p', { class: 'set-label' }, 'Información'),
-      h('div', { class: 'set-card' }, row('info', 'DailyHub v2.0', infoSheet))
-    );
-    wrap.append(h('button', { class: 'btn btn-block', style: 'margin-top:26px;color:var(--danger);background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.45)', onclick: softLogout }, 'Cambiar de cuenta'));
+    group('Información', h('div', { class: 'set-card' },
+      row('info', 'DailyHub v2.0', infoSheet)
+    ));
     return wrap;
   }
 
   Object.assign(app.features, { settings: scrSettings, profile: scrProfile });
-  Object.assign(app.settings, { securitySheet, notifSheet, optionsSheet, tasksPrefsSheet, backupSheet, deleteDataSheet, infoSheet });
+  Object.assign(app.settings, { securitySheet, notifSheet, appearanceSheet, optionsSheet, tasksPrefsSheet, backupSheet, deleteDataSheet, infoSheet });
 }

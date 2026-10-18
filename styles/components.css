@@ -4,30 +4,50 @@
    vez aquí, tanto para el check circular como para el cuadrado de apuntes.
    ========================================================================== */
 
+/* Una tarjeta se define una sola vez. Los radios y el relleno vienen de la
+   receta --card-* de tokens.css, así que ajustar la escala de tarjetas es
+   cambiar un token y no diez reglas. */
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-xl);
-  padding: var(--sp-4);
-  box-shadow: var(--sh-s);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
 }
 
-.section-title {
+/* Etiqueta de sección: un solo tratamiento para las tres pantallas que la
+   usan (Inicio con .section-title, Ajustes con .set-label y el buscador con
+   .sr-group). Cada una tenía antes su propio cuerpo —12, 12 y 11px— y su
+   tracking —.06em, .07em y .07em— escritos a mano. */
+.section-title, .set-label, .sr-group {
   font-size: var(--fs-label); font-weight: var(--fw-bold);
-  color: var(--text-2); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-2); text-transform: uppercase;
+  letter-spacing: var(--label-tracking);
+}
+.section-title {
   margin: var(--sp-6) 0 var(--sp-3);
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2);
 }
+
+/* Título de sección dentro de una pantalla o una hoja. El cuerpo lo pone la
+   capa de títulos de tokens.css (h3 → --fs-sub); aquí solo vive el ritmo
+   vertical, que antes era un margen distinto en cada sitio (2, 4, 6, 8, 10,
+   12 y 14px según la pantalla). */
+.sec-title { margin-bottom: var(--sp-3) }
 .section-title .link { font-size: var(--fs-meta); text-transform: none; letter-spacing: 0 }
 .link { color: var(--primary); font-weight: var(--fw-semi) }
 
 .hidden { display: none !important }
 
+/* Separación superior del ritmo, para los títulos que van pegados a un avatar
+   o a un bloque. Sustituye a los margin-top inline que quedaban sueltos. */
+.gap-top { margin-top: var(--sp-3) }
+
 /* Accesible por teclado: el primer Tab lo saca de pantalla y aparece con foco. */
 .skip-link {
   position: fixed; top: 10px; left: 10px; z-index: 100;
   padding: 10px var(--sp-4); border-radius: var(--r-m);
-  background: var(--primary); color: #fff;
+  background: var(--primary-solid); color: var(--on-primary);
   font-size: var(--fs-body); font-weight: var(--fw-semi);
   text-decoration: none;
   transform: translateY(-250%);
@@ -97,7 +117,7 @@
   border: 2px solid var(--border);
   flex: none; margin-top: 1px;
   display: flex; align-items: center; justify-content: center;
-  color: #fff;
+  color: var(--on-green);
   transition: background var(--t-fast), border-color var(--t-fast);
 }
 
@@ -118,7 +138,11 @@
 .row-check.done::after, .t-dot.done::after {
   content: '';
   position: absolute; inset: 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 12px no-repeat;
+  /* La marca se recorta como máscara: la tinta la pone --on-green, porque en
+     oscuro el verde es claro y un trazo blanco quedaría en 1,7:1. */
+  background-color: var(--on-green);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 12px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 12px no-repeat;
 }
 
 /* Fallado: no depende solo del color, el "!" también cambia la forma */
@@ -149,7 +173,11 @@
 .task-card.done .t-dot::after {
   content: '';
   position: absolute; inset: 0;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 11px no-repeat;
+  /* Misma tinta que la marca genérica (.t-dot.done::after): el trazo blanco
+     que había aquí se quedaba en 1,7:1 en oscuro, donde --green es claro. */
+  background-color: var(--on-green);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 11px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 11px no-repeat;
 }
 .task-card.failed .t-dot { border-color: var(--danger); background: var(--danger-soft) }
 .task-card.failed .t-dot::after {
@@ -189,7 +217,7 @@
 .home-day-summary-count b { z-index:1;font-size:var(--fs-label) }
 .home-class-link { display:flex;align-items:center;gap:12px;width:100%;margin:0 0 20px;text-align:left }
 .home-class-copy b { font-size:var(--fs-item) }
-.home-habit-list .activity-card { display:flex;min-height:190px;flex-direction:column;justify-content:space-between;padding:11px;border-color:var(--border-soft);background:var(--surface) }
+.home-habit-list .activity-card { display:flex;min-height:190px;flex-direction:column;justify-content:space-between;padding:11px;border:0;background:var(--surface) }
 .home-habit-list .activity-card-head { flex:1;align-items:flex-start }
 .home-habit-list .activity-card-main { height:100%;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:9px }
 .home-habit-list .activity-icon.home-activity-art { width:100%;height:94px;flex:none;border-radius:var(--r-m);overflow:hidden;background:var(--primary-soft) }
@@ -199,10 +227,9 @@
 .home-habit-list .activity-copy > b { font-size:var(--fs-meta) }
 .home-habit-list .activity-subtitle { display:none }
 .home-habit-list .activity-step-summary { font-size:var(--fs-micro) }
-.home-habit-list .activity-card-head > .activity-edit { position:absolute;top:10px;right:9px;width:30px;height:30px;border-radius:var(--r-s);background:rgba(15,23,42,.56);color:#fff }
 .home-habit-list .activity-card-head > .row-check,.home-habit-list .activity-card-head > .stepper,.home-habit-list .activity-card-head > .counter-val { display:none }
-.home-habit-list .activity-swipe-hint,.home-habit-list .activity-card-footer { display:none }
-.home-habit-list .activity-card-quick-action { min-height:38px;margin-top:8px;border:0;border-radius:var(--r-pill);background:var(--primary);color:#fff;font-size:var(--fs-micro) }
+.home-habit-list .activity-card-footer { display:none }
+.home-habit-list .activity-card-quick-action { min-height:38px;margin-top:8px;border:0;border-radius:var(--r-pill);background:var(--primary-solid);color:var(--on-primary);font-size:var(--fs-micro) }
 .home-habit-list .activity-card.is-done .activity-card-quick-action { background:var(--green-soft);color:var(--green) }
 @media(min-width:600px) { .activity-card-list.home-habit-list { grid-template-columns:repeat(3,minmax(0,1fr));gap:14px } }
 @media(min-width:900px) { .activity-card-list.home-habit-list { grid-template-columns:repeat(4,minmax(0,1fr)) } }
@@ -213,7 +240,7 @@
   touch-action:pan-y; user-select:none;
 }
 .home-habit-list .activity-card { padding:15px }
-.home-habit-list .activity-icon { width:50px; height:50px; border-radius:16px }
+.home-habit-list .activity-icon { width:50px; height:50px; border-radius:var(--r-m) }
 .activity-card:focus-visible { outline:var(--focus-ring); outline-offset:var(--focus-offset) }
 .activity-card-quick-action {
   display:flex; align-items:center; justify-content:center; width:100%; min-height:46px; margin-top:11px;
@@ -232,10 +259,12 @@
 .activity-card.is-skipped { background:var(--surface-2); border-color:var(--border) }
 .activity-card-head { display:flex; align-items:center; gap:10px; min-width:0 }
 .activity-card-main { display:flex; align-items:center; gap:12px; flex:1; min-width:0; padding:0; text-align:left }
-.activity-icon { width:46px; height:46px; border-radius:15px; display:flex; align-items:center; justify-content:center; flex:none; background:var(--primary-soft); color:var(--primary-ink) }
+.activity-icon { width:46px; height:46px; border-radius:var(--r-m); display:flex; align-items:center; justify-content:center; flex:none; background:var(--primary-soft); color:var(--primary-ink) }
 .activity-card.is-done .activity-icon { background:var(--green-soft); color:var(--green) }
 .activity-copy { display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 }
-.activity-copy > b { font-size:var(--fs-body); font-weight:var(--fw-bold); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* Títulos hasta en 2 líneas con elipsis: en 1 línea el texto largo se comía
+   el ancho de la tarjeta y dejaba hueco al lado ("Llamar al dent…"). */
+.activity-copy > b { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; font-size:var(--fs-body); font-weight:var(--fw-bold) }
 .activity-card.is-done .activity-copy > b { color:var(--text-2) }
 .activity-subtitle,.activity-step-summary { font-size:var(--fs-label); color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .activity-step-summary { color:var(--primary); font-weight:var(--fw-semi) }
@@ -266,12 +295,12 @@
 .guided-step-editor { padding:12px; display:flex; flex-direction:column; gap:9px; border:1px solid var(--border-soft); border-radius:var(--r-l); background:var(--surface) }
 .guided-step-editor-head { display:flex; align-items:center; justify-content:space-between; gap:8px }
 .guided-step-order { display:flex; align-items:center; gap:4px }
-.guided-step-order .mini-btn { width:34px; height:34px; background:var(--surface-2); border-radius:var(--r-s); font-size:16px; font-weight:700 }
-.guided-step-order .mini-btn:disabled { opacity:.35 }
+.guided-step-order .mini-btn { width:34px; height:34px; background:var(--surface-2); border-radius:var(--r-s); font-size:var(--fs-lead); font-weight:700 }
+.guided-step-order .mini-btn:disabled { opacity:var(--disabled-opacity) }
 .guided-step-editor-media { display:flex; align-items:center; gap:7px; flex-wrap:wrap }
 .guided-step-editor-media > input[type='number'] { width:82px; flex:none }
 .guided-step-editor-media > span { font-size:var(--fs-label); color:var(--text-3) }
-.guided-edit-image { width:52px; height:42px; padding:0; border-radius:8px; overflow:hidden }
+.guided-edit-image { width:52px; height:42px; padding:0; border-radius:var(--r-xs); overflow:hidden }
 .guided-edit-image img { width:100%; height:100%; object-fit:cover }
 
 /* Collapsible section — used by the task form's guided-steps area */
@@ -307,7 +336,7 @@
   .home-habit-list .activity-card { padding:13px }
   .activity-card { padding:12px }
   .activity-card-head { gap:7px }
-  .activity-icon { width:40px; height:40px; border-radius:13px }
+  .activity-icon { width:40px; height:40px; border-radius:var(--r-s) }
   .activity-card-head > .row-check { width:34px; height:34px }
   .activity-card-footer .btn { padding:0 10px }
 }
@@ -317,13 +346,13 @@
 @media (min-width: 900px) { .task-grid { grid-template-columns: repeat(4, 1fr) } }
 
 .task-card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
+  background: var(--card-bg);
+  border: var(--card-border);
   border-radius: var(--r-l);
-  padding: var(--sp-4);
+  padding: var(--card-padding);
   display: flex; flex-direction: column; gap: var(--sp-3);
-  text-align: left; box-shadow: var(--sh-s);
-  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+  text-align: left; box-shadow: var(--card-shadow);
+  transition: var(--card-transition);
 }
 .task-card:hover { border-color: var(--primary-softer); box-shadow: var(--sh-m) }
 .task-card:active { transform: scale(.97) }
@@ -349,12 +378,12 @@
 .task-card.skipped .t-state { color: var(--text-3) }
 
 .note-card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
+  background: var(--card-bg);
+  border: var(--card-border);
   border-radius: var(--r-l);
-  padding: var(--sp-3);
+  padding: var(--card-padding-sm);
   display: flex; align-items: flex-start; gap: 11px;
-  box-shadow: var(--sh-s); margin-bottom: 10px;
+  box-shadow: var(--card-shadow); margin-bottom: 10px;
 }
 .note-card.done .note-text { color: var(--text-3); text-decoration: line-through }
 .note-text { font-size: var(--fs-item); line-height: var(--lh-body); word-break: break-word }
@@ -370,12 +399,12 @@
 .row {
   display: flex; align-items: center; gap: 13px;
   width: 100%; padding: 14px var(--sp-4);
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
+  background: var(--card-bg);
+  border: var(--card-border);
   border-radius: var(--r-l);
   text-align: left;
-  transition: border-color var(--t-fast);
-  box-shadow: var(--sh-s);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  box-shadow: var(--card-shadow);
 }
 .row + .row { margin-top: 10px }
 .row:hover { border-color: var(--primary-softer) }
@@ -389,7 +418,7 @@
 .row .r-end { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none }
 
 .avatar {
-  border-radius: 50%; color: #fff;
+  border-radius: 50%; color: var(--on-primary);
   display: flex; align-items: center; justify-content: center;
   font-weight: var(--fw-bold); flex: none;
   user-select: none; overflow: hidden;
@@ -409,17 +438,19 @@
 .input {
   width: 100%; min-height: var(--tap);
   padding: 13px var(--sp-4);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r-m);
+  border: var(--field-border);
+  border-radius: var(--field-radius);
   background: var(--surface);
-  font-size: var(--fs-body);
+  /* --field-size nunca baja de 16px porque por debajo iOS hace auto-zoom al
+     enfocar el campo y la pantalla salta. */
+  font-size: var(--field-size);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
   -webkit-appearance: none; appearance: none;
 }
 .input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-softer);
+  box-shadow: var(--focus-ring-shadow);
 }
 .input:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset) }
 .input::placeholder { color: var(--text-3) }
@@ -451,7 +482,7 @@ textarea.input { resize: vertical; min-height: 88px }
   font-weight: var(--fw-bold); font-size: var(--fs-body); color: var(--text-2);
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
 }
-.wchip.on { background: var(--primary); border-color: var(--primary); color: #fff }
+.wchip.on { background: var(--primary-solid); border-color: var(--primary); color: var(--on-primary) }
 .wchip:active { transform: scale(.94) }
 
 .swatches { display: flex; gap: var(--sp-2); flex-wrap: wrap }
@@ -510,10 +541,10 @@ textarea.input { resize: vertical; min-height: 88px }
 .st-entregado { background: var(--green-soft); color: var(--green); border-color: var(--green-border) }
 
 .set-card {
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-xl);
-  overflow: hidden; box-shadow: var(--sh-s);
+  background: var(--card-bg);
+  border: var(--card-border);
+  border-radius: var(--card-radius);
+  overflow: hidden; box-shadow: var(--card-shadow);
 }
 /* Solo la variante <button> es accionable; las div pasivas no insinúan click. */
 button.set-card { cursor: pointer; transition: border-color var(--t-fast) }
@@ -534,10 +565,39 @@ button.set-card:hover { border-color: var(--primary-softer) }
   display: flex; align-items: center; justify-content: center; flex: none;
 }
 .set-row .chev { margin-left: auto; color: var(--text-3); flex: none }
-.set-label {
-  font-size: var(--fs-label); font-weight: var(--fw-bold);
-  color: var(--text-3); text-transform: uppercase; letter-spacing: .07em;
-  margin: var(--sp-5) 4px var(--sp-2);
+/* Lo específico de Ajustes sobre la receta compartida de etiqueta. */
+.set-label { color: var(--text-3); margin: var(--sp-5) 4px var(--sp-2) }
+/* Lo irreversible lleva su propio color: es la única etiqueta roja de la
+   pantalla, así que no comparte el tono con ningún ajuste cotidiano. */
+.set-label.is-danger { color: var(--danger) }
+
+/* Estado actual de una fila, entre el título y el chevron: se lee sin abrir la
+   hoja. El título ocupa el hueco restante (flex:1) para que el valor no lo
+   empuje ni lo recorte; a 46% máximo y con elipsis el correo largo no desborda. */
+.set-row .set-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.set-value {
+  flex: none; max-width: 46%;
+  font-size: var(--fs-meta); font-weight: var(--fw-semi); color: var(--text-3);
+  text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* El avatar de la identidad no es un icono con caja: no crece ni se encoge. */
+.set-row .avatar { flex: none }
+/* Identidad del perfil como fila dentro de la tarjeta de Cuenta. */
+.set-identity-text { flex: 1; min-width: 0 }
+.set-identity-text b {
+  display: block; font-size: var(--fs-body); font-weight: var(--fw-semi);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.set-identity-text span {
+  display: block; font-size: var(--fs-meta); color: var(--text-2); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Fila de la zona de peligro: mismo dibujo que el resto, caja de icono en rojo. */
+.set-row.is-danger .r-ic { background: var(--danger-soft); color: var(--danger) }
+/* En móvil el título manda: el valor cede ancho antes que la etiqueta, que es
+   lo que se está leyendo mientras se desplaza la lista. */
+@media (max-width: 460px) {
+  .set-value { max-width: 40% }
 }
 
 /* ==========================================================================
@@ -547,7 +607,7 @@ button.set-card:hover { border-color: var(--primary-softer) }
 .overlay {
   position: fixed; left: 0; right: 0; top: 0;
   height: var(--vvh, 100dvh); z-index: 60;
-  background: rgba(15, 23, 42, .4);
+  background: var(--scrim);
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   display: flex; align-items: flex-end; justify-content: center;
   animation: fadeIn var(--t-base) ease-out;
@@ -566,10 +626,8 @@ button.set-card:hover { border-color: var(--primary-softer) }
 
 /* Definido una sola vez aquí. Antes se repetía en features.css con otro valor. */
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4) }
-.sheet-head h3 {
-  font-size: var(--fs-sub); font-weight: var(--fw-black);
-  letter-spacing: var(--ls-tight); line-height: var(--lh-tight);
-}
+/* El h3 de la cabecera no necesita regla: su cuerpo, peso y tracking salen de
+   la capa de títulos de tokens.css. El componente solo se ocupa de la caja. */
 
 .grabber { width: 40px; height: 4px; border-radius: var(--r-pill); background: var(--border); margin: 0 auto 14px }
 @media (min-width: 768px) { .grabber { display: none } }
@@ -630,11 +688,11 @@ button.set-card:hover { border-color: var(--primary-softer) }
 .key {
   aspect-ratio: 1.35; border-radius: var(--r-l);
   background: var(--surface); border: 1px solid var(--border-soft);
-  font-size: 23px; font-weight: var(--fw-semi); color: var(--text);
+  font-size: var(--fs-screen); font-weight: var(--fw-semi); color: var(--text);
   box-shadow: var(--sh-s);
   transition: background var(--t-fast), transform var(--t-fast);
   display: flex; align-items: center; justify-content: center;
 }
 .key:hover { background: var(--surface-2) }
 .key:active { transform: scale(.94); background: var(--primary-soft) }
-.key.key-ok { background: var(--primary); color: #fff; border-color: var(--primary) }
+.key.key-ok { background: var(--primary-solid); color: var(--on-primary); border-color: var(--primary) }

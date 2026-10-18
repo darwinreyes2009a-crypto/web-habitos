@@ -138,7 +138,7 @@ export function registerClassNotes(app) {
     for (const note of notes.slice(0, 8)) {
       const row = h('div', { class: 'quick-note-row' },
         h('span', { class: 'r-ic', html: icon(note.source === 'note' ? 'pencil' : 'pin', 17) }),
-        h('span', { class: 'qn-text' }, note.text),
+        h('span', { class: 'qn-text', html: markdownPreview(note.text) }),
         h('span', { class: 'r-sub' }, note.date === todayStr() ? 'Hoy' : note.date || '')
       );
       row.append(h('span', { class: 'quick-note-actions' },
