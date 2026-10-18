@@ -11,8 +11,11 @@ const path = require('path');
 const vm = require('vm');
 
 const RAIZ = path.resolve(__dirname, '..');
-const PID = 'p1';
-const UID = 'uid-test';
+/* Ids con forma de uuid: en supabase/schema.sql las columnas id, profile_id y
+   user_id son uuid, y el push valida ese formato antes de consultar. Un id
+   tipo 'p1' haría que Postgres rechazara toda la petición con un 400. */
+const PID = 'e0000000-0000-4000-8000-000000000001';
+const UID = 'e0000000-0000-4000-8000-000000000002';
 
 const TABLES = [
   'profiles', 'subjects', 'class_slots', 'class_inbox', 'class_sessions',
@@ -129,7 +132,11 @@ function crearBanco(opciones) {
       S,
       SYNC_KEYS: [],
       save() {}, normalizeData() {}, switchProfileData() {},
-      trackDeletes() {}, rememberPendingDeletes() {}
+      trackDeletes() {}, rememberPendingDeletes() {},
+      // Guarda de aislamiento (P2.18): con la cuenta declarada y coincidente
+      // con la sesión, el round-trip también ejercita que la guarda NO
+      // cancela cuando todo cuadra.
+      activeAccountUid: () => UID
     },
     core: {
       todayStr: () => op.hoy || '2026-09-27',
@@ -151,7 +158,7 @@ function crearBanco(opciones) {
   const networkListeners = {};
   const sandbox = {
     console, setTimeout, clearTimeout, setInterval, clearInterval, Promise, Date, JSON, Math, localStorage,
-    crypto: { randomUUID: () => 'uuid-' + Math.random().toString(16).slice(2) },
+    crypto: { randomUUID: () => 'e0000000-0000-4000-8000-' + Math.random().toString(16).slice(2).padEnd(12, '0').slice(0, 12) },
     navigator: { onLine: op.onLine !== false },
     location: { origin: 'https://test', href: 'https://test/' },
     fetch: async () => ({ ok: false, status: 0 }),

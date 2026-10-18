@@ -147,6 +147,12 @@ node tools/test-backup.mjs          # copia de seguridad: fusionar, referencias,
 node tools/test-schedule-import.mjs  # CSV/TSV, validación, solapes e importación atómica
 node tools/test-sync-enhancements.js # round-trip de tareas/notas con y sin migración
 node tools/test-notes-preview.mjs    # salida Markdown segura contra HTML/XSS
+node tools/test-contrast.mjs         # pares de color: WCAG 2.2 AA en los 4 temas
+node tools/test-sync-errors.mjs      # errores de sync: red vs nube, ids no-UUID y cuentas aisladas
+node tools/test-save-quota.mjs       # save() con cuota llena: aviso honesto y con salida
+node tools/test-sw-precache.mjs      # el precache del SW no deja una versión rota instalada
+node tools/test-microcopy.mjs        # fechas legibles, pista de gesto única, CTA unificado y Markdown en notas
+node tools/test-a11y-ui.mjs          # aria-current, labels de Auth, .btn a 44px y títulos a 2 líneas
 ```
 
 En `.github/workflows/ci.yml` se ejecuta `node tools/test-all.js` en cada push y PR.

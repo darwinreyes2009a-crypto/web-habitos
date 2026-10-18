@@ -89,15 +89,33 @@ if (state.saveCount !== 1 || input.value !== '') throw new Error('Quick note sho
 
 let preview = app.class.quickNotesPreview(() => { preview = app.class.quickNotesPreview(refreshPreview); });
 const refreshPreview = () => { preview = app.class.quickNotesPreview(refreshPreview); };
+// Texto visible de un nodo, imitando al navegador: el atributo `html` se
+// muestra como marcado (sólo las etiquetas seguras de markdownPreview) y sus
+// entidades se decodifican, igual que haría el DOM real.
+function renderedText(html) {
+  return String(html || '')
+    .replace(/<\/?\b(strong|em|code|br)>/g, '')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+}
 function nodeText(node) {
-  return node && typeof node === 'object' ? (node.value || '') + (node.children || []).map(nodeText).join('') : String(node || '');
+  return node && typeof node === 'object'
+    ? (node.value || '') + (node.attrs && node.attrs.html ? renderedText(node.attrs.html) : '') + (node.children || []).map(nodeText).join('')
+    : String(node || '');
 }
 const previewText = nodeText(preview);
 if (!previewText.includes('Recordatorio antiguo de bandeja') || !previewText.includes('Examen el jueves')) {
   throw new Error('Preview should show quick notes and preserve pre-existing class notes and inbox items: ' + previewText);
 }
 if (!previewText.includes('<img onerror=alert(1)>')) throw new Error('Legacy note text should stay visible as plain text');
-if (nodes.filter(node => node.attrs.html).some(node => String(node.attrs.html).includes('onerror=alert(1)'))) throw new Error('Legacy note must never be passed as HTML');
+// La lista interpreta el Markdown con markdownPreview: el html de cada nota
+// sólo puede llevar sus etiquetas seguras; cualquier otro `<` sin escapar
+// sería HTML inyectado.
+const noteMarkup = nodes
+  .filter(node => node.attrs && String(node.attrs.class || '').split(/\s+/).includes('qn-text'))
+  .map(node => String(node.attrs.html || ''));
+if (noteMarkup.some(html => html.replace(/<\/?\b(strong|em|code|br)>/g, '').includes('<'))) {
+  throw new Error('Note markup must only contain the safe markdownPreview tags: ' + noteMarkup.join(' | '));
+}
 if (state.S.notes.length !== 2 || state.S.inbox.length !== 1) throw new Error('Preview must not delete or migrate existing note and inbox rows');
 
 function findNode(node, predicate) {

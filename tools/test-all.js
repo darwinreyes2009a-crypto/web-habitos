@@ -64,12 +64,18 @@ const pasos = [
   { nombre: 'Importación de horarios CSV/TSV y solapes atómicos', run: () => execFileSync(process.execPath, ['tools/test-schedule-import.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Round-trip de tareas y notas con columnas opcionales', run: () => execFileSync(process.execPath, ['tools/test-sync-enhancements.js'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Vista previa de notas segura contra HTML', run: () => execFileSync(process.execPath, ['tools/test-notes-preview.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Contraste de pares de color en los cuatro temas', run: () => execFileSync(process.execPath, ['tools/test-contrast.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Errores de sync (red vs nube, sin bucle de 400, cuentas aisladas)', run: () => execFileSync(process.execPath, ['tools/test-sync-errors.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'save() con cuota llena: aviso honesto y sin pérdida silenciosa', run: () => execFileSync(process.execPath, ['tools/test-save-quota.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Precache del SW: un fallo de addAll no deja versión rota', run: () => execFileSync(process.execPath, ['tools/test-sw-precache.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Rutas de gestión de asignaturas en Modo Clase', run: () => execFileSync(process.execPath, ['tools/test-class-subject-routes.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Agrupación diaria de clases en Ahora mismo, Después y Más tarde', run: () => execFileSync(process.execPath, ['tools/test-class-agenda-groups.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Notas rápidas de Modo Clase y compatibilidad con datos antiguos', run: () => execFileSync(process.execPath, ['tools/test-class-quick-notes.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Ejecución guiada y progreso diario de actividades', run: () => execFileSync(process.execPath, ['tools/test-guided-activities.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Configuración guiada y actualización visible en todos los tipos de hábito', run: () => execFileSync(process.execPath, ['tools/test-guided-activity-ui.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
-  { nombre: 'Tarjetas personalizadas en Actividades', run: () => execFileSync(process.execPath, ['tools/test-activity-cards.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
+  { nombre: 'Tarjetas personalizadas en Actividades', run: () => execFileSync(process.execPath, ['tools/test-activity-cards.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Microcopy: fechas legibles, pista de gesto única, CTA unificado y Markdown en notas', run: () => execFileSync(process.execPath, ['tools/test-microcopy.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Accesibilidad semántica: aria-current, Auth vinculada, .btn a 44px y títulos a 2 líneas', run: () => execFileSync(process.execPath, ['tools/test-a11y-ui.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
 ];
 
 let fallos = 0;

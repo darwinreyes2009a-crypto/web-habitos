@@ -20,19 +20,54 @@ const seccion = titulo => console.log('\n== ' + titulo + ' ==');
 const hoy = '2026-09-28';
 let guardadas = 0;
 let nuevosIds = 0;
+let perfilesRepartidos = 0;
+let renders = 0;
+let avisos = [];
+let ultimoConfirm = null;
+let ficheroContenido = null;
+
+/* Contrato real de la app: switchProfileData vive en app.state (store.js) y
+   render en la raíz del contexto (app.js). app.domain NO publica
+   switchProfileData — un call ahí revienta el import con "not a function",
+   así que el mock reproduce esos límites a propósito. */
 const app = {
-  core: { h: () => ({}), icon: () => ({}), todayStr: () => hoy, cap: v => v, uid: prefix => prefix + '-import-' + (++nuevosIds) },
+  core: {
+    h: (tag) => {
+      if (tag !== 'input') return {};
+      const shim = {
+        files: [{ name: 'copia.json' }],
+        changeHandler: null,
+        addEventListener: (type, fn) => { if (type === 'change') shim.changeHandler = fn; },
+        click: () => { if (shim.changeHandler) shim.changeHandler({ target: shim }); }
+      };
+      return shim;
+    },
+    icon: () => ({}), todayStr: () => hoy, cap: v => v, uid: prefix => prefix + '-import-' + (++nuevosIds)
+  },
   state: {
     S: {
       profiles: [],
       data: {},
       settings: { theme: 'auto' }
     },
-    save: () => { guardadas++; }
+    save: () => { guardadas++; },
+    switchProfileData: () => { perfilesRepartidos++; }
   },
-  domain: { switchProfileData: () => {}, render: () => {}, go: () => {} },
-  components: { closeOverlays: () => {}, toast: () => {}, confirmDialog: () => {}, openSheet: () => {} },
+  domain: { render: () => {}, go: () => {} },
+  render: () => { renders++; },
+  components: {
+    closeOverlays: () => {},
+    toast: msg => { avisos.push(String(msg)); },
+    confirmDialog: options => { ultimoConfirm = options; },
+    openSheet: () => {}
+  },
   features: {}
+};
+globalThis.FileReader = class {
+  readAsText() {
+    this.result = ficheroContenido;
+    if (this.onload) this.onload();
+  }
 };
 registerPlatform(app);
 const P = app.features;
@@ -186,6 +221,22 @@ const filasSueltas = (() => {
   return r.created.profiles === 1;
 })();
 comprueba('las filas sin id se ignoran sin error', filasSueltas, null);
+
+/* ---------- flujo completo de importación (importBackupFlow) ---------------- */
+seccion('importar desde el diálogo (flujo completo)');
+setState({ profiles: [], data: {}, settings: {} });
+avisos = [];
+ultimoConfirm = null;
+const guardadasPre = guardadas;
+const switchesPre = perfilesRepartidos;
+ficheroContenido = JSON.stringify(copia);
+await P.importBackupFlow();
+comprueba('el diálogo de confirmación se abre con la copia leída', !!ultimoConfirm && /Fusionar/.test(ultimoConfirm.title || ''), ultimoConfirm && ultimoConfirm.title);
+ultimoConfirm.onConfirm();
+comprueba('la fusión crea el perfil y sus dos tareas', app.state.S.profiles.length === 1 && app.state.S.data[app.state.S.profiles[0].id].tasks.length === 2, app.state.S.profiles);
+comprueba('se guarda y se reparte el perfil (app.state.switchProfileData)', guardadas > guardadasPre && perfilesRepartidos > switchesPre, { guardadas, perfilesRepartidos });
+comprueba('se renderiza desde la raíz (app.render)', renders > 0, renders);
+comprueba('el aviso es de éxito, no el error de namespace', avisos.some(msg => msg.startsWith('Fusionada')), avisos);
 
 console.log('\n' + (fallos ? fallos + ' de ' + total + ' comprobaciones fallidas' : 'Todo correcto (' + total + ' comprobaciones)'));
 process.exit(fallos ? 1 : 0);
