@@ -866,6 +866,37 @@ let __lastPushedSettingsAt = 0;
 let __lastPushedMetaJson = '';
 let __lastPushedAccount = '';
 
+/* ---------- adopción de perfil en un dispositivo nuevo ---------- */
+/* La nube no guarda en ninguna fila «qué perfil está activo»: solo en
+   meta.activeProfileId de los ajustes, que se escribe al cambiar de perfil.
+   Un dispositivo nuevo sin elección previa debe abrir el perfil que se usa
+   de verdad, no el más antiguo: en cuentas con varios perfiles el más
+   antiguo puede ser un perfil provisional vacío y la app se veía en blanco
+   (las tareas y regalos existían, pero en el otro perfil). */
+function cloudActiveProfileId(settingsRow) {
+  const meta = settingsRow && settingsRow.meta;
+  return meta && typeof meta.activeProfileId === 'string' ? meta.activeProfileId : null;
+}
+function adoptedProfileId(remoteProfiles, res, remembered) {
+  if (!remoteProfiles || !remoteProfiles.length) return null;
+  const ids = new Set(remoteProfiles.map(p => p.id));
+  if (remembered && ids.has(remembered)) return remembered;
+  const firstId = remoteProfiles[0].id;
+  const counts = new Map(remoteProfiles.map(p => [p.id, 0]));
+  for (const table of Object.keys(res || {})) {
+    if (table === 'profiles') continue;
+    for (const row of res[table] || []) {
+      // Las filas antiguas sin profile_id pertenecen al perfil por defecto:
+      // el más antiguo, igual que en la fusión.
+      const pid = row && row.profile_id && ids.has(row.profile_id) ? row.profile_id : firstId;
+      counts.set(pid, (counts.get(pid) || 0) + 1);
+    }
+  }
+  let best = firstId;
+  for (const p of remoteProfiles) if ((counts.get(p.id) || 0) > (counts.get(best) || 0)) best = p.id;
+  return best;
+}
+
 /* ---------- pull: baja la nube y fusiona POR FILAS (last-writer-wins) ---------- */
 async function syncPullAll() {
   if (!syncIsOnline()) return false;
@@ -913,7 +944,11 @@ async function syncPullAll() {
       // Una cuenta con datos en la nube ya tiene su cabecera; no crear un
       // perfil provisional paralelo al que ya existe en Supabase.
       window.DailyHub.state.S.profiles = remoteProfiles;
-      window.DailyHub.state.S.activeProfileId = remoteProfiles[0].id;
+      // El perfil que se adopta NO es «el más antiguo»: puede ser un
+      // perfil provisional vacío y la app se vería en blanco en un
+      // dispositivo nuevo (móvil o navegador sin datos locales).
+      window.DailyHub.state.S.activeProfileId =
+        adoptedProfileId(remoteProfiles, res, cloudActiveProfileId(settingsRow));
     }
     if (!window.DailyHub.state.S.activeProfileId || !window.DailyHub.state.S.profiles.some(p => p.id === window.DailyHub.state.S.activeProfileId)) {
       window.DailyHub.state.S.activeProfileId = window.DailyHub.state.S.profiles.length ? window.DailyHub.state.S.profiles[0].id : null;

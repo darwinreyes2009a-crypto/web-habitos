@@ -362,6 +362,12 @@ export function registerStore(app) {
   function save() {
     let ok = true;
     try {
+      // El perfil activo viaja en meta (que ya se sincroniza con los ajustes)
+      // para que un dispositivo nuevo abra directamente el perfil que se usa
+      // de verdad. Sin esto, la adopción del pull solo podía adivinarlo.
+      if (S.meta && S.activeProfileId && S.meta.activeProfileId !== S.activeProfileId) {
+        S.meta.activeProfileId = S.activeProfileId;
+      }
       const bucket = (S.activeProfileId && S.data && S.data[S.activeProfileId]) || null;
       if (bucket) {
         // Sincronizamos primero los arrays activos —algunas acciones los
