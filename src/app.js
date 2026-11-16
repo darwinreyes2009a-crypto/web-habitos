@@ -1,4 +1,4 @@
-import '../app-sync.js?v=87';
+import '../app-sync.js?v=86';
 import { createAppContext } from './core/context.js';
 import { registerDom } from './core/dom.js';
 import { registerDates } from './core/dates.js';
