@@ -36,6 +36,14 @@ const TARGETS = [
       return text.replace(/\.\.\/app-sync\.js\?v=\d+/, '../app-sync.js?v=' + APP_VERSION);
     },
     verify: text => text.includes('../app-sync.js?v=' + APP_VERSION)
+  },
+  {
+    // La versión que Ajustes → Acerca de DailyHub enseña al usuario.
+    file: 'src/core/version.js',
+    apply(text) {
+      return text.replace(/export const APP_VERSION = \d+;/, 'export const APP_VERSION = ' + APP_VERSION + ';');
+    },
+    verify: text => text.includes('export const APP_VERSION = ' + APP_VERSION + ';')
   }
 ];
 

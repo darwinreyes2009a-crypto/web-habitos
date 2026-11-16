@@ -1,3 +1,5 @@
+import { APP_VERSION } from '../core/version.js';
+
 export function registerSettings(app) {
   const {
     h,
@@ -600,7 +602,7 @@ export function registerSettings(app) {
       const size = Math.round(((activeAccountUid() ? localStorage.getItem(ACC_PREFIX + activeAccountUid()) : null) || localStorage.getItem(LS_KEY) || '').length / 1024);
       return h('div', { style: 'text-align:center;padding:6px 0 10px' },
         h('div', { class: 'logo-mark', style: 'width:52px;height:52px;font-size:24px;margin-bottom:14px', html: 'D' }),
-        h('b', { style: 'font-size:16px' }, 'DailyHub v2.0'),
+        h('b', { style: 'font-size:16px' }, 'DailyHub v' + APP_VERSION),
         h('p', { style: 'font-size:13px;color:var(--text-2);line-height:1.6;margin-top:8px' }, 'Tareas, hábitos y regalos con tu cuenta privada.\nLos datos están en la nube (Supabase) y también en este navegador (' + size + ' KB) para poder usar la app sin conexión.'),
         h('p', { style: 'font-size:11.5px;color:var(--text-3);margin-top:14px' }, 'Hecho con cariño · ' + new Date().getFullYear())
       );
@@ -729,7 +731,7 @@ export function registerSettings(app) {
     ), true);
 
     group('Información', h('div', { class: 'set-card' },
-      row('info', 'Acerca de DailyHub', infoSheet, 'v2.0')
+      row('info', 'Acerca de DailyHub', infoSheet, 'v' + APP_VERSION)
     ));
     return wrap;
   }
