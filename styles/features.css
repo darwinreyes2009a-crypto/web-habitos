@@ -602,6 +602,10 @@ button.hist-row { display:flex }
   display: flex; align-items: center; justify-content: center;
 }
 .pref-text { flex: 1; min-width: 0 }
+/* El texto de apoyo de una preferencia es una pista, no un párrafo: antes
+   heredaba el tamaño del cuerpo y en las hojas de Apariencia se leía más grande
+   que el título. */
+.pref-text span { display: block; font-size: var(--fs-meta); color: var(--text-2); margin-top: 2px; line-height: var(--lh-body) }
 .pref-text b {
   display: block; font-size: var(--fs-body); font-weight: var(--fw-semi);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

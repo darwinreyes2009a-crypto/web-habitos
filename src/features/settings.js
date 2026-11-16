@@ -402,13 +402,16 @@ export function registerSettings(app) {
   // Fila con interruptor real. El <label> envolvente asocia el texto al
   // control y el role="switch" anuncia encendido/apagado sin cambiar el texto
   // (WAI-ARIA APG · Switch Pattern). La usan Apariencia y Aplicación.
+  // En Ajustes comparte la anatomía de `.set-row` (misma caja de icono,
+  // padding y separadores) para que los interruptores no parezcan de otra
+  // pantalla; la etiqueta completa hace de zona táctil del control.
   function switchPrefRow(iconName, label, hint, checked, onChange) {
     const input = h('input', { type: 'checkbox', role: 'switch' });
     input.checked = !!checked;
     input.addEventListener('change', () => onChange(input.checked));
-    return h('label', { class: 'pref-row' },
+    return h('label', { class: 'set-row set-switch' },
       h('span', { class: 'r-ic', html: icon(iconName, 18) }),
-      h('div', { class: 'pref-text' },
+      h('span', { class: 'set-switch-text' },
         h('b', null, label),
         hint ? h('span', null, hint) : null
       ),
@@ -686,24 +689,20 @@ export function registerSettings(app) {
         ),
         h('span', { class: 'chev', html: icon('chev', 17) })
       ),
-      // El correo completo ya vive en la fila de identidad de arriba; aquí solo
-      // interesa si la cuenta está conectada, y así el valor no recorta el título.
-      row('cloud', 'Cuenta y sincronización', accountSheet, email ? 'Conectada' : 'Sin conectar'),
-      row('lock', 'Seguridad y PIN', securitySheet, profile.pin ? 'Activado' : 'Sin PIN'),
-      // Único acceso a cambiar de cuenta: antes se repetía como botón rojo al
-      // final de esta pantalla y otra vez dentro de Perfil → Cuenta y seguridad.
-      row('logout', 'Cambiar de cuenta', softLogout)
-    ));
-    // --- Apariencia ---------------------------------------------------------
-    // Los cuatro controles viven dentro de su propia hoja, al igual que el resto
-    // de secciones: en la pantalla solo queda la fila que la abre, con el tema
-    // activo como estado actual. Así Ajustes mantiene un ritmo uniforme de
-    // «tarjeta que abre una sección» en vez de mezclar filas y controles inline.
+          // El correo completo ya vive en la fila de identidad de arriba; aquí solo
+    // interesa si la cuenta está conectada, y así el valor no recorta el título.
+    row('cloud', 'Sincronización', accountSheet, email ? 'Conectada' : 'Sin conectar'),
+    row('lock', 'Seguridad y PIN', securitySheet, profile.pin ? 'Activado' : 'Sin PIN'),
+    // Único acceso a cambiar de cuenta: antes se repetía como botón rojo al
+    // final de esta pantalla y otra vez dentro de Perfil → Cuenta y seguridad.
+    row('logout', 'Cambiar de cuenta', softLogout)
+  ));
+    // --- Preferencias -------------------------------------------------------
+    // Una sola tarjeta para todo lo que se ajusta a gusto: apariencia,
+    // notificaciones y los dos interruptores. Antes eran tres secciones de una
+    // fila cada una y la pantalla parecía un índice largo en vez de una lista
+    // de ajustes. `tasksPrefsSheet` se mantiene exportada por compatibilidad.
     const THEME_LABELS = { auto: 'Auto', light: 'Claro', dark: 'Oscuro' };
-    group('Apariencia', h('div', { class: 'set-card' },
-      row('moon', 'Apariencia', appearanceSheet, THEME_LABELS[theme()] || 'Auto')
-    ));
-
     // Resumen del permiso del navegador: el estado se lee en la fila, sin abrir la hoja.
     const notifStatus = {
       unsupported: 'No soportado',
@@ -711,17 +710,12 @@ export function registerSettings(app) {
       default: 'Sin permiso',
       granted: 'Activadas'
     }[notifPermission()] || 'Sin revisar';
-    group('Notificaciones', h('div', { class: 'set-card' },
-      row('bell', 'Notificaciones', notifSheet, notifStatus)
-    ));
-
-    // Los dos interruptores vivían dentro de la hoja «Tareas y hábitos», que
-    // solo los contenía a ellos dos: al ser preferencias siempre activas pasan a
-    // su fila directa. `tasksPrefsSheet` se mantiene exportada por compatibilidad.
-    group('Aplicación', h('div', { class: 'set-card' },
-      switchPrefRow('checksq', 'Ocultar completadas en Hoy', 'La pantalla Inicio solo mostrará lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }),
-      switchPrefRow('phone', 'Vibración al marcar', 'Respuesta háptica en dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }),
-      row('pencil', 'Personalizar opciones', optionsSheet)
+    group('Preferencias', h('div', { class: 'set-card' },
+      row('moon', 'Apariencia', appearanceSheet, THEME_LABELS[theme()] || 'Auto'),
+      row('bell', 'Notificaciones', notifSheet, notifStatus),
+      switchPrefRow('checksq', 'Ocultar completadas en Hoy', 'En Inicio solo se verá lo pendiente', S.settings.hideCompleted, value => { S.settings.hideCompleted = value; save(); }),
+      switchPrefRow('phone', 'Vibración al marcar', 'En dispositivos compatibles', S.settings.haptics !== false, value => { S.settings.haptics = value; save(); }),
+      row('pencil', 'Categorías y relaciones', optionsSheet)
     ));
 
     group('Datos', h('div', { class: 'set-card' },
@@ -735,7 +729,7 @@ export function registerSettings(app) {
     ), true);
 
     group('Información', h('div', { class: 'set-card' },
-      row('info', 'DailyHub v2.0', infoSheet)
+      row('info', 'Acerca de DailyHub', infoSheet, 'v2.0')
     ));
     return wrap;
   }
