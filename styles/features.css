@@ -92,6 +92,74 @@
 .gift-row + .gift-row { margin-top:10px }
 .gift-thumb { width:52px; height:52px; border-radius:var(--r-m); background:var(--primary-soft); color:var(--primary-ink); display:flex; align-items:center; justify-content:center; overflow:hidden; flex:none }
 .gift-thumb img { width:100%; height:100%; object-fit:cover }
+
+/* --- Regalos: tarjetas tipo wishlist ------------------------------------
+   Una tarjeta por regalo: foto (o 🎁 grande sobre círculo suave), título,
+   persona/fecha, chip de estado, presupuesto y enlace. Una columna en móvil;
+   dos a partir de 560px, donde el pie (chip + presupuesto + enlace) cabe
+   entero sin apretar. */
+.gift-grid { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:20px }
+@media (min-width:560px) { .gift-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px } }
+.gift-card {
+  display:flex; flex-direction:column; min-width:0; overflow:hidden;
+  background:var(--card-bg); border:var(--card-border); border-radius:var(--card-radius);
+  box-shadow:var(--sh-diffuse); transition:border-color var(--t-fast), transform var(--t-fast)
+}
+.gift-card:has(.gift-card-body:hover) { border-color:var(--primary-softer) }
+/* `align-items:stretch` explícito: el estilo de botón del navegador centra
+   sus hijos flex, y sin esto la foto se quedaba encogida a su ancho mínimo. */
+.gift-card-body { display:flex; flex-direction:column; align-items:stretch; width:100%; padding:0; text-align:left }
+.gift-card-body:focus-visible { outline:var(--focus-ring); outline-offset:calc(var(--focus-offset) * -1) }
+.gift-art {
+  display:flex; align-items:center; justify-content:center; height:112px; overflow:hidden;
+  background:var(--surface-2); color:var(--primary-ink)
+}
+.gift-art.has-image { background:var(--surface-3) }
+.gift-art img { display:block; width:100%; height:100%; object-fit:cover }
+.gift-art-emoji {
+  display:flex; align-items:center; justify-content:center; width:64px; height:64px;
+  border-radius:50%; background:var(--primary-soft); font-size:32px; line-height:1
+}
+.gift-card-copy { display:flex; flex-direction:column; gap:3px; min-width:0; padding:11px 14px 0 }
+.gift-card-title {
+  display:flex; align-items:center; gap:6px; min-width:0;
+  font-size:var(--fs-item); font-weight:var(--fw-bold); line-height:1.35
+}
+.gift-card-title > span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.gift-card-star { display:flex; flex:none; color:var(--amber) }
+.gift-card-who {
+  color:var(--text-2); font-size:var(--fs-label); line-height:1.4;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap
+}
+.gift-card-foot { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 14px 14px }
+.gift-card-foot .stchip { display:inline-flex; align-items:center; gap:5px; min-height:var(--tap) }
+.gift-budget { margin-left:auto; font-size:var(--fs-body); font-weight:var(--fw-bold); font-variant-numeric:tabular-nums; white-space:nowrap }
+.gift-budget.none { color:var(--text-3); font-size:var(--fs-label); font-weight:var(--fw-medium) }
+.gift-link { flex:1 1 100%; min-height:var(--tap); padding:8px var(--sp-3); font-size:var(--fs-label) }
+
+/* --- Ficha de persona: cuenta atrás y perfil afectivo -------------------- */
+.person-hero { display:flex; flex-direction:column; align-items:center; text-align:center; margin-bottom:18px }
+.person-hero-meta { margin-top:4px; color:var(--text-2); font-size:var(--fs-label) }
+.bday-card {
+  display:flex; align-items:center; gap:10px; margin-bottom:20px; padding:12px 14px;
+  border:1px solid var(--amber-border); border-radius:var(--radius-lg); background:var(--amber-soft);
+  color:var(--text); font-size:var(--fs-item); font-weight:var(--fw-semi); line-height:1.4
+}
+.person-about-row { margin:2px 0 12px }
+.person-about-label {
+  display:block; margin-bottom:2px; color:var(--text-3); font-size:var(--fs-micro);
+  font-weight:var(--fw-bold); text-transform:uppercase; letter-spacing:var(--label-tracking)
+}
+.person-about-row p {
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  color:var(--text-2); font-size:var(--fs-body); line-height:1.5
+}
+.person-tags { display:flex; flex-wrap:wrap; gap:6px; margin:2px 0 12px }
+.person-tag {
+  padding:5px 10px; border-radius:var(--r-pill); background:var(--surface-2);
+  border:1px solid var(--border-soft); color:var(--text-2);
+  font-size:var(--fs-micro); font-weight:var(--fw-semi)
+}
 .subject-folder { width:54px; height:54px; border-radius:var(--r-l); display:flex; align-items:center; justify-content:center; flex:none }
 .person-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px }
 .person-card { background:var(--card-bg); border:var(--card-border); border-radius:var(--r-l); padding:16px 14px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; box-shadow:var(--card-shadow); transition:border-color .15s,transform .12s }
@@ -282,8 +350,6 @@
 .sync-badge.offline i { background:var(--danger-soft); color:var(--danger); border-color:var(--danger-border) }
 .auth-logo { width:56px; height:56px; border-radius:var(--r-l); background:var(--primary-solid); color:var(--on-primary); font-size:var(--fs-title); font-weight:var(--fw-black); display:flex; align-items:center; justify-content:center; margin:0 auto var(--sp-4) }
 /* Regalos: chip de tienda y fila del historial clicable */
-.st-link { display:inline-flex; align-items:center; gap:4px; background:var(--surface-2); color:var(--text-2); text-decoration:none; margin-top:4px; font-size:var(--fs-micro); padding:4px 9px }
-.st-link:hover { color:var(--primary) }
 button.hist-row { display:flex }
 /* Estadísticas de tareas: navegación de periodo y gráfico de columnas */
 .period-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px }
@@ -483,18 +549,24 @@ button.hist-row { display:flex }
 .sr-hint { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin:10px 0 2px; font-size:var(--fs-micro); color:var(--text-3) }
 .sr-hint kbd, .sr-head kbd { font-family:inherit; font-size:var(--fs-micro); font-weight:700; padding:2px 6px; border:1px solid var(--border); border-radius:var(--r-xs); background:var(--surface-2); color:var(--text-2) }
 
-/* ---------- Pantalla Ahora ---------- */
-.now-hero { display:flex; align-items:center; gap:14px; background:var(--card-bg); border:var(--card-border); border-left:3px solid var(--border); border-radius:var(--r-xl); padding:16px 18px; margin-bottom:22px; box-shadow:var(--card-shadow) }
-.now-hero.live { border-left-width:4px; background:linear-gradient(90deg, var(--primary-soft), var(--surface) 60%) }
-.now-hero.rest { border-left-color:var(--amber) }
-.now-hero .ic { color:var(--text-3); flex:none }
-.now-hero b { display:block; font-size:var(--fs-lead); font-weight:var(--fw-black); letter-spacing:var(--ls-tight) }
-.now-hero span { display:block; font-size:var(--fs-meta); color:var(--text-2); margin-top:2px }
-/* El selector lleva .now-hero porque `.now-hero span` (0,1,1) tiene más
-   especificidad que `.now-badge` (0,1,0) y le pisaba el color: el distintivo
-   salía con --text-2 sobre --danger, es decir, 1,08:1. */
-.now-hero .now-badge { font-size:var(--fs-micro); font-weight:var(--fw-bold); letter-spacing:.08em; color:var(--on-danger); background:var(--danger); padding:4px 9px; border-radius:var(--r-pill); flex:none; align-self:flex-start }
-.now-hero .now-badge.idle { background:var(--text-3); color:var(--on-muted) }
+/* ---------- Pantalla Ahora · tarjeta zen ---------- */
+/* Una sola superficie grande, con el bloque en curso o el siguiente. El
+   borde izquierdo cambia de color según el modo (ahora / después / libre)
+   usando tokens existentes, y el degradado cálido solo aparece cuando hay
+   algo en curso: en reposo la tarjeta se queda en --surface. */
+.now-zen { position:relative; display:flex; flex-direction:column; gap:14px; background:var(--surface); border:var(--card-border); border-left:4px solid var(--text-3); border-radius:var(--r-xl); box-shadow:var(--sh-diffuse); padding:18px; margin-bottom:20px; overflow:hidden }
+.now-zen[data-mode='now'] { border-left-color:var(--primary); background:linear-gradient(150deg, var(--primary-soft), var(--surface) 58%) }
+.zen-top { display:flex; align-items:center; justify-content:space-between; gap:10px }
+.zen-eyebrow { font-size:var(--fs-micro); font-weight:var(--fw-black); letter-spacing:.09em; text-transform:uppercase; color:var(--text-3) }
+.zen-time { font-size:var(--fs-meta); font-weight:var(--fw-bold); color:var(--text-2); font-variant-numeric:tabular-nums }
+.zen-main { display:flex; align-items:center; gap:14px; min-width:0 }
+.zen-copy { display:flex; flex-direction:column; gap:3px; min-width:0 }
+.zen-copy b { font-size:var(--fs-sub); font-weight:var(--fw-black); letter-spacing:var(--ls-tight); color:var(--text); overflow-wrap:anywhere }
+.zen-copy span { font-size:var(--fs-meta); color:var(--text-2) }
+.zen-ico { display:flex; align-items:center; justify-content:center; width:56px; height:56px; flex:none; border-radius:var(--r-pill); background:var(--primary-soft); color:var(--primary-ink) }
+.now-zen .habit-emoji { flex:none }
+.now-zen .btn { width:100% }
+.zen-hint { margin:0; font-size:var(--fs-meta); color:var(--text-2) }
 .now-head { display:flex; align-items:center; gap:10px; margin:0 2px 10px }
 .now-head h3 { font-size:var(--fs-item); font-weight:800; margin:0; flex:1 }
 
@@ -567,3 +639,18 @@ button.hist-row { display:flex }
   .pref-row .seg button { padding: 0 5px }
   .pref-text b { letter-spacing: -.01em }
 }
+
+/* ---------- Racha de días completos ---------- */
+/* Información, no botón: la llama (o el brote si aún no hay racha) y las
+   estrellas son decorativas; el texto es lo que cuenta la racha. La animación
+   vive en motion.css para que el ajuste de movimiento la apague de una vez. */
+.streak-card { position:relative; display:flex; align-items:center; gap:12px; margin-top:10px; padding:12px 14px; background:var(--surface); border:var(--card-border); border-radius:var(--r-l); box-shadow:var(--sh-diffuse) }
+.streak-flame { font-size:22px; line-height:1; flex:none; transform-origin:50% 85% }
+.streak-copy { flex:1; min-width:0 }
+.streak-copy b { display:block; font-size:var(--fs-lead); font-weight:var(--fw-black); letter-spacing:var(--ls-tight); color:var(--text) }
+.streak-copy span { display:block; font-size:var(--fs-meta); color:var(--text-2) }
+.streak-stars { flex:none; color:var(--amber); font-size:13px; letter-spacing:2px }
+/* Día completo: el mismo ámbar suave de las tarjetas de cumpleaños. */
+.streak-card.is-complete { border-color:var(--amber-border); background:var(--amber-soft) }
+/* Ancla de la celebración: la capa de confeti se pinta dentro. */
+.home-day-summary { position:relative }

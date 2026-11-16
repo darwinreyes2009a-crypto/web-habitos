@@ -58,6 +58,7 @@ const pasos = [
   { nombre: 'Round-trip de class_slots (patio)', run: () => execFileSync(process.execPath, ['tools/test-patio-sync.js'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Round-trip del calendario (vacaciones, cancelaciones, active)', run: () => execFileSync(process.execPath, ['tools/test-calendar-sync.js'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Núcleo de rutinas (tipos, recurrencia, rachas, heatmap)', run: () => execFileSync(process.execPath, ['tools/test-routines.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Plan del día: bloque en curso/siguiente, medianoche y racha', run: () => execFileSync(process.execPath, ['tools/test-dayplan.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Transiciones de tipo y registros de rutina', run: () => execFileSync(process.execPath, ['tools/test-task-kind-transitions.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Copia de seguridad portable', run: () => execFileSync(process.execPath, ['tools/test-backup.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Lógica de calendario (huecos, solapes, carga, .ics)', run: () => execFileSync(process.execPath, ['tools/test-calendar-core.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
@@ -75,6 +76,7 @@ const pasos = [
   { nombre: 'Ejecución guiada y progreso diario de actividades', run: () => execFileSync(process.execPath, ['tools/test-guided-activities.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Configuración guiada y actualización visible en todos los tipos de hábito', run: () => execFileSync(process.execPath, ['tools/test-guided-activity-ui.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Tarjetas personalizadas en Actividades', run: () => execFileSync(process.execPath, ['tools/test-activity-cards.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
+  { nombre: 'Tarjetas de regalo wishlist y ficha de persona', run: () => execFileSync(process.execPath, ['tools/test-gift-cards.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Microcopy: fechas legibles, pista de gesto única, CTA unificado y Markdown en notas', run: () => execFileSync(process.execPath, ['tools/test-microcopy.mjs'], { cwd: RAIZ, stdio: 'inherit' }) },
   { nombre: 'Accesibilidad semántica: aria-current, Auth vinculada, .btn a 44px y títulos a 2 líneas', run: () => execFileSync(process.execPath, ['tools/test-a11y-ui.mjs'], { cwd: RAIZ, stdio: 'inherit' }) }
 ];

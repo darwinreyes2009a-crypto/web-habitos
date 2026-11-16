@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { registerRoutines } from '../src/core/routines.js';
+import { registerDayPlan } from '../src/core/dayplan.js';
 import { registerForms } from '../src/features/forms.js';
 import { registerHomeAndTasks } from '../src/features/home-tasks.js';
+import { registerConstants } from '../src/core/constants.js';
 import { registerTaskRow } from '../src/features/task-row.js';
 
 const TODAY = '2026-10-05';
@@ -157,7 +159,9 @@ const app = {
   class: { classNow: () => null, classNext: () => null, subjectById: () => null, activeSession: () => null, leftTxt: () => '', inTxt: () => '' },
   features: { taskStats() {}, taskRow() {}, taskForm() {} }
 };
+registerConstants(app);
 registerRoutines(app);
+registerDayPlan(app);
 registerHomeAndTasks(app);
 registerTaskRow(app);
 registerForms(app);

@@ -140,8 +140,8 @@ const PARES = [
   { fg: '--primary-solid', bg: '--surface', min: 3, donde: 'Relleno como componente (borde visual)' },
 
   // Rellenos de estado
-  { fg: '--on-danger', bg: '--danger', min: 4.5, donde: 'Distintivo "AHORA" (.now-hero .now-badge)' },
-  { fg: '--on-muted', bg: '--text-3', min: 4.5, donde: 'Distintivo "DESPUÉS" (.now-badge.idle)' },
+  { fg: '--text-3', bg: '--surface', min: 4.5, donde: 'Etiqueta del bloque en curso (.zen-eyebrow)' },
+  { fg: '--on-muted', bg: '--text-3', min: 4.5, donde: 'Texto claro sobre relleno neutro' },
   { fg: '--on-green', bg: '--green', min: 3, donde: 'Marca de hecho (.row-check.done) — gráfico' },
   { fg: '--green', bg: '--surface', min: 4.5, donde: 'Texto verde de estado y rachas' },
   { fg: '--amber', bg: '--surface', min: 4.5, donde: 'Texto ámbar (patio, avisos)' },
@@ -184,14 +184,16 @@ function exige(selector, fragmento, mensaje) {
 }
 
 exige('.btn-primary', 'var(--primary-solid)', 'el botón primario debe usar el relleno con contraste garantizado');
-exige('.now-hero .now-badge', 'var(--on-danger)', 'el distintivo AHORA necesita selector específico y tinta --on-danger');
+exige('.zen-eyebrow', 'var(--text-3)', 'la etiqueta del bloque zen debe usar la tinta de metadatos');
+exige('.now-zen', 'var(--r-xl)', 'la tarjeta zen debe usar el radio grande de la Fase 2');
 exige('.row-check.done::after', 'var(--on-green)', 'la marca de hecho debe pintarse con --on-green');
 exige('.cls-tab.on', 'var(--primary-ink)', 'la pestaña activa de Modo Clase debe usar tinta --primary-ink');
 
-// El selector específico tiene que ganarle a `.now-hero span`.
-const badge = reglas.find(r => r.selector.includes('.now-hero .now-badge'));
-if (badge && /\.now-hero \.now-badge\b/.test(badge.selector) === false) {
-  violaciones.push('El distintivo "AHORA" vuelve a quedar pisado por .now-hero span');
+// El título del bloque zen no hereda un color de badge: lleva --text explícito,
+// que es el par validado arriba contra --surface.
+const zenTitulo = reglas.find(r => r.selector.includes('.zen-copy b'));
+if (!zenTitulo || !zenTitulo.body.includes('var(--text)')) {
+  violaciones.push('El título del bloque zen debe pintarse con var(--text)');
 }
 
 // Los tokens nuevos deben existir en los dos temas.

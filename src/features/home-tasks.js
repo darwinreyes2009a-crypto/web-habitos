@@ -3,6 +3,7 @@ export function registerHomeAndTasks(app) {
     $,
     h,
     icon,
+    emojiAvatar,
     avatarEl,
     cap,
     toYmd,
@@ -87,20 +88,50 @@ export function registerHomeAndTasks(app) {
       (first.time || '99:99').localeCompare(second.time || '99:99'));
     const done = due.filter(task => isDoneOn(task, todayStr())).length;
     const percentage = due.length ? Math.round(done / due.length * 100) : 0;
-    wrap.append(h('button', {
-      class: 'home-day-summary',
-      type: 'button',
-      'aria-label': 'Ver progreso: ' + done + ' de ' + due.length + ' actividades completadas hoy',
-      onclick: () => go('progress')
-    },
-      h('span', { class: 'home-day-summary-icon', html: icon('check', 18) }),
+    /* La frase lleva el conteo real y el anillo lo repite en porcentaje. El
+       anillo es el role="progressbar" (y por eso la tarjeta deja de ser un
+       botón: dentro de uno, el progreso no se expone). La flecha mantiene el
+       atajo de antes hacia la pantalla de progreso. */
+    const summaryLine = due.length
+      ? 'Llevas ' + done + ' de ' + due.length + (due.length === 1 ? ' hábito completado hoy ✨' : ' hábitos completados hoy ✨')
+      : 'Hoy no hay hábitos programados ✨';
+    wrap.append(h('div', { class: 'home-day-summary' },
+      h('span', {
+        class: 'home-day-summary-count',
+        role: 'progressbar',
+        'aria-label': 'Progreso de hábitos de hoy',
+        'aria-valuemin': '0',
+        'aria-valuemax': String(due.length || 1),
+        'aria-valuenow': String(done),
+        'aria-valuetext': due.length ? done + ' de ' + due.length + ' hábitos completados hoy' : 'Sin hábitos programados para hoy',
+        style: '--day-progress:' + percentage + '%'
+      }, h('b', null, due.length ? done + '/' + due.length : '–')),
       h('span', { class: 'home-day-summary-copy' },
-        h('b', null, due.length ? 'Tienes ' + due.length + ' cosas para hoy' : 'Tu día está despejado'),
-        h('span', null, due.length ? '¡Vamos a por ello!' : 'Disfruta el tiempo libre')
+        h('b', null, summaryLine),
+        h('span', null, due.length
+          ? (done === due.length ? 'Día completo, disfrútalo' : '¡Vamos a por ello!')
+          : 'Disfruta el tiempo libre')
       ),
-      h('span', { class: 'home-day-summary-count', style: '--day-progress:' + percentage + '%' },
-        h('b', null, done + '/' + due.length)
-      )
+      h('button', {
+        class: 'icon-btn', type: 'button',
+        'aria-label': 'Ver progreso: ' + (due.length ? done + ' de ' + due.length + ' hábitos completados hoy' : 'sin hábitos programados'),
+        onclick: () => go('progress'), html: icon('chev', 16)
+      })
+    ));
+
+    /* Racha de días completos: la llama prende cuando ya hay días seguidos y
+       el brote cuando aún no. Es información, no un botón: el texto ya cuenta
+       la racha y lo que falta para subirla. Las estrellas y la llama solo se
+       animan con movimiento permitido (motion.css). */
+    const completion = app.core.dayCompletion({ tasks: S.tasks || [], ymd: todayStr(), isDueOn, isDoneOn, isSkipped: app.core.isSkipped });
+    const streak = app.core.allDoneStreak({ tasks: S.tasks || [], ymd: todayStr(), isDueOn, isDoneOn, isSkipped: app.core.isSkipped, addDaysYmd });
+    wrap.append(h('div', { class: 'streak-card' + (completion.all ? ' is-complete' : '') + (streak ? '' : ' is-empty') },
+      h('span', { class: 'streak-flame', 'aria-hidden': 'true' }, streak ? '🔥' : '🌱'),
+      h('div', { class: 'streak-copy' },
+        h('b', null, streak ? streak + (streak === 1 ? ' día seguido' : ' días seguidos') : 'Empieza tu racha'),
+        h('span', null, completion.all ? 'Día completo · racha asegurada' : 'Completa todos los hábitos de hoy para sumar')
+      ),
+      h('span', { class: 'streak-stars', 'aria-hidden': 'true' }, '✦ ✦ ✦')
     ));
 
     const openNotes = (S.notes || []).filter(note => !note.done && !note.deletedAt).length;
@@ -217,6 +248,8 @@ export function registerHomeAndTasks(app) {
     task.updatedAt = Date.now();
     save();
     if (refresh) refresh(); else app.domain.render();
+    if (kind !== 'avoid' && app.core.isDoneOn(task, ymd) && app.features.doneFx) app.features.doneFx(task.id);
+    if (app.features.dayDoneFx) app.features.dayDoneFx();
   }
 
   function attachTaskGestures(card, task, ymd, refresh) {
@@ -267,12 +300,6 @@ export function registerHomeAndTasks(app) {
     if (state.avoid) return state.done ? 'Día limpio ✓' : 'Marcar fallo';
     if (state.kind === 'check') return state.done ? 'Hecho ✓' : 'Hecho';
     return 'Abrir →';
-  }
-
-  // Una sola pista de gesto por vista —discreta y al pie de la lista— en vez
-  // de repetirla en cada tarjeta.
-  function swipeHintLine() {
-    return h('div', { class: 'activity-swipe-hint' }, 'Desliza las tarjetas para completar o deshacer.');
   }
 
   function taskActivityCard(task, ymd, options) {
@@ -329,8 +356,8 @@ export function registerHomeAndTasks(app) {
       h('button', { class: 'activity-card-main', type: 'button', onclick: open, 'aria-label': (steps.length ? 'Abrir actividad ' : 'Registrar ') + task.title },
         isHomeCard ? h('span', { class: 'activity-icon home-activity-art' }, firstImage
           ? h('img', { src: firstImage.image, alt: '' })
-          : h('span', { html: icon(task.icon || 'star', 34), 'aria-hidden': 'true' }))
-          : h('span', { class: 'activity-icon', html: icon(task.icon || 'star', 22) }),
+          : emojiAvatar(task, 56))
+          : h('span', { class: 'activity-icon' }, emojiAvatar(task, 32)),
         h('span', { class: 'activity-copy' },
           h('b', null, task.title),
           h('span', { class: 'activity-subtitle' }, (task.cat || 'Personal') + ' · ' + app.core.freqText(task)),
@@ -383,7 +410,6 @@ export function registerHomeAndTasks(app) {
     ui.tasksFilter = ui.tasksFilter === 'todas' ? 'todas' : 'hoy';
     const chips = h('div', { class: 'chips' });
     const listWrap = h('div');
-    const hint = swipeHintLine();
     const drawList = () => {
       chips.innerHTML = '';
       for (const [filter, label] of [['hoy', 'Para hoy'], ['todas', 'Todas']]) {
@@ -397,7 +423,6 @@ export function registerHomeAndTasks(app) {
       const tasks = (ui.tasksFilter === 'hoy' ? dueToday : [...S.tasks]).slice().sort((first, second) =>
         (Number(second.priority) || 0) - (Number(first.priority) || 0) ||
         (first.time || '99:99').localeCompare(second.time || '99:99') ||          (first.title || '').localeCompare(second.title || '', 'es'));
-      hint.style.display = tasks.length ? '' : 'none';
       if (!tasks.length) {
         listWrap.append(emptyState('spark', ui.tasksFilter === 'hoy' ? 'Día despejado' : 'Aún no hay actividades',
           ui.tasksFilter === 'hoy' ? 'No tienes actividades previstas para hoy.' : 'Crea tu primer hábito o actividad guiada y personalízala a tu manera.',
@@ -406,7 +431,7 @@ export function registerHomeAndTasks(app) {
       }
       listWrap.append(h('div', { class: 'activity-card-list' }, tasks.map(task => taskActivityCard(task, today))));
     };
-    wrap.append(chips, listWrap, hint);
+    wrap.append(chips, listWrap);
     drawList();
     return wrap;
   }

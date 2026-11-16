@@ -9,7 +9,9 @@ export function registerForms(app) {
     addDaysYmd,
     dowIdx,
     COLORS,
-    ICON_CHOICES,
+    EMOJI_GROUPS,
+    isEmoji,
+    emojiOf,
     WEEK_L,
     GIFT_STATUSES,
     OCCASIONS,
@@ -39,36 +41,59 @@ export function registerForms(app) {
       editing ? h('button', { class: 'icon-btn', 'aria-label': 'Eliminar tarea', onclick: () => deleteTask(editing.id), html: icon('trash', 18) }) : null
     ));
     wrap.append(h('p', { class: 'big-q' }, '¿Qué tienes que hacer?'));
-    let iconId = editing ? (editing.icon || 'star') : 'star';
-    const quickIconCount = 8;
-    const iconGrid = h('div', { class: 'icon-grid' });
-    let showingAll = !ICON_CHOICES.slice(0, quickIconCount).some(choice => choice.id === iconId);
-
-    function drawIcons() {
-      iconGrid.innerHTML = '';
-      const choices = showingAll ? ICON_CHOICES : ICON_CHOICES.slice(0, quickIconCount);
-      for (const choice of choices) {
-        iconGrid.append(h('button', {
-          class: 'icon-opt' + (choice.id === iconId ? ' on' : ''),
-          onclick: event => {
-            iconId = choice.id;
-            [...iconGrid.children].forEach(item => item.classList.remove('on'));
-            event.currentTarget.classList.add('on');
-          }
-        }, h('span', { html: icon(choice.id, 22) }), h('span', null, choice.label)));
+    // El emoji se guarda en `icon` (campo de texto que ya existía): los hábitos
+    // antiguos conservan su id de icono y reciben un emoji coherente al editarse.
+    let iconId = editing ? emojiOf(editing) : '✨';
+    const emojiPreview = h('span', {
+      class: 'habit-emoji emoji-preview',
+      'aria-hidden': 'true',
+      style: 'width:52px;height:52px;font-size:31px;background:var(--glow-3)'
+    }, iconId);
+    const emojiGrids = h('div', { class: 'emoji-picker' });
+    const emojiFree = h('input', {
+      class: 'input', type: 'text', id: 'form-emoji', maxlength: '16', autocomplete: 'off',
+      placeholder: 'Escribe o pega un emoji (🧘)', 'aria-describedby': 'form-emoji-hint'
+    });
+    function drawEmojiPicker() {
+      emojiGrids.innerHTML = '';
+      for (const group of EMOJI_GROUPS) {
+        const grid = h('div', { class: 'emoji-grid', role: 'group', 'aria-label': group.label });
+        for (const emoji of group.emojis) {
+          grid.append(h('button', {
+            type: 'button',
+            class: 'emoji-opt' + (emoji === iconId ? ' on' : ''),
+            'aria-label': 'Usar ' + emoji,
+            'aria-pressed': emoji === iconId ? 'true' : 'false',
+            onclick: () => selectEmoji(emoji)
+          }, emoji));
+        }
+        emojiGrids.append(h('div', { class: 'emoji-group' },
+          h('p', { class: 'emoji-group-title', 'aria-hidden': 'true' }, group.label),
+          grid
+        ));
       }
     }
-    drawIcons();
-    const iconToggle = h('button', {
-      class: 'btn btn-soft',
-      style: 'width:100%;margin:-8px 0 18px;font-size:13px',
-      onclick: () => {
-        showingAll = !showingAll;
-        drawIcons();
-        iconToggle.textContent = showingAll ? 'Mostrar menos' : 'Mostrar más iconos';
-      }
-    }, showingAll ? 'Mostrar menos' : 'Mostrar más iconos');
-    wrap.append(iconGrid, iconToggle);
+    function selectEmoji(value) {
+      iconId = value;
+      emojiPreview.textContent = value;
+      emojiFree.value = isEmoji(value) ? value : '';
+      drawEmojiPicker();
+    }
+    emojiFree.addEventListener('input', () => {
+      const value = emojiFree.value.trim();
+      if (!value || !isEmoji(value)) return;
+      iconId = value;
+      emojiPreview.textContent = value;
+      drawEmojiPicker();
+    });
+    drawEmojiPicker();
+    wrap.append(
+      h('p', { class: 'big-q' }, '¿Con qué emoji lo reconoces?'),
+      h('div', { class: 'emoji-current' }, emojiPreview, h('span', { class: 'field-hint', style: 'margin:0' }, 'Elige uno o escribe el tuyo.')),
+      emojiGrids,
+      h('div', { class: 'field' }, h('label', { for: 'form-emoji' }, 'Otro emoji'), emojiFree,
+        h('p', { class: 'field-hint', id: 'form-emoji-hint' }, 'Vale cualquier emoji nativo: se guarda tal cual.'))
+    );
 
     const titleInput = h('input', { class: 'input', type: 'text', id: 'form-title', placeholder: 'Ej. Sacar al perro', value: editing ? editing.title : '', maxlength: '60' });
     wrap.append(h('div', { class: 'field' }, h('label', { for: 'form-title' }, 'Nombre de la tarea'), titleInput));
@@ -413,9 +438,10 @@ export function registerForms(app) {
       const data = template && template.data ? template.data : template;
       if (!data || typeof data !== 'object') return;
       titleInput.value = data.title || '';
-      iconId = data.icon || 'star';
-      showingAll = !ICON_CHOICES.slice(0, quickIconCount).some(choice => choice.id === iconId);
-      drawIcons();
+      iconId = emojiOf({ icon: data.icon, cat: data.cat });
+      emojiPreview.textContent = iconId;
+      emojiFree.value = data.icon && isEmoji(data.icon) ? iconId : '';
+      drawEmojiPicker();
       if (![...categorySelect.options].some(option => option.value === (data.cat || 'Hábitos'))) {
         categorySelect.append(h('option', { value: data.cat }, data.cat));
       }

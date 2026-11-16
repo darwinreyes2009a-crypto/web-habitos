@@ -1,4 +1,4 @@
-import '../app-sync.js?v=72';
+import '../app-sync.js?v=84';
 import { createAppContext } from './core/context.js';
 import { registerDom } from './core/dom.js';
 import { registerDates } from './core/dates.js';
@@ -8,6 +8,7 @@ import { registerSecurity } from './core/security.js';
 import { registerInteractions } from './core/interactions.js';
 import { registerStore } from './state/store.js';
 import { registerRoutines } from './core/routines.js';
+import { registerDayPlan } from './core/dayplan.js';
 import { registerRouter } from './navigation/router.js';
 import { registerOverlays } from './components/overlays.js';
 import { registerMedia } from './services/media.js';
@@ -93,6 +94,7 @@ registerSecurity(app);
 registerInteractions(app);
 registerStore(app);
 registerRoutines(app);
+registerDayPlan(app);
 registerRouter(app);
 registerOverlays(app);
 
@@ -174,12 +176,20 @@ function registerExitGuard() {
 }
 
 async function boot() {
-  if (app.services.sync) {
+  const sync = app.services.sync;
+  if (sync) {
     const accountUid = app.state.activeAccountUid();
-    if (accountUid) {
+    // Nube caída: se comprueba su salud ANTES de tocar la sesión de Supabase,
+    // que sin red puede quedarse reintentando el refresh indefinidamente. Si no
+    // contesta, se abre la copia local de la cuenta activa. Con la nube viva, el
+    // sondeo responde y el arranque sigue exactamente igual que antes.
+    if (accountUid && sync.localSession && !sync.localSession.active() && sync.probe) {
+      if (!(await sync.probe())) sync.enterLocalSession(accountUid);
+    }
+    if (accountUid && !(sync.localSession && sync.localSession.active())) {
       try {
-        const user = await app.services.sync.getUser();
-        if (!user || user.id !== accountUid) await app.services.sync.restoreSession(accountUid);
+        const user = await sync.getUser();
+        if (!user || user.id !== accountUid) await sync.restoreSession(accountUid);
       } catch (error) {}
     }
   }

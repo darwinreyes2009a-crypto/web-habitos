@@ -36,6 +36,7 @@ export function registerAuth(app) {
   function softLogout() {
     offlineAccountAccess = false;
     clearPushTimer();
+    if (sync && sync.localSession) sync.localSession.end();
     if (sync && sync.realtime) sync.realtime.stop();
     if (sync && sync.cancelRetry) sync.cancelRetry();
     sync.status.state = 'loggedout';
@@ -55,6 +56,21 @@ export function registerAuth(app) {
         mode = 'login';
         loginEmail = account.email || '';
         render();
+        return;
+      }
+      if (user.localOnly) {
+        // La nube no responde: se abre la copia local de esta cuenta sin tocar
+        // el token guardado. Al volver la conexión, recargar recupera la nube.
+        localStorage.setItem(ACC_ACTIVE, account.uid);
+        const localRaw = localStorage.getItem(ACC_PREFIX + account.uid);
+        replaceState(localRaw ? stateFromRaw(localRaw) : defaultState());
+        switchProfileData();
+        if (window.__rebuildPrevCaches) window.__rebuildPrevCaches();
+        offlineAccountAccess = true;
+        session.unlocked = false;
+        applyTheme();
+        render();
+        toast('La nube no responde · usando la copia local');
         return;
       }
       localStorage.setItem(ACC_ACTIVE, account.uid);
@@ -222,6 +238,7 @@ export function registerAuth(app) {
         sync.status.state = typeof navigator === 'undefined' || navigator.onLine !== false ? 'online' : 'offline';
         message.style.color = '';
         message.textContent = '';
+        if (sync.localSession) sync.localSession.end();
         claimAccount(user.id, user.email || email);
         offlineAccountAccess = true;
         session.unlocked = false;

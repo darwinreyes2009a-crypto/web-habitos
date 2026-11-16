@@ -83,6 +83,7 @@ async function syncGetUser() {
     const { data } = await window.sb.auth.getSession();
     const user = data && data.session ? data.session.user : null;
     if (user) {
+      endLocalSession();
       // Una lectura local de la sesión puede funcionar sin red. No declares
       // una sincronización online si el navegador ya sabe que no hay conexión,
       // ni revivas una sesión que el usuario cerró mientras había una llamada.
@@ -133,18 +134,106 @@ function saveAuthBlob(session) {
   } catch (e) {}
 })();
 
+/* ---------- sesión local de emergencia (nube caída) ------------------------
+   Si el proyecto de Supabase no responde (DNS caído, servidor inaccesible o
+   simplemente no hay red), la copia local de una cuenta del dispositivo debe
+   poder abrir la app para seguir trabajando. Se activa SOLO cuando la nube no
+   sirve: red caída, sin respuesta o clave rechazada (401/403), que es lo mismo
+   que decir que no se puede sincronizar. Con la nube sana no interviene.
+   Mientras dura, no se sube ni se baja nada (el estado
+   queda en 'offline', así que `syncIsOnline()` es falso y los datos locales
+   son la única fuente de verdad). Se desactiva sola al restaurar una sesión
+   real. Para revertirla basta con borrar este bloque y su uso en
+   `restoreSession`, `syncBoot`, `syncGetUser` y `scheduleSyncRetry`. */
+const LOCAL_SESSION = { active: false };
+
+function localCopyExists(uid) {
+  if (!uid) return false;
+  try { return !!localStorage.getItem('dailyhub_v2:acc:' + uid); } catch (e) { return false; }
+}
+
+function localCopyEmail(uid) {
+  try {
+    const accounts = JSON.parse(localStorage.getItem('dailyhub_v2:accounts') || '[]');
+    const found = (Array.isArray(accounts) ? accounts : []).find(account => account && account.uid === uid);
+    return (found && found.email) || '';
+  } catch (e) { return ''; }
+}
+
+/* ¿La nube está utilizable? Se pregunta a `/auth/v1/settings`: el endpoint de
+   ajustes del proyecto responde 200 con una clave pública válida y exige la
+   clave, así que distingue "proyecto vivo" de "proyecto pausado o clave
+   revocada". (La raíz de REST no sirve: con una clave publishable devuelve
+   401 UNAUTHORIZED_INVALID_API_KEY_TYPE aunque el proyecto esté perfecto.)
+   Se considera inservible si la red falla, si no hay respuesta o si la clave
+   es rechazada (401/403). Cualquier otra respuesta deja el arranque normal. */
+async function cloudResponds(timeoutMs) {
+  if (typeof fetch !== 'function') return false;
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs || 5000) : null;
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/settings', {
+      method: 'GET', headers: { apikey: SUPABASE_KEY, Accept: 'application/json' }, cache: 'no-store',
+      signal: controller ? controller.signal : undefined
+    });
+    if (!res || typeof res.status !== 'number') return false;
+    return res.status !== 401 && res.status !== 403;
+  } catch (e) {
+    return false;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function beginLocalSession(uid) {
+  // Sin copia local no hay nada que abrir: se sigue el camino normal (acceso).
+  if (!uid || !localCopyExists(uid)) return null;
+  LOCAL_SESSION.active = true;
+  // Sin nube no hay token que refrescar: se detiene el temporizador para que no
+  // siga golpeando un dominio caído (ruido de consola y esperas inútiles).
+  try { if (window.sb && window.sb.auth && window.sb.auth.stopAutoRefresh) window.sb.auth.stopAutoRefresh(); } catch (e) {}
+  SYNC_STATUS.state = 'offline';
+  SYNC_STATUS.kind = 'network';
+  SYNC_STATUS.http = null;
+  SYNC_STATUS.error = 'La nube no responde · usando la copia local';
+  SYNC_STATUS.retryAt = null;
+  return { id: uid, email: localCopyEmail(uid), localOnly: true };
+}
+
+function endLocalSession() { LOCAL_SESSION.active = false; }
+
 async function restoreSession(userId) {
   try {
     const raw = localStorage.getItem(authBlobKey(userId));
-    if (!raw) return null;
+    if (!raw) {
+      // Sin token guardado no hay forma de autenticarse contra la nube: solo
+      // se abre la copia local si la cuenta vive en este dispositivo y la
+      // nube no responde.
+      if (localCopyExists(userId) && !(await cloudResponds())) return beginLocalSession(userId);
+      SYNC_STATUS.state = 'loggedout';
+      return null;
+    }
     const blob = JSON.parse(raw);
-    if (!blob.access_token) { SYNC_STATUS.state = 'loggedout'; return null; }
+    if (!blob.access_token) {
+      if (localCopyExists(userId) && !(await cloudResponds())) return beginLocalSession(userId);
+      SYNC_STATUS.state = 'loggedout';
+      return null;
+    }
     await window.sb.auth.setSession({ access_token: blob.access_token, refresh_token: blob.refresh_token });
     const { data } = await window.sb.auth.getSession();
     const user = data && data.session ? data.session.user : null;
-    if (!user || user.id !== userId) { SYNC_STATUS.state = 'loggedout'; return null; }
+    if (!user || user.id !== userId) {
+      // Un usuario distinto es un rechazo de cuenta, no una caída: se respeta.
+      if (!user && localCopyExists(userId) && !(await cloudResponds())) return beginLocalSession(userId);
+      SYNC_STATUS.state = 'loggedout';
+      return null;
+    }
+    endLocalSession();
     return user;
   } catch (e) {
+    // Fallo de red con copia local: se entra en modo local en vez de dejar al
+    // usuario en la pantalla de acceso. Un rechazo del servidor no entra aquí.
+    if (localCopyExists(userId) && classifySyncError(e) === 'network') return beginLocalSession(userId);
     noteSyncFailure(e);
     return null;
   }
@@ -161,7 +250,11 @@ async function removeAuthBlob(userId) {
 }
 
 /* ---------- mapping local <-> Supabase ---------- */
-const SB_TABLES = ['profiles', 'tasks', 'people', 'gifts', 'notes', 'subjects', 'class_slots', 'class_inbox', 'class_sessions', 'class_breaks', 'class_offs'];
+/* El orden importa al SUBIR: cada tabla va después de las que referencia.
+   Antes `notes` iba antes de `subjects` y, con una nube vacía, el primer push
+   fallaba siempre con 23503 (notes_subject_id_fkey): Postgres no admite la
+   nota si su asignatura aún no existe. Padres primero, hijas después. */
+const SB_TABLES = ['profiles', 'people', 'subjects', 'tasks', 'gifts', 'notes', 'class_slots', 'class_sessions', 'class_inbox', 'class_breaks', 'class_offs'];
 
 const toMs = (v) => (v ? new Date(v).getTime() : 0);
 const toIso = (v) => (v ? new Date(v).toISOString() : null);
@@ -613,6 +706,10 @@ function shouldRetry(kind, streak) {
 }
 
 function scheduleSyncRetry(delayOverride) {
+  // En sesión local de emergencia no se reintenta: la nube ya consta caída y
+  // cada reintento solo llenaría la consola de errores. Se reintenta al
+  // recargar o al pulsar «Reintentar» cuando el servicio vuelva.
+  if (LOCAL_SESSION.active) return;
   if (__syncRetryTimer || SYNC_STATUS.state === 'loggedout' || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
   const kind = SYNC_STATUS.kind || 'network';
   if (kind !== 'network') {
@@ -1221,6 +1318,13 @@ function realtimeStop() {
 
 /* ---------- boot de sincronización (lo llama el composition root) ---------- */
 async function syncBoot() {
+  // Con sesión local de emergencia no hay nada que sincronizar: la nube no
+  // responde y `syncIsOnline()` ya es falso para push/pull.
+  if (LOCAL_SESSION.active) {
+    SYNC_STATUS.state = 'offline';
+    if (window.DailyHub && typeof window.DailyHub.render === 'function') window.DailyHub.render();
+    return;
+  }
   const user = await syncGetUser();
   if (!user) {
     if (SYNC_STATUS.state === 'offline') {
@@ -1281,6 +1385,8 @@ window.DailySync = {
   boot: syncBoot, push: queuedSyncPush, pull: queuedSyncPull, status: SYNC_STATUS, badge: syncBadge,
   getUser: syncGetUser, realtime: { start: realtimeStart, stop: realtimeStop },
   restoreSession, removeAuthBlob, authBlobKey, cancelRetry: cancelSyncRetry,
+  localSession: { active: () => LOCAL_SESSION.active, end: endLocalSession },
+  probe: cloudResponds, enterLocalSession: beginLocalSession,
   config: { url: SUPABASE_URL, key: SUPABASE_KEY },
   /* Superficie mínima para tools/test-sync-errors.mjs */
   classify: classifySyncError, errorStatus: errorHttpStatus, errorLabel: syncErrorLabel,

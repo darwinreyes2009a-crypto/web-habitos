@@ -12,18 +12,23 @@
 
 :root {
   /* --- Color: superficies (de menos a más elevada) --------------------- */
-  --bg: #F8FAFC;            /* lienzo de la aplicación */
-  --surface: #FFFFFF;       /* tarjetas, filas, hojas */
-  --surface-2: #F1F5F9;      /* zonas hundidas, chips, campos */
-  --surface-3: #E8EDF3;      /* hover sobre superficie, tracks de barra */
-  --nav-bg: rgba(255, 255, 255, .94);
+  /* Paleta cálida: lienzo crema, tarjetas apenas más claras y zonas
+     hundidas en el mismo tono tostado. El contraste de --text/--text-2/
+     --text-3 sobre estas superficies lo valida tools/test-contrast.mjs. */
+  --bg: #FAF4E9;            /* lienzo de la aplicación (crema) */
+  --surface: #FFFCF7;       /* tarjetas, filas, hojas (crema clara) */
+  --surface-2: #F4EBDB;      /* zonas hundidas, chips, campos */
+  --surface-3: #ECDFC9;      /* hover sobre superficie, tracks de barra */
+  --nav-bg: rgba(255, 252, 247, .94);
 
   /* --- Color: marca y acentos ------------------------------------------ */
-  --primary: #2563EB;
+  /* Un punto más profundo que antes: sobre la superficie crema el azul de
+     marca se quedaba en el límite de 4,5:1 en las zonas hundidas. */
+  --primary: #2358D6;
   --primary-2: #3B82F6;      /* hover / apoyo sobre el primario */
   --primary-ink: #1D4ED8;    /* primario legible sobre superficie clara */
-  --primary-soft: #EFF6FF;   /* relleno tenue */
-  --primary-softer: #DBEAFE; /* relleno más marcado y bordes de énfasis */
+  --primary-soft: #EDF3FE;   /* relleno tenue */
+  --primary-softer: #D8E4FD; /* relleno más marcado y bordes de énfasis */
 
   /* Relleno sólido con texto claro encima. En oscuro `--primary` se aclara
      para poder usarse como texto sobre superficies oscuras, así que deja de
@@ -41,25 +46,34 @@
 
   /* Avisos flotantes: en claro son oscuros y en oscuro se invierten, para que
      siempre haya contraste alto sin recurrir a un negro o un blanco fijos. */
-  --toast-bg: #0F172A;
-  --toast-fg: #FFFFFF;
-  --toast-action: #93C5FD;
+  --toast-bg: #241C14;
+  --toast-fg: #FFFCF7;
+  --toast-action: #BFD4FB;
 
-  --text: #0F172A;           /* texto principal */
-  --text-2: #475569;         /* texto secundario */
-  --text-3: #5E6D84;         /* metadatos y placeholders */
+  --text: #2B2118;           /* texto principal (marrón muy oscuro) */
+  --text-2: #5A4E42;         /* texto secundario */
+  --text-3: #6A5D4F;         /* metadatos y placeholders */
 
-  --border: #E2E8F0;         /* borde visible */
-  --border-soft: #EEF2F7;    /* separadores y bordes discretos */
+  --border: #E9DCC7;         /* borde visible */
+  --border-soft: #F1E7D7;    /* separadores y bordes discretos */
 
-  --green: #15803D;  --green-soft: #F0FDF4;  --green-border: #BBF7D0;
-  --amber: #B45309;  --amber-soft: #FFFBEB;  --amber-border: #FDE68A;
-  --violet: #6D28D9; --violet-soft: #F5F3FF; --violet-border: #DDD6FE;
-  --danger: #B91C1C; --danger-soft: #FEF2F2; --danger-border: #FECACA;
+  --green: #15803D;  --green-soft: #EDF7EE;  --green-border: #C4E8CB;
+  --amber: #B45309;  --amber-soft: #FDF3E0;  --amber-border: #F0D9AB;
+  --violet: #6D28D9; --violet-soft: #F3EFFB; --violet-border: #DED3F5;
+  --danger: #B91C1C; --danger-soft: #FCEEEA; --danger-border: #F4CFC5;
+
+  /* Fondos circulares suaves del avatar de hábito ("color glow"). Se asignan
+     de forma estable por hábito; en oscuro bajan a tintes translúcidos. */
+  --glow-1: #FEF3E2;
+  --glow-2: #EAF7EC;
+  --glow-3: #EAF1FE;
+  --glow-4: #F4EDFD;
+  --glow-5: #FDECF1;
+  --glow-6: #E8F6F7;
 
   /* Sombra de la flecha del <select>: se redefine en oscuro porque un SVG
      embebido no puede heredar el color del texto. */
-  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237A6A58' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   /* --- Tipografía: diez roles y nada más --------------------------------
      Cada rol fluye de 400px a 1200px. El tope es el valor histórico, así que
@@ -105,19 +119,23 @@
   --r-s: 12px;
   --r-m: 16px;
   --r-l: 20px;
-  --r-xl: 24px;
+  --r-xl: 26px;
   --r-pill: 999px;
+  /* Radio orgánico de las superficies grandes (tarjetas, hojas, cabecera).
+     Es el nombre que pedía la guía visual; --r-xl conserva el mismo valor
+     para que las reglas antiguas que lo usan no se desalineen. */
+  --radius-lg: 26px;
 
   /* --- Sistema: una receta por familia de control -----------------------
      Antes cada tarjeta, botón y campo repetía su radio, su relleno y su
      transición a mano, y se desviaban entre pantallas. Estas recetas son el
      único punto de ajuste; las pantallas solo las consumen. ------------- */
-  --card-radius: var(--r-xl);
+  --card-radius: var(--radius-lg);
   --card-padding: var(--sp-4);
   --card-padding-sm: var(--sp-3);
   --card-bg: var(--surface);
   --card-border: 1px solid var(--border-soft);
-  --card-shadow: var(--sh-s);
+  --card-shadow: var(--sh-diffuse);
   --card-shadow-hover: var(--sh-m);
   --card-hover-lift: translateY(-1px);
   --card-transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
@@ -147,6 +165,10 @@
   --scrim-strong: rgba(15, 23, 42, .72);
 
   /* --- Profundidad: tres niveles, sin más ------------------------------ */
+  /* Sombra difusa de reposo de las tarjetas: casi no se ve, pero separa la
+     superficie del lienzo sin dibujar un borde duro. El tema oscuro la sube
+     porque sobre medianoche un 5% de negro no existe. */
+  --sh-diffuse: 0 4px 20px -2px rgba(0, 0, 0, .05);
   --sh-s: 0 1px 2px rgba(15, 23, 42, .05);            /* reposo */
   --sh-m: 0 6px 20px rgba(15, 23, 42, .06);           /* elevado: sheets */
   --sh-l: 0 12px 40px rgba(15, 23, 42, .12);          /* flotante: toast */
@@ -179,11 +201,13 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0B1220;
-  --surface: #111A2C;
-  --surface-2: #16213A;
-  --surface-3: #1E2B47;
-  --nav-bg: rgba(17, 26, 44, .94);
+  /* Pizarra/medianoche: frío pero no negro, con las mismas capas que el
+     tema claro para que la jerarquía se lea igual. */
+  --bg: #0A101B;
+  --surface: #111A27;
+  --surface-2: #17212F;
+  --surface-3: #1F2B3C;
+  --nav-bg: rgba(17, 26, 39, .94);
 
   /* #3B82F6 se quedaba en 4,35:1 sobre --surface-2 (enlaces y foco en zonas
      hundidas); un punto más claro devuelve 5,2:1 sin perder la marca. */
@@ -209,19 +233,27 @@
   --toast-fg: #0B1220;
   --toast-action: #1D4ED8;
 
-  --text: #E6EDF7;
-  --text-2: #94A3B8;
-  --text-3: #7A8AA3;
-  --border: #243149;
-  --border-soft: #1B2740;
+  --text: #E7EDF6;
+  --text-2: #A6B2C4;
+  --text-3: #8B99AC;
+  --border: #26313F;
+  --border-soft: #1C2634;
 
   --green: #4ADE80;  --green-soft: rgba(34, 197, 94, .12);  --green-border: rgba(74, 222, 128, .32);
   --amber: #FBBF24;  --amber-soft: rgba(245, 158, 11, .12);  --amber-border: rgba(251, 191, 36, .32);
   --violet: #A78BFA; --violet-soft: rgba(139, 92, 246, .15); --violet-border: rgba(167, 139, 250, .32);
   --danger: #F87171; --danger-soft: rgba(239, 68, 68, .13);  --danger-border: rgba(248, 113, 113, .32);
 
+  --glow-1: rgba(251, 191, 36, .16);
+  --glow-2: rgba(74, 222, 128, .16);
+  --glow-3: rgba(96, 165, 250, .18);
+  --glow-4: rgba(167, 139, 250, .18);
+  --glow-5: rgba(248, 113, 113, .16);
+  --glow-6: rgba(45, 212, 191, .16);
+
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
+  --sh-diffuse: 0 4px 20px -2px rgba(0, 0, 0, .55);
   --sh-s: 0 1px 2px rgba(0, 0, 0, .4);
   --sh-m: 0 6px 20px rgba(0, 0, 0, .45);
   --sh-l: 0 12px 40px rgba(0, 0, 0, .55);
@@ -270,8 +302,8 @@ h5, h6 { font-size: var(--fs-item) }
 
 /* Alto contraste: refuerza bordes y textos secundarios sin cambiar el layout */
 :root[data-contrast="high"] {
-  --text-2: #475569; --text-3: #5E6D84;
-  --border: #94A3B8; --border-soft: #CBD5E1;
+  --text-2: #4A3F34; --text-3: #5A4E42;
+  --border: #A8967C; --border-soft: #D7C6AC;
 }
 :root[data-theme="dark"][data-contrast="high"] {
   --text-2: #CBD5E1; --text-3: #A8B6CC;
@@ -286,8 +318,8 @@ h5, h6 { font-size: var(--fs-item) }
    apagado: la elección explícita del usuario nunca se pisa. */
 @media (prefers-contrast: more) {
   :root[data-contrast="normal"] {
-    --text-2: #475569; --text-3: #5E6D84;
-    --border: #94A3B8; --border-soft: #CBD5E1;
+    --text-2: #4A3F34; --text-3: #5A4E42;
+    --border: #A8967C; --border-soft: #D7C6AC;
   }
   :root[data-theme="dark"][data-contrast="normal"] {
     --text-2: #CBD5E1; --text-3: #A8B6CC;

@@ -13,6 +13,7 @@
 import { registerDates } from '../src/core/dates.js';
 import { registerConstants } from '../src/core/constants.js';
 import { registerRoutines } from '../src/core/routines.js';
+import { registerDayPlan } from '../src/core/dayplan.js';
 import { registerHomeAndTasks } from '../src/features/home-tasks.js';
 import { registerClassNotes } from '../src/features/class/notes.js';
 
@@ -108,6 +109,7 @@ registerDates(app);
 registerConstants(app);
 app.core.todayStr = () => TODAY; // fecha fija y determinista para el arnés
 registerRoutines(app);
+registerDayPlan(app);
 registerHomeAndTasks(app);
 registerClassNotes(app);
 
@@ -151,16 +153,15 @@ comprueba('Actividades no muestra ninguna fecha ISO cruda', !ISO.test(screenText
 const homeScreen = app.features.home();
 comprueba('Inicio no muestra ninguna fecha ISO cruda', !ISO.test(screenTexts(homeScreen)));
 
-/* 3. Una sola pista de gesto por vista, con cualquier número de tarjetas. */
-const listHints = byClass(listScreen, 'activity-swipe-hint');
-comprueba('la lista de Actividades lleva una sola pista de gesto', listHints.length === 1, listHints.length);
-const homeHints = byClass(homeScreen, 'activity-swipe-hint');
-comprueba('Inicio no repite la pista por tarjeta (como mucho una)', homeHints.length <= 1, homeHints.length);
-comprueba('la pista de la lista es texto discreto en singular', listHints.length === 1 && /Desliza /.test(screenTexts(listHints[0])) && !/Desliza Desliza/.test(screenTexts(listHints[0])), screenTexts(listHints[0] || {}));
-// Con la lista vacía la pista no tiene nada que señalar y se retira.
+/* 3. Sin texto instructivo redundante: ni la pista de gesto ni su nodo.
+      La acción ya la dicen el control y el botón de la tarjeta; repetir
+      "Desliza…" en cada vista era ruido. */
+comprueba('la lista de Actividades no pinta la pista de gesto', byClass(listScreen, 'activity-swipe-hint').length === 0, byClass(listScreen, 'activity-swipe-hint').length);
+comprueba('Inicio no pinta la pista de gesto', byClass(homeScreen, 'activity-swipe-hint').length === 0, byClass(homeScreen, 'activity-swipe-hint').length);
+comprueba('ninguna vista conserva el texto "Desliza"', !/Desliza/i.test(screenTexts(listScreen)) && !/Desliza/i.test(screenTexts(homeScreen)), screenTexts(listScreen).slice(0, 90));
+// Tampoco debe reaparecer con la lista vacía.
 const tareasReservadas = tasks.splice(0, tasks.length);
-const pistaEnVacia = byClass(app.features.tasks(), 'activity-swipe-hint')[0];
-comprueba('con la lista vacía la pista queda oculta', !pistaEnVacia || pistaEnVacia.style.display === 'none', pistaEnVacia && pistaEnVacia.style.display);
+comprueba('con la lista vacía tampoco hay pista de gesto', byClass(app.features.tasks(), 'activity-swipe-hint').length === 0, byClass(app.features.tasks(), 'activity-swipe-hint').length);
 tasks.push(...tareasReservadas);
 
 /* 4. Un solo patrón de CTA: mismo estado, misma etiqueta en Inicio y lista. */

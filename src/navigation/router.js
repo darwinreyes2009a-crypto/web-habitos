@@ -178,6 +178,21 @@ export function registerRouter(app) {
     return ' · Cumple el ' + app.core.fmtShort(birthday) + ' (en ' + countdown.days + ' días)';
   }
 
+  /* Frase de cuenta atrás para la ficha de persona. La fecha se resuelve a su
+     próxima ocurrencia —las fechas anuales se repiten—, así que una fecha que
+     ya pasó este año cuenta para el siguiente en vez de dar días negativos.
+     Sin fecha (o con una fecha incompleta) devuelve cadena vacía y la tarjeta
+     no se pinta. */
+  function bdayLine(birthday, name) {
+    if (!birthday || !/^\d{4}-\d{2}-\d{2}$/.test(String(birthday))) return '';
+    const countdown = bdayCountdown(birthday);
+    if (!countdown || !Number.isFinite(countdown.days)) return '';
+    const days = countdown.days;
+    if (days === 0) return '¡Hoy es el cumple de ' + name + '! 🎂';
+    if (days === 1) return 'Falta 1 día para el cumple de ' + name + ' 🎂';
+    return 'Faltan ' + days + ' días para el cumple de ' + name + ' 🎂';
+  }
+
   const statusCls = (status) => ({
     'Idea': 'st-idea',
     'Comprar': 'st-comprar',
@@ -226,6 +241,7 @@ export function registerRouter(app) {
     countdownTxt,
     bdayCountdown,
     bdayTxt,
+    bdayLine,
     statusCls,
     giftsOf,
     sortedUpcomingGifts,

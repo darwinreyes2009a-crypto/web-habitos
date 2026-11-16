@@ -7,6 +7,7 @@ export function registerGiftsAndPeople(app) {
     fmtShort,
     todayStr,
     GIFT_STATUSES,
+    giftStatusMeta,
     REMIND_DAYS
   } = app.core;
   const { S, save } = app.state;
@@ -19,11 +20,10 @@ export function registerGiftsAndPeople(app) {
     countdownTxt,
     daysUntil,
     statusCls,
-    bdayTxt
+    bdayLine
   } = app.domain;
   const { headBar, searchBtn, formHead, emptyState, openSheet, closeOverlays, confirmDialog, toast } = app.components;
   const { deletePerson } = app.actions;
-  const { giftThumb } = app.features;
   const { pickImage, viewImage } = app.services;
 
   ui.giftFilter = ui.giftFilter || 'todas';
@@ -106,7 +106,9 @@ export function registerGiftsAndPeople(app) {
     if (!gifts.length) {
       wrap.append(emptyState('gift', 'Sin ideas todavía', 'Añade tu primera idea y asígnala a una persona.', 'Nuevo regalo', () => go('giftForm')));
     } else {
-      for (const gift of gifts.slice(0, 6)) wrap.append(giftRow(gift));
+      const upcomingGrid = h('div', { class: 'gift-grid' });
+      for (const gift of gifts.slice(0, 6)) upcomingGrid.append(giftCard(gift));
+      wrap.append(upcomingGrid);
     }
     return wrap;
   }
@@ -201,34 +203,77 @@ export function registerGiftsAndPeople(app) {
       const total = gifts.reduce((sum, gift) => sum + (Number(gift.price) || 0), 0);
       listWrap.append(h('p', { class: 'field-hint', style: 'margin:2px 0 10px' },
         gifts.length + (gifts.length === 1 ? ' regalo · ' : ' regalos · ') + fmtEur(total)));
-      for (const gift of gifts) listWrap.append(giftRow(gift, drawList));
+      const grid = h('div', { class: 'gift-grid' });
+      for (const gift of gifts) grid.append(giftCard(gift, drawList));
+      listWrap.append(grid);
     }
 
     drawList();
     return wrap;
   }
 
-  function giftRow(gift, redraw) {
+  /* ---- Tarjetas de regalo (wishlist) -------------------------------------
+     La tarjeta sustituye a la fila compacta: foto o 🎁 grande sobre fondo
+     circular, título, persona/fecha, chip de estado, presupuesto y el enlace
+     de compra. El chip NO es un adorno: sigue abriendo el menú de estado, y
+     el enlace mantiene el comportamiento de antes (abre la URL guardada). */
+
+  function giftArt(gift) {
+    const art = h('span', { class: 'gift-art' + (gift.image ? ' has-image' : '') });
+    if (!gift.image) {
+      art.append(h('span', { class: 'gift-art-emoji', 'aria-hidden': 'true' }, '🎁'));
+      return art;
+    }
+    const image = h('img', { src: gift.image, alt: '' });
+    // Si la imagen guardada ya no carga, la tarjeta vuelve al emoji en el sitio
+    // en vez de dejar un hueco roto.
+    image.onerror = () => {
+      image.remove();
+      art.classList.remove('has-image');
+      art.append(h('span', { class: 'gift-art-emoji', 'aria-hidden': 'true' }, '🎁'));
+    };
+    art.append(image);
+    return art;
+  }
+
+  function giftCard(gift, redraw) {
     const person = S.people.find(item => item.id === gift.personId);
     const link = (gift.link || '').trim();
-    return h('div', { class: 'gift-row', style: 'cursor:pointer', onclick: () => go('giftForm', { id: gift.id }) },
-      giftThumb(gift),
-      h('div', { style: 'flex:1;min-width:0' },
-        h('b', { style: 'font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' },
-          gift.starred ? h('span', { style: 'color:var(--amber);flex:none', html: icon('star', 13) }) : null,
-          h('span', { style: 'overflow:hidden;text-overflow:ellipsis' }, gift.title)
-        ),
-        h('span', { class: 'r-sub' }, (person ? person.name : 'Sin asignar') + (gift.price ? ' · ' + fmtEur(gift.price) : '') + (gift.targetDate ? ' · ' + fmtShort(gift.targetDate) + countdownTxt(gift.targetDate) : '')),
-        link ? h('a', {
-          class: 'st-link', href: link, target: '_blank', rel: 'noopener noreferrer',
-          onclick: event => event.stopPropagation()
-        }, h('span', { html: icon('external', 12) }), domainOf(link)) : null
-      ),
+    const meta = giftStatusMeta(gift.status);
+    const when = gift.targetDate ? fmtShort(gift.targetDate) + countdownTxt(gift.targetDate) : '';
+    return h('article', { class: 'gift-card', 'data-gift-id': gift.id },
       h('button', {
-        class: 'stchip ' + statusCls(gift.status),
-        title: 'Más opciones',
-        onclick: event => { event.stopPropagation(); giftMenu(gift, redraw); }
-      }, gift.status)
+        class: 'gift-card-body', type: 'button',
+        'aria-label': 'Abrir el regalo ' + gift.title + (person ? ' de ' + person.name : ''),
+        onclick: () => go('giftForm', { id: gift.id })
+      },
+        giftArt(gift),
+        h('span', { class: 'gift-card-copy' },
+          h('span', { class: 'gift-card-title' },
+            gift.starred ? h('span', { class: 'gift-card-star', 'aria-hidden': 'true', html: icon('star', 13) }) : null,
+            h('span', null, gift.title)
+          ),
+          h('span', { class: 'gift-card-who' },
+            (person ? person.name : 'Sin asignar') + (when ? ' · ' + when : ''))
+        )
+      ),
+      h('div', { class: 'gift-card-foot' },
+        h('button', {
+          class: 'stchip status-btn ' + statusCls(gift.status), type: 'button',
+          'aria-label': 'Estado del regalo ' + gift.title + ': ' + meta.label + '. Cambiar de estado',
+          onclick: event => { event.stopPropagation(); giftMenu(gift, redraw); }
+        },
+          h('span', { 'aria-hidden': 'true' }, meta.emoji),
+          meta.label
+        ),
+        h('span', { class: 'gift-budget' + (Number(gift.price) ? '' : ' none') },
+          Number(gift.price) ? fmtEur(gift.price) : 'Sin presupuesto'),
+        link ? h('a', {
+          class: 'btn btn-soft gift-link',
+          href: link, target: '_blank', rel: 'noopener noreferrer',
+          'aria-label': 'Comprar o ver el enlace de ' + gift.title + ' en ' + domainOf(link)
+        }, h('span', { class: 'ic', html: icon('external', 14) }), 'Comprar / Ver enlace') : null
+      )
     );
   }
 
@@ -246,8 +291,11 @@ export function registerGiftsAndPeople(app) {
       h('div', { style: 'display:flex;flex-wrap:wrap;gap:6px;padding:0 4px 14px' },
         GIFT_STATUSES.map(status => h('button', {
           class: 'chip' + (status === gift.status ? ' on' : ''),
-          onclick: run(() => { gift.status = status; refresh(); toast('Estado: ' + status); })
-        }, status))
+          'aria-pressed': status === gift.status ? 'true' : 'false',
+          onclick: run(() => { gift.status = status; refresh(); toast('Estado: ' + giftStatusMeta(status).label); })
+        },
+          h('span', { 'aria-hidden': 'true' }, giftStatusMeta(status).emoji),
+          giftStatusMeta(status).label))
       ),
       h('button', { class: 'set-row', onclick: run(() => { gift.starred = !gift.starred; refresh(); toast(gift.starred ? 'Marcada como favorita' : 'Quitada de favoritas'); }) },
         h('span', { class: 'r-ic', style: gift.starred ? 'background:var(--amber-soft);color:var(--amber)' : '', html: icon('star', 17) }),
@@ -598,11 +646,23 @@ export function registerGiftsAndPeople(app) {
       avatarEl(person.name, person.color, 84, person.photo),
       person.photo ? null : h('span', { class: 'contact-flag', html: icon('plus', 13) })
     );
-    wrap.append(h('div', { style: 'display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px' },
+    const personGiftCount = giftsOf(person.id).length;
+    wrap.append(h('div', { class: 'person-hero' },
       photoButton,
       h('h2', { class: 'hero-title gap-top' }, person.name),
-      h('p', { style: 'font-size:13px;color:var(--text-2);margin-top:4px' }, giftsOf(person.id).length + (giftsOf(person.id).length === 1 ? ' regalo' : ' regalos') + (person.birthday ? bdayTxt(person.birthday) : ''))
+      h('p', { class: 'person-hero-meta' }, personGiftCount + (personGiftCount === 1 ? ' regalo' : ' regalos'))
     ));
+    /* Cuenta atrás del cumpleaños: "Faltan 12 días para el cumple de Sofía 🎂".
+       bdayLine devuelve cadena vacía sin fecha (o con una fecha incompleta), y
+       resuelve la próxima ocurrencia, así que una fecha ya pasada este año
+       cuenta para el siguiente en vez de mostrar días negativos. */
+    const countdown = bdayLine(person.birthday, person.name);
+    if (countdown) wrap.append(h('div', { class: 'bday-card' }, countdown));
+    const details = person.details || {};
+    const about = [];
+    if (details.gustos) about.push({ label: 'Le gusta', value: details.gustos });
+    if (details.favoritos) about.push({ label: 'Favoritos', value: details.favoritos });
+    if (person.notes) about.push({ label: 'Detalles', value: person.notes });
     const tags = personAboutTags(person);
     const hasDetails = tags.length > 0;
     const detailsCard = h('div', { class: 'card', style: 'text-align:left;margin-bottom:20px' },
@@ -612,8 +672,14 @@ export function registerGiftsAndPeople(app) {
       )
     );
     if (hasDetails) {
+      for (const item of about.slice(0, 2)) {
+        detailsCard.append(h('div', { class: 'person-about-row' },
+          h('span', { class: 'person-about-label' }, item.label),
+          h('p', null, item.value)
+        ));
+      }
       detailsCard.append(
-        h('p', { style: 'font-size:12.5px;color:var(--text-3);margin:2px 0 12px' }, tags.join(' · ')),
+        h('div', { class: 'person-tags' }, tags.map(tag => h('span', { class: 'person-tag' }, tag))),
         h('button', { class: 'btn btn-soft', style: 'width:100%;justify-content:space-between', onclick: () => go('personAbout', { id: person.id }) },
           h('span', null, 'Ver toda la información'),
           h('span', { class: 'chev', html: icon('chev', 16) })
@@ -656,7 +722,9 @@ export function registerGiftsAndPeople(app) {
         wrap.append(h('div', { style: 'border:1.5px dashed var(--border);border-radius:var(--r-l);background:var(--surface-2);padding:16px;text-align:center;color:var(--text-3);font-size:12.5px;margin-bottom:4px' }, 'Nada aquí todavía.'));
         continue;
       }
-      for (const gift of items) wrap.append(giftRow(gift));
+      const groupGrid = h('div', { class: 'gift-grid' });
+      for (const gift of items) groupGrid.append(giftCard(gift));
+      wrap.append(groupGrid);
     }
     return wrap;
   }

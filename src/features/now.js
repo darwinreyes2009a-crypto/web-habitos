@@ -1,21 +1,131 @@
 // Pantalla "Ahora": lo que toca en este momento, en una sola vista. Responde a
 // la pregunta "¿qué hago?" sin tener que mirar el horario, las tareas y los
 // hábitos por separado.
+//
+// La tarjeta grande es la pieza central: elige entre los bloques del día
+// (clases del horario + hábitos con hora) el que está en curso y, si no hay
+// nada, muestra el siguiente con su hora. El botón ejecuta de verdad: abre
+// Modo Clase, marca el hábito o abre su ficha.
 
 export function registerNow(app) {
-  const { h, icon, todayStr, cap, WEEK_FULL } = app.core;
+  const { h, icon, todayStr, emojiAvatar } = app.core;
   const { S, save } = app.state;
   const { go, render } = app.domain;
-  const { headBar, emptyState, formHead, toast } = app.components;
+  const { formHead, toast } = app.components;
 
   const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
-  const hmOf = time => { const p = String(time || '0:00').split(':'); return (parseInt(p[0], 10) || 0) * 60 + (parseInt(p[1], 10) || 0); };
-  const leftTxt = slot => {
-    const left = hmOf(slot.end) - nowMinutes();
+  /* Minutos que quedan del bloque. Usa los límites ya normalizados (un bloque
+     nocturno termina en 1470, no en 30) para no decir "terminando" a las
+     00:15 de una clase que aún sigue. */
+  const leftOfBlock = (block, minutes) => {
+    const at = block.end > 24 * 60 && minutes < block.end - 24 * 60 ? minutes + 24 * 60 : minutes;
+    const left = block.end - at;
     if (left <= 0) return 'terminando';
     const hours = Math.floor(left / 60);
     return 'quedan ' + (hours ? hours + ' h ' : '') + (left % 60) + ' min';
   };
+  const relTxt = (start, minutes) => {
+    const left = start - minutes;
+    if (left <= 0) return 'ahora';
+    if (left < 60) return 'en ' + left + ' min';
+    return 'en ' + Math.floor(left / 60) + ' h' + (left % 60 ? ' ' + (left % 60) + ' min' : '');
+  };
+  const isPatio = slot => !!(slot && (slot.kind === 'patio' || slot.room === 'patio'));
+  const classTitle = slot => isPatio(slot) ? 'Patio' : app.class.blockNameOf(slot);
+
+  /* --- La tarjeta zen ------------------------------------------------------ */
+
+  function completeHabit(task) {
+    const today = todayStr();
+    if (app.core.isSkipped(task, today)) app.core.skipOn(task, today, false);
+    const kind = app.core.kindOf(task);
+    if (kind === 'avoid') {
+      app.features.routineSheet(task);
+      return;
+    }
+    if (kind === 'count' || kind === 'amount') app.features.setValue(task, today, app.core.targetOf(task) || 1);
+    else app.core.toggleOn(task, today);
+    task.updatedAt = Date.now();
+    save();
+    render();
+    if (app.core.haptic) app.core.haptic();
+    if (app.features.doneFx) app.features.doneFx(task.id);
+    if (app.features.dayDoneFx) app.features.dayDoneFx();
+    toast('Hecho · ' + task.title);
+  }
+
+  function zenAction(block, mode) {
+    if (!block) return h('button', { class: 'btn btn-soft', onclick: () => go('taskForm') }, 'Añadir un hábito');
+    if (block.kind === 'class') {
+      return h('button', {
+        class: 'btn ' + (mode === 'now' ? 'btn-primary' : 'btn-soft'),
+        onclick: () => go('class')
+      }, mode === 'now' ? 'Abrir clase' : 'Ver horario');
+    }
+    const task = block.task;
+    if (mode === 'next') {
+      return h('button', { class: 'btn btn-soft', onclick: () => app.features.routineSheet(task) }, 'Abrir detalle');
+    }
+    if (app.core.isDoneOn(task, todayStr())) {
+      return h('button', { class: 'btn btn-soft', onclick: () => app.features.routineSheet(task) }, 'Ver detalle');
+    }
+    return h('button', { class: 'btn btn-primary', onclick: () => completeHabit(task) }, 'Completar ahora');
+  }
+
+  function zenCard({ block, mode, descanso, minutes }) {
+    const attrs = { class: 'now-zen', 'data-mode': mode, 'aria-labelledby': 'now-zen-title' };
+    if (block && block.kind === 'habit') attrs['data-task-id'] = block.task.id;
+    const card = h('section', attrs);
+
+    let title = 'Nada programado';
+    let sub = descanso
+      ? descanso.label + ' · el horario sigue guardado'
+      : 'Aprovecha para respirar o marca un hábito';
+    let time = '';
+
+    if (block && block.kind === 'class') {
+      const slot = block.slot;
+      title = classTitle(slot);
+      time = String(slot.start).slice(0, 5) + '–' + String(slot.end).slice(0, 5);
+      if (mode === 'now') {
+        sub = leftOfBlock(block, minutes) + (app.class.roomTxt(slot) ? ' · ' + app.class.roomTxt(slot) : '');
+      } else {
+        sub = 'A las ' + String(slot.start).slice(0, 5) + ' · ' + relTxt(block.start, minutes) +
+          (app.class.roomTxt(slot) ? ' · ' + app.class.roomTxt(slot) : '');
+      }
+    } else if (block && block.kind === 'habit') {
+      const task = block.task;
+      const done = app.core.isDoneOn(task, todayStr());
+      title = task.title;
+      time = app.core.minutesTxt(block.start);
+      sub = mode === 'now'
+        ? (done ? 'Completado hoy' : 'Programado a las ' + time + ' · sin completar')
+        : 'A las ' + time + ' · ' + relTxt(block.start, minutes);
+    }
+
+    card.append(h('div', { class: 'zen-top' },
+      h('span', { class: 'zen-eyebrow' }, mode === 'now' ? 'Ahora' : block ? 'Después' : 'Ahora'),
+      time ? h('span', { class: 'zen-time' }, time) : null
+    ));
+    card.append(h('div', { class: 'zen-main' },
+      block && block.kind === 'habit'
+        ? emojiAvatar(block.task, 56)
+        : h('span', { class: 'zen-ico', 'aria-hidden': 'true', html: icon(block && block.kind === 'class' ? 'calendar' : 'moon', 26) }),
+      h('div', { class: 'zen-copy' },
+        h('b', { id: 'now-zen-title' }, title),
+        h('span', null, sub)
+      )
+    ));
+    if (!block) {
+      card.append(h('p', { class: 'zen-hint' }, descanso
+        ? 'Hoy no tienes clases y no queda ningún hábito con hora.'
+        : 'No hay nada a esta hora. Disfruta el hueco.'));
+    } else if (mode !== 'now') {
+      card.append(h('p', { class: 'zen-hint' }, 'Ahora mismo no hay nada programado.'));
+    }
+    card.append(zenAction(block, mode));
+    return card;
+  }
 
   function scrNow() {
     const today = todayStr();
@@ -25,57 +135,15 @@ export function registerNow(app) {
     const descanso = app.class.todayBreak ? app.class.todayBreak() : null;
     const slots = app.class.slotsOnDate ? app.class.slotsOnDate(today) : [];
     const minutes = nowMinutes();
-    const actual = slots.find(slot => hmOf(slot.start) <= minutes && minutes < hmOf(slot.end)) || null;
-    const siguiente = slots.find(slot => hmOf(slot.start) > minutes) || null;
-
-    /* --- Bloque grande: la clase de ahora o la próxima ------------------- */
-    if (descanso) {
-      wrap.append(h('div', { class: 'now-hero rest' },
-        h('span', { class: 'ic', html: icon('moon', 30) }),
-        h('div', null,
-          h('b', null, descanso.label),
-          h('span', null, 'Hoy no tienes clases · ' + (slots.length ? 'el horario sigue guardado' : 'aprovecha el día'))
-        )
-      ));
-    } else if (actual) {
-      const patio = actual.kind === 'patio' || actual.room === 'patio';
-      wrap.append(h('div', { class: 'now-hero live', style: 'border-left-color:' + (patio ? 'var(--amber)' : app.class.blockColorOf(actual)) },
-        h('span', { class: 'now-badge' }, 'AHORA'),
-        h('div', { style: 'flex:1;min-width:0' },
-          h('b', null, patio ? 'Patio' : app.class.blockNameOf(actual)),
-          h('span', null, String(actual.start).slice(0, 5) + '–' + String(actual.end).slice(0, 5) + ' · ' + leftTxt(actual) + (app.class.roomTxt(actual) ? ' · ' + app.class.roomTxt(actual) : ''))
-        ),
-        h('button', { class: 'btn btn-primary', style: 'padding:9px 14px;font-size:13px', onclick: () => go('class') }, 'Abrir clase')
-      ));
-    } else if (siguiente) {
-      const patio = siguiente.kind === 'patio' || siguiente.room === 'patio';
-      wrap.append(h('div', { class: 'now-hero' },
-        h('span', { class: 'now-badge idle' }, 'DESPUÉS'),
-        h('div', { style: 'flex:1;min-width:0' },
-          h('b', null, patio ? 'Patio' : app.class.blockNameOf(siguiente)),
-          h('span', null, 'A las ' + String(siguiente.start).slice(0, 5) + ' · ' + (() => {
-            const left = hmOf(siguiente.start) - minutes;
-            if (left <= 0) return 'ahora mismo';
-            if (left < 60) return 'en ' + left + ' min';
-            return 'en ' + Math.floor(left / 60) + ' h ' + (left % 60 ? (left % 60) + ' min' : '');
-          })())
-        ),
-        h('button', { class: 'btn btn-soft', style: 'padding:9px 14px;font-size:13px', onclick: () => go('class') }, 'Ver horario')
-      ));
-    } else if (slots.length) {
-      wrap.append(h('div', { class: 'now-hero' },
-        h('span', { class: 'ic', html: icon('check', 28) }),
-        h('div', null, h('b', null, 'Clases terminadas'), h('span', null, 'No te queda nada más por hoy'))
-      ));
-    } else {
-      wrap.append(h('div', { class: 'now-hero' },
-        h('span', { class: 'ic', html: icon('calendar', 28) }),
-        h('div', null, h('b', null, 'Hoy no tienes clases'), h('span', null, WEEK_FULL[app.core.dowIdx(today)] + ' libre en el horario'))
-      ));
-    }
+    const dueTasks = (S.tasks || []).filter(task => app.core.isDueOn(task, today));
+    const blocks = app.core.buildDayBlocks({ slots, tasks: dueTasks, ymd: today, isDueOn: app.core.isDueOn });
+    const { current, next } = app.core.pickDayBlock(blocks, minutes);
+    wrap.append(zenCard(current
+      ? { block: current, mode: 'now', minutes, descanso }
+      : { block: next, mode: 'next', minutes, descanso }));
 
     /* --- Tareas de hoy ---------------------------------------------------- */
-    const hoy = (S.tasks || []).filter(task => app.core.isDueOn(task, today));
+    const hoy = dueTasks;
     const pendientes = hoy.filter(task => !app.core.isDoneOn(task, today));
     const hechas = hoy.length - pendientes.length;
 

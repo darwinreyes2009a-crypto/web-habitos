@@ -1,5 +1,7 @@
 import { registerRoutines } from '../src/core/routines.js';
+import { registerDayPlan } from '../src/core/dayplan.js';
 import { registerHomeAndTasks } from '../src/features/home-tasks.js';
+import { registerConstants } from '../src/core/constants.js';
 
 const today = '2026-10-05';
 const tasks = [
@@ -66,7 +68,9 @@ const app = {
   },
   actions: {}, services: {}
 };
+registerConstants(app);
 registerRoutines(app);
+registerDayPlan(app);
 app.core.avatarEl = () => null;
 app.core.cap = value => value;
 app.core.toYmd = value => value;
@@ -147,7 +151,15 @@ if (!homeCard) throw new Error('Home should render habits with the same clear vi
 if (!String(homeCard.attrs.class).includes('home-activity-card')) throw new Error('Home should mark its activity tiles for the compact image-grid layout');
 if (!findNode(homeCard, node => node.attrs && String(node.attrs.class || '').split(/\s+/).includes('home-activity-art'))) throw new Error('Home tiles should show a routine image or a large icon');
 if (!findNode(homeCard, node => node.attrs && String(node.attrs.class || '').split(/\s+/).includes('activity-card-quick-action'))) throw new Error('Home tiles should expose a clear primary action');
-if (!findNode(home, node => node.attrs && String(node.attrs.class || '').split(/\s+/).includes('home-day-summary'))) throw new Error('Home should summarize today at the top of the activity tiles');
+const summary = findNode(home, node => node.attrs && String(node.attrs.class || '').split(/\s+/).includes('home-day-summary'));
+if (!summary) throw new Error('Home should summarize today at the top of the activity tiles');
+const doneToday = tasks.filter(task => app.core.isDoneOn(task, today)).length;
+const summaryCopy = 'Llevas ' + doneToday + ' de 3 hábitos completados hoy';
+if (!summary.textContent.includes(summaryCopy)) throw new Error('Home should say how many habits are done today ("' + summaryCopy + '"): ' + summary.textContent);
+const progress = findNode(summary, node => node.attrs && node.attrs.role === 'progressbar');
+if (!progress) throw new Error('The Home summary must expose an accessible progress bar');
+if (progress.attrs['aria-valuemin'] !== '0' || progress.attrs['aria-valuenow'] !== String(doneToday) || progress.attrs['aria-valuemax'] !== '3') throw new Error('The progress bar must report the real completion numbers: ' + JSON.stringify(progress.attrs));
+if (!String(progress.attrs['aria-valuetext'] || '').includes(doneToday + ' de 3 hábitos completados hoy')) throw new Error('The progress bar needs a readable aria-valuetext');
 swipe(homeCard, 40, 140);
 if (!walk.completions.includes(today)) throw new Error('The same swipe should complete a habit from Home');
 const refreshedHomeCard = findNode(home, node => node.tag === 'article' && node.attrs['data-task-id'] === 'walk');

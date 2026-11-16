@@ -3,7 +3,7 @@
 // anual y la hoja de detalle de un día.
 
 export function registerTaskRow(app) {
-  const { h, icon, todayStr, fmtLong, WEEK_L, uid } = app.core;
+  const { h, icon, emojiAvatar, todayStr, fmtLong, WEEK_L, uid } = app.core;
   const { S, save } = app.state;
   const { toast, confirmDialog, openSheet, closeOverlays } = app.components;
   const {
@@ -13,6 +13,92 @@ export function registerTaskRow(app) {
   } = app.core;
 
   const kindLabel = id => (app.core.KINDS.find(kind => kind.id === id) || app.core.KINDS[0]).label;
+
+  /* --- Celebración al completar ------------------------------------------
+     Rebote del check, sacudida breve de la tarjeta y 8 confetis CSS. Se
+     dispara DESPUÉS del render (el render sustituye los nodos, así que una
+     animación ligada a .is-done se repetiría en cada repintado). La capa de
+     confeti es única por tarjeta: se retira la anterior antes de pintar la
+     nueva, y el temporizador se guarda por nodo para no acumular nada.
+     Con prefers-reduced-motion (o Movimiento reducido en Ajustes) no se
+     anima ni se crea confeti: no queda ni un nodo extra en el DOM. */
+  const fxTimers = new WeakMap();
+  const reduceMotion = () => {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    const pref = root && root.dataset ? root.dataset.motion : '';
+    // La elección de Ajustes manda sobre el sistema, igual que en motion.css:
+    // 'reduce' apaga, 'full' enciende y sin atributo decide el media query.
+    if (pref === 'reduce') return true;
+    if (pref === 'full') return false;
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  };
+
+  function doneFx(taskId) {
+    // Los tests de lógica importan este módulo con un DOM mínimo o sin él: si
+    // no hay documento real no hay nada que animar y no debe reventar.
+    if (typeof document === 'undefined' || !document.documentElement || typeof document.querySelector !== 'function') return;
+    if (!taskId || reduceMotion()) return;
+    const id = String(taskId);
+    const safeId = window.CSS && typeof window.CSS.escape === 'function' ? window.CSS.escape(id) : id;
+    const card = document.querySelector('.activity-card[data-task-id="' + safeId + '"], .now-zen[data-task-id="' + safeId + '"]');
+    if (!card) return;
+    const mark = card.querySelector('.row-check, .counter-val, .activity-card-quick-action, .habit-emoji');
+    card.classList.remove('fx-pop');
+    if (mark) mark.classList.remove('fx-check');
+    // Reflow mínimo para reiniciar la animación si se marca dos veces seguidas.
+    void card.offsetWidth;
+    card.classList.add('fx-pop');
+    if (mark) mark.classList.add('fx-check');
+    const previous = card.querySelector('.fx-confetti');
+    if (previous) previous.remove();
+    const layer = h('span', { class: 'fx-confetti', 'aria-hidden': 'true' });
+    for (let index = 0; index < 8; index++) {
+      const spread = (index / 7 - .5) * 2;
+      layer.append(h('i', {
+        style: '--dx:' + Math.round(spread * 46) + 'px;--dy:' + (-28 - (index % 3) * 9) + 'px;--delay:' + (index * 18) + 'ms'
+      }));
+    }
+    card.append(layer);
+    clearTimeout(fxTimers.get(card));
+    fxTimers.set(card, setTimeout(() => {
+      layer.remove();
+      card.classList.remove('fx-pop');
+      if (mark) mark.classList.remove('fx-check');
+      fxTimers.delete(card);
+    }, 820));
+  }
+
+  /* --- Celebración del día completo ---------------------------------------
+     Cuando el último hábito pendiente del día queda marcado, la app lo
+     reconoce con un toast breve y una lluvia discreta de confeti sobre el
+     resumen del día. La capa no captura toques ni bloquea el scroll y se
+     retira sola. Con prefers-reduced-motion (o Movimiento reducido) no se
+     crea: el toast sigue apareciendo, que es el estado final legible. */
+  let celebratedDay = '';
+  function dayDoneFx() {
+    if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return;
+    const today = todayStr();
+    const tasks = S.tasks || [];
+    const completion = app.core.dayCompletion({ tasks, ymd: today, isDueOn, isDoneOn, isSkipped });
+    if (!completion.all || celebratedDay === today) return;
+    celebratedDay = today;
+    const streak = app.core.allDoneStreak({ tasks, ymd: today, isDueOn, isDoneOn, isSkipped, addDaysYmd: app.core.addDaysYmd });
+    toast(streak > 1 ? 'Día completo ✨ Racha de ' + streak + ' días' : 'Día completo ✨');
+    if (reduceMotion()) return;
+    const host = document.querySelector('.home-day-summary') || document.querySelector('.now-zen');
+    if (!host) return;
+    const previous = host.querySelector('.day-celebration');
+    if (previous) previous.remove();
+    const layer = h('span', { class: 'day-celebration', 'aria-hidden': 'true' });
+    for (let index = 0; index < 12; index++) {
+      const spread = (index / 11 - .5) * 2;
+      layer.append(h('i', {
+        style: '--dx:' + Math.round(spread * 64) + 'px;--dy:' + (-34 - (index % 4) * 10) + 'px;--delay:' + (index * 26) + 'ms'
+      }));
+    }
+    host.append(layer);
+    setTimeout(() => layer.remove(), 1500);
+  }
 
   /* --- Control según el tipo ---------------------------------------------- */
 
@@ -49,6 +135,8 @@ export function registerTaskRow(app) {
             task.updatedAt = Date.now();
             if (app.core.haptic) app.core.haptic(kind === 'avoid' && info.done ? [12, 24, 12] : undefined);
             after();
+            // Solo al marcar: desmarcar no se celebra, y un fallo tampoco.
+            if (kind !== 'avoid' && isDoneOn(task, ymd)) doneFx(task.id);
           };
           if (kind === 'avoid' && info.done && !info.skipped) {
             confirmDialog({
@@ -105,6 +193,7 @@ export function registerTaskRow(app) {
   function after() {
     save();
     app.domain.render();
+    dayDoneFx();
   }
 
   // Hoja para poner el valor exacto (por ejemplo "he leído 42 páginas").
@@ -294,7 +383,7 @@ export function registerTaskRow(app) {
       else activeIndex = next;
       draw();
       if (onProgress) onProgress();
-      if (stage === 'done') toast('Actividad completada');
+      if (stage === 'done') { toast('Actividad completada'); doneFx(task.id); }
     };
     const undoCurrent = () => {
       if (!runnable || stage !== 'step') return;
@@ -455,14 +544,14 @@ export function registerTaskRow(app) {
         )
       ),
       failedAvoid ? h('span', { class: 'r-ic', style: 'width:auto;padding:0 8px;background:var(--danger-soft);color:var(--danger);font-size:11px;font-weight:700' }, 'Fallo') : null,
-      h('span', { class: 'r-ic', html: icon(task.icon || 'star', 19) })
+      emojiAvatar(task, 32)
     );
     if (op.menu) row.append(op.menu(task, ymd));
     if (!due && !op.noDue) row.style.opacity = '.5';
     return row;
   }
 
-  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel, priorityInfo, stepsSheet, guidedTaskSheet, stepDoneOn, setGuidedStep });
+  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel, priorityInfo, stepsSheet, guidedTaskSheet, stepDoneOn, setGuidedStep, dayDoneFx });
 
   /* --- Objetivo semanal ---------------------------------------------------- */
 
@@ -623,5 +712,5 @@ export function registerTaskRow(app) {
 
   const skippedHoy = task => isSkipped(task, todayStr());
 
-  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel });
+  Object.assign(app.features, { taskRow, taskControl, goalBar, heatCard, routineSheet, setValue, kindLabel, doneFx, dayDoneFx });
 }
